@@ -1,0 +1,66 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Eleves</h1>
+      @if (page(); as result) {
+        <p class="page__meta numeric">{{ result.totalElements }} eleve(s) enregistre(s)</p>
+      }
+    </div>
+    <div class="page__actions">
+      <button type="button" class="btn btn--secondary">Exporter Excel</button>
+      <button type="button" class="btn btn--primary" *eduopsHasPermission="createPermission">
+        <span aria-hidden="true">+</span> Nouvel eleve
+      </button>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="card__header filters">
+      <div class="filters__search">
+        <label class="visually-hidden" for="student-search">Rechercher un eleve</label>
+        <input id="student-search" class="input" type="search"
+               placeholder="Nom, prenom ou matricule (ex. EDU-2026-000123)"
+               [value]="search()" (input)="onSearchChange($any($event.target).value)" />
+      </div>
+      <div class="filters__status">
+        <label class="visually-hidden" for="student-status">Filtrer par statut</label>
+        <select id="student-status" class="select"
+                [value]="statusFilter()" (change)="onStatusChange($any($event.target).value)">
+          <option value="">Tous les statuts</option>
+          <option value="ACTIVE">Actif</option>
+          <option value="ADMITTED">Admis</option>
+          <option value="APPLICANT">Candidat</option>
+          <option value="SUSPENDED">Suspendu</option>
+          <option value="GRADUATED">Diplome</option>
+          <option value="TRANSFERRED">Transfere</option>
+        </select>
+      </div>
+    </div>
+
+    <eduops-data-table
+      [columns]="columns"
+      [page]="page()"
+      [loading]="loading()"
+      [rowClickable]="true"
+      caption="Liste des eleves"
+      emptyTitle="Aucun eleve trouve"
+      emptyMessage="Ajustez la recherche ou le filtre de statut."
+      (pageChange)="onPageChange($event)"
+      (rowClick)="openStudent($event)" />
+  </section>
+</div>
+
+<!-- Cell templates -->
+<ng-template #identityTpl let-student>
+  <div class="identity">
+    <eduops-avatar [name]="student.fullName" [photoUrl]="student.photoUrl" size="sm" />
+    <div>
+      <p class="identity__name">{{ student.fullName }}</p>
+      <p class="identity__meta">{{ student.gender === 'FEMALE' ? 'Fille' : 'Garcon' }}</p>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #statusTpl let-student>
+  <eduops-status-badge [status]="student.status" />
+</ng-template>

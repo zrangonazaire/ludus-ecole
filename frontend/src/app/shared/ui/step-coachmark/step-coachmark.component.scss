@@ -1,0 +1,236 @@
+:host { display: contents; }
+
+.coachmark-layer {
+  position: fixed;
+  z-index: 1070;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding: 88px 20px 30px;
+  overflow-y: auto;
+  background: rgba(9, 27, 48, .32);
+  backdrop-filter: blur(3px);
+  animation: layer-in 180ms ease-out;
+}
+
+.coachmark {
+  position: relative;
+  width: min(500px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 28px 75px rgba(9, 30, 55, .25), 0 3px 12px rgba(9, 30, 55, .1);
+  outline: none;
+  animation: card-in 220ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.coachmark__accent {
+  height: 5px;
+  background: linear-gradient(90deg, var(--brand), #0b9181 68%, #e9aa38);
+}
+
+.coachmark__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 0;
+}
+
+.coachmark__count {
+  padding: 5px 9px;
+  border-radius: 20px;
+  background: var(--brand-tint);
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.coachmark__close {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: 21px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.coachmark__close:hover { background: var(--border); color: var(--text-strong); }
+
+.coachmark__body {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 17px;
+  align-items: start;
+  padding: 15px 24px 12px;
+}
+
+.coachmark__symbol {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  background: linear-gradient(145deg, var(--brand), #144595);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(31, 95, 214, .2);
+}
+
+.coachmark__symbol span { position: relative; z-index: 1; font: 800 20px var(--font-display); }
+.coachmark__symbol i {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  right: -7px;
+  bottom: -6px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: #18a78f;
+}
+
+.coachmark__eyebrow {
+  margin: 1px 0 6px;
+  color: var(--brand);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.coachmark h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 23px;
+  line-height: 1.18;
+  letter-spacing: -.025em;
+}
+
+.coachmark__description {
+  margin: 9px 0 0;
+  color: var(--text-normal);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.coachmark__points {
+  display: grid;
+  gap: 8px;
+  margin: 4px 24px 18px 99px;
+  padding: 0;
+  list-style: none;
+}
+
+.coachmark__points li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-normal);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.coachmark__points span {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 18px;
+  border-radius: 6px;
+  background: #e6f6f1;
+  color: #0b8978;
+  font-size: 10px;
+}
+
+.coachmark__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 18px;
+  border-top: 1px solid var(--border);
+  background: #f8fafc;
+}
+
+.coachmark__footer small { max-width: 220px; color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.coachmark__cta {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--brand);
+  color: #fff;
+  font: 700 12px var(--font-body);
+  box-shadow: 0 8px 18px rgba(31, 95, 214, .2);
+  cursor: pointer;
+}
+
+.coachmark__cta:hover { background: var(--brand-hover); }
+
+.coachmark-help {
+  position: fixed;
+  z-index: 1035;
+  right: 22px;
+  bottom: 84px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .96);
+  color: var(--text-normal);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+
+.coachmark-help > span {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 800;
+}
+
+.coachmark-help small { font-size: 11px; font-weight: 700; }
+
+@keyframes layer-in { from { opacity: 0; } }
+@keyframes card-in { from { opacity: 0; transform: translateY(-12px) scale(.98); } }
+
+@media (max-width: 767px) {
+  .coachmark-layer {
+    align-items: end;
+    padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
+    backdrop-filter: none;
+  }
+  .coachmark {
+    max-height: calc(100dvh - 32px - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 20px;
+  }
+  .coachmark__body { grid-template-columns: 45px 1fr; gap: 13px; padding: 13px 18px 10px; }
+  .coachmark__symbol { width: 44px; height: 44px; border-radius: 14px; }
+  .coachmark__symbol span { font-size: 17px; }
+  .coachmark h2 { font-size: 20px; }
+  .coachmark__points { margin: 5px 18px 15px 76px; }
+  .coachmark__footer { align-items: stretch; flex-direction: column; gap: 10px; }
+  .coachmark__footer small { max-width: none; text-align: center; }
+  .coachmark__cta { width: 100%; }
+  .coachmark-help { right: 14px; bottom: calc(84px + env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coachmark-layer, .coachmark { animation: none; }
+}

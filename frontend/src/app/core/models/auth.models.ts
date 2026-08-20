@@ -1,0 +1,95 @@
+export interface LoginRequest {
+  login: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  userId: string;
+  username: string;
+  email: string;
+  fullName: string;
+  schoolId?: string;
+  mustChangePassword: boolean;
+  roles: string[];
+  permissions: string[];
+}
+
+export interface CurrentUser {
+  userId: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  schoolId?: string;
+  mustChangePassword: boolean;
+  roles: string[];
+  permissions: string[];
+  teacherId?: string;
+  guardianId?: string;
+  studentId?: string;
+}
+
+/** Roles as defined in section 61. */
+export const ROLES = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  DIRECTOR: 'DIRECTOR',
+  ACADEMIC_MANAGER: 'ACADEMIC_MANAGER',
+  REGISTRAR: 'REGISTRAR',
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  CASHIER: 'CASHIER',
+  DISCIPLINE_MANAGER: 'DISCIPLINE_MANAGER',
+  SECRETARY: 'SECRETARY',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  VIEWER: 'VIEWER'
+} as const;
+
+/** Permission codes as defined in section 62. */
+export const PERMISSIONS = {
+  DASHBOARD_VIEW: 'DASHBOARD_VIEW',
+  STUDENT_VIEW: 'STUDENT_VIEW',
+  STUDENT_CREATE: 'STUDENT_CREATE',
+  STUDENT_UPDATE: 'STUDENT_UPDATE',
+  ENROLLMENT_VIEW: 'ENROLLMENT_VIEW',
+  ENROLLMENT_CREATE: 'ENROLLMENT_CREATE',
+  ENROLLMENT_VALIDATE: 'ENROLLMENT_VALIDATE',
+  TEACHER_VIEW: 'TEACHER_VIEW',
+  TEACHER_MANAGE: 'TEACHER_MANAGE',
+  CLASS_VIEW: 'CLASS_VIEW',
+  CLASS_MANAGE: 'CLASS_MANAGE',
+  TIMETABLE_VIEW: 'TIMETABLE_VIEW',
+  TIMETABLE_MANAGE: 'TIMETABLE_MANAGE',
+  ATTENDANCE_VIEW: 'ATTENDANCE_VIEW',
+  ATTENDANCE_CREATE: 'ATTENDANCE_CREATE',
+  ASSESSMENT_VIEW: 'ASSESSMENT_VIEW',
+  ASSESSMENT_CREATE: 'ASSESSMENT_CREATE',
+  GRADE_VIEW: 'GRADE_VIEW',
+  GRADE_CREATE: 'GRADE_CREATE',
+  GRADE_VALIDATE: 'GRADE_VALIDATE',
+  GRADE_PUBLISH: 'GRADE_PUBLISH',
+  REPORT_CARD_VIEW: 'REPORT_CARD_VIEW',
+  REPORT_CARD_GENERATE: 'REPORT_CARD_GENERATE',
+  REPORT_CARD_PUBLISH: 'REPORT_CARD_PUBLISH',
+  FINANCE_VIEW: 'FINANCE_VIEW',
+  FINANCE_MANAGE: 'FINANCE_MANAGE',
+  PAYMENT_VIEW: 'PAYMENT_VIEW',
+  PAYMENT_CREATE: 'PAYMENT_CREATE',
+  PAYMENT_CANCEL: 'PAYMENT_CANCEL',
+  REPORT_VIEW: 'REPORT_VIEW',
+  REPORT_EXPORT: 'REPORT_EXPORT',
+  ALERT_VIEW: 'ALERT_VIEW',
+  AUDIT_VIEW: 'AUDIT_VIEW',
+  USER_MANAGE: 'USER_MANAGE',
+  PORTAL_TEACHER: 'PORTAL_TEACHER',
+  PORTAL_PARENT: 'PORTAL_PARENT',
+  PORTAL_STUDENT: 'PORTAL_STUDENT'
+} as const;
+
+export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

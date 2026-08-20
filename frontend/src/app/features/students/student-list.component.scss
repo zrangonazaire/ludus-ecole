@@ -1,0 +1,7 @@
+.filters { gap: var(--space-3); flex-wrap: wrap; }
+.filters__search { flex: 1; min-width: 260px; }
+.filters__status { min-width: 180px; }
+
+.identity { display: flex; align-items: center; gap: var(--space-3); }
+.identity__name { margin: 0; font-weight: 600; color: var(--text-strong); }
+.identity__meta { margin: 0; font-size: var(--text-xs); color: var(--text-muted); }

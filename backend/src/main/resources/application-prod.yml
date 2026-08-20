@@ -1,0 +1,57 @@
+# =====================================================================
+# PROD profile - real SMTP relay, strict logging, no demo data
+# =====================================================================
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+  datasource:
+    hikari:
+      maximum-pool-size: 40
+      minimum-idle: 10
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+
+server:
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+  servlet:
+    session:
+      cookie:
+        secure: true
+
+logging:
+  level:
+    root: WARN
+    ci.company.eduops: INFO
+    org.hibernate.SQL: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    enabled: false
+
+eduops:
+  mail:
+    provider: SMTP
+  demo:
+    enabled: false
+  security:
+    require-https: true

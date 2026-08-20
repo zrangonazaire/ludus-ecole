@@ -1,0 +1,100 @@
+@import 'styles/tokens';
+
+.section-gap { margin-top: var(--space-6); }
+
+.dot { margin: 0 var(--space-2); color: var(--text-light); }
+
+.link-sm {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.list { list-style: none; margin: 0; padding: var(--space-2) 0; }
+
+.list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.list__item:last-child { border-bottom: none; }
+.list__item--alert { align-items: flex-start; }
+
+.list__body { flex: 1; min-width: 0; }
+
+.list__title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list__meta {
+  margin: 2px 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.list__amount {
+  font-weight: 700;
+  color: var(--success);
+  white-space: nowrap;
+}
+
+.list__empty {
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.alert-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.alert-dot--info { background: var(--info); }
+.alert-dot--warning { background: var(--warning); }
+.alert-dot--critical { background: var(--danger); }
+
+.refresh-note {
+  margin-top: var(--space-6);
+  text-align: right;
+  font-size: var(--text-xs);
+  color: var(--text-light);
+}
+
+/* ── Rappel de configuration ── */
+.setup-banner {
+  position: relative;
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+  background: var(--warning-bg);
+  border: 1px solid #f2d9b4;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.setup-banner__bar {
+  position: absolute; inset: auto 0 0 0; height: 3px;
+  background: rgba(217, 122, 22, .18);
+}
+.setup-banner__fill {
+  display: block; height: 100%; background: var(--warning);
+  transition: width 500ms ease;
+}
+.setup-banner__text { flex: 1; min-width: 0; }
+.setup-banner__title { margin: 0; font-weight: 700; color: var(--warning); }
+.setup-banner__lead { margin: 2px 0 0; font-size: var(--text-sm); color: var(--text-normal); }
+
+@media (max-width: 767px) {
+  .setup-banner { flex-direction: column; align-items: flex-start; }
+  .setup-banner .btn { width: 100%; }
+}

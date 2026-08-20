@@ -1,0 +1,76 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Classes</h1>
+      <p class="page__meta numeric">{{ classes().length }} classe(s) pour l'annee active</p>
+    </div>
+    <div class="page__actions">
+      <button type="button" class="btn btn--secondary">Exporter</button>
+      <button type="button" class="btn btn--primary"><span aria-hidden="true">+</span> Nouvelle classe</button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des classes..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    <section class="grid grid--3">
+      @for (classroom of classes(); track classroom.id) {
+        <article class="class-card card">
+          <header class="class-card__head">
+            <div>
+              <h2 class="class-card__name">{{ classroom.name }}</h2>
+              <p class="class-card__meta numeric">{{ classroom.code }} — {{ classroom.levelName }}</p>
+            </div>
+            <eduops-status-badge [status]="classroom.capacityStatus" />
+          </header>
+
+          <div class="class-card__body">
+            <!-- Occupancy gauge: computed server-side, displayed here -->
+            <div class="gauge" role="img"
+                 [attr.aria-label]="classroom.activeEnrollments + ' eleves sur ' + classroom.capacityMaximum">
+              <div class="gauge__bar">
+                <span class="gauge__fill"
+                      [style.width.%]="classroom.occupancyRate > 100 ? 100 : classroom.occupancyRate"
+                      [style.background]="gaugeTone(classroom)"></span>
+              </div>
+              <p class="gauge__label numeric">
+                <strong>{{ classroom.activeEnrollments }}</strong> / {{ classroom.capacityMaximum }}
+                <span class="gauge__rate">({{ classroom.occupancyRate }} %)</span>
+              </p>
+            </div>
+
+            <dl class="class-card__stats">
+              <div>
+                <dt>Places restantes</dt>
+                <dd class="numeric" [class.negative]="classroom.availableSeats <= 0">
+                  {{ classroom.availableSeats }}
+                </dd>
+              </div>
+              <div>
+                <dt>Places projetees</dt>
+                <dd class="numeric"
+                    [class.negative]="(classroom.projectedAvailableSeats ?? 0) < 0">
+                  {{ classroom.projectedAvailableSeats ?? classroom.availableSeats }}
+                </dd>
+              </div>
+              <div>
+                <dt>Professeur principal</dt>
+                <dd>{{ classroom.mainTeacherName ?? 'Non affecte' }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <footer class="class-card__footer">
+            <button type="button" class="btn btn--ghost btn--sm">Eleves</button>
+            <button type="button" class="btn btn--ghost btn--sm">Emploi du temps</button>
+            <button type="button" class="btn btn--ghost btn--sm">Resultats</button>
+          </footer>
+        </article>
+      } @empty {
+        <p class="empty">Aucune classe definie pour cette annee scolaire.</p>
+      }
+    </section>
+  }
+</div>

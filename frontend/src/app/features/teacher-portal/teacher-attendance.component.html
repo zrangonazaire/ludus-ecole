@@ -1,0 +1,97 @@
+@if (loading()) {
+  <eduops-loading-state />
+} @else {
+  @if (sheet(); as sheet) {
+
+  <header class="sheet-head">
+    <button type="button" class="btn btn--ghost btn--sm" (click)="close()">‹ Retour</button>
+    <div>
+      <h1 class="sheet-head__title">{{ sheet.classroomName }}</h1>
+      <p class="sheet-head__meta">{{ sheet.sessionDate | date:'EEEE d MMMM':'':'fr' }}</p>
+    </div>
+  </header>
+
+  <div class="counters">
+    <div class="counter counter--present">
+      <span class="counter__value numeric">{{ counters().present }}</span>
+      <span class="counter__label">Presents</span>
+    </div>
+    <div class="counter counter--absent">
+      <span class="counter__value numeric">{{ counters().absent }}</span>
+      <span class="counter__label">Absents</span>
+    </div>
+    <div class="counter counter--late">
+      <span class="counter__value numeric">{{ counters().late }}</span>
+      <span class="counter__label">Retards</span>
+    </div>
+  </div>
+
+  @if (!submitted()) {
+    <button type="button" class="btn btn--secondary btn--block" (click)="markAllPresent()">
+      Tout marquer present
+    </button>
+  }
+
+  <ul class="roll">
+    @for (record of sheet.records; track record.studentId) {
+      <li class="roll__item">
+        <eduops-avatar [name]="record.studentName" size="sm" />
+        <div class="roll__body">
+          <p class="roll__name">{{ record.studentName }}</p>
+          <p class="roll__meta numeric">{{ record.studentNumber }}</p>
+        </div>
+
+        <div class="marks" role="group" [attr.aria-label]="'Presence de ' + record.studentName">
+          <button type="button" class="mark mark--p"
+                  [class.mark--active]="record.status === 'PRESENT'"
+                  [disabled]="submitted()"
+                  (click)="mark(record.studentId, 'PRESENT')"
+                  aria-label="Present">P</button>
+          <button type="button" class="mark mark--a"
+                  [class.mark--active]="record.status === 'ABSENT'"
+                  [disabled]="submitted()"
+                  (click)="mark(record.studentId, 'ABSENT')"
+                  aria-label="Absent">A</button>
+          <button type="button" class="mark mark--r"
+                  [class.mark--active]="record.status === 'LATE'"
+                  [disabled]="submitted()"
+                  (click)="mark(record.studentId, 'LATE')"
+                  aria-label="Retard">R</button>
+        </div>
+      </li>
+    }
+  </ul>
+
+  @if (submitted()) {
+    <p class="submitted" role="status">
+      Feuille validee et enregistree par le serveur. Toute correction sera tracee.
+    </p>
+  } @else {
+    <div class="submit-bar">
+      <button type="button" class="btn btn--primary btn--block btn--lg"
+              [disabled]="submitting()" (click)="submit()">
+        {{ submitting() ? 'Enregistrement...' : "Valider l'appel" }}
+      </button>
+      <p class="submit-bar__note">
+        L'appel n'est definitif qu'apres confirmation du serveur.
+      </p>
+    </div>
+  }
+
+} @else {
+  <h1 class="title">Faire l'appel</h1>
+  <p class="subtitle">Selectionnez la classe concernee.</p>
+  <ul class="classes">
+    @for (classroom of classes(); track classroom.id) {
+      <li>
+        <button type="button" class="class-row card" (click)="openSheet(classroom)">
+          <span class="class-row__name">{{ classroom.name }}</span>
+          <span class="class-row__meta numeric">{{ classroom.activeEnrollments }} eleves</span>
+        </button>
+      </li>
+    } @empty {
+      <li class="empty">Aucune classe ne vous est affectee.</li>
+    }
+  </ul>
+}
+}

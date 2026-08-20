@@ -1,0 +1,94 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Configuration de l'etablissement</h1>
+      @if (status(); as setup) {
+        <p class="page__meta">
+          {{ setup.schoolName }}
+          @if (setup.academicYearCode) {
+            <span class="dot">•</span>Annee {{ setup.academicYearCode }}
+          }
+        </p>
+      }
+    </div>
+    <div class="page__actions">
+      <button type="button" class="btn btn--secondary" (click)="load()">Actualiser</button>
+      <a class="btn btn--primary" routerLink="/onboarding">Reprendre l'assistant</a>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <eduops-loading-state message="Verification de votre configuration..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    @if (status(); as setup) {
+
+    <!-- Progression globale -->
+    <section class="progress-card card" [class.progress-card--done]="setup.complete">
+      <div class="progress-card__text">
+        @if (setup.complete) {
+          <h2 class="progress-card__title">Configuration terminee</h2>
+          <p class="progress-card__lead">
+            Tout est en place. Vous pouvez inscrire, noter et encaisser sereinement.
+          </p>
+        } @else {
+          <h2 class="progress-card__title">
+            {{ setup.completedSteps }} etape{{ setup.completedSteps > 1 ? 's' : '' }}
+            sur {{ setup.totalSteps }}
+          </h2>
+          <p class="progress-card__lead">
+            Il reste {{ setup.totalSteps - setup.completedSteps }} etape(s).
+            L'etablissement reste utilisable entre-temps : rien ne vous oblige a tout finir d'un coup.
+          </p>
+        }
+      </div>
+
+      <div class="gauge" role="img"
+           [attr.aria-label]="setup.percentComplete + ' pour cent de la configuration'">
+        <svg viewBox="0 0 120 120" class="gauge__svg">
+          <circle class="gauge__track" cx="60" cy="60" r="52" />
+          <circle class="gauge__fill" cx="60" cy="60" r="52"
+                  [style.stroke-dasharray]="326.7"
+                  [style.stroke-dashoffset]="326.7 - (326.7 * setup.percentComplete / 100)" />
+        </svg>
+        <span class="gauge__value numeric">{{ setup.percentComplete }}<small>%</small></span>
+      </div>
+    </section>
+
+    <!-- Etapes -->
+    <ol class="steps-list">
+      @for (step of setup.steps; track step.key; let i = $index) {
+        <li class="step" [class.step--done]="step.done"
+            [class.step--next]="!step.done && setup.nextStepKey === step.key">
+          <span class="step__marker" aria-hidden="true">
+            {{ step.done ? '✓' : i + 1 }}
+          </span>
+
+          <div class="step__body">
+            <div class="step__heading">
+              <h3 class="step__label">{{ step.label }}</h3>
+              @if (step.done) {
+                <span class="badge badge--success">Fait</span>
+              } @else if (setup.nextStepKey === step.key) {
+                <span class="badge badge--info">A faire maintenant</span>
+              }
+            </div>
+            <p class="step__description">{{ step.description }}</p>
+            <p class="step__count numeric" [class.step__count--empty]="step.count === 0">
+              {{ countLabel(step.key, step.count) }}
+            </p>
+          </div>
+
+          <a class="btn btn--sm"
+             [class.btn--primary]="!step.done"
+             [class.btn--secondary]="step.done"
+             [routerLink]="step.actionRoute">
+            {{ step.done ? 'Modifier' : step.actionLabel }}
+          </a>
+        </li>
+      }
+    </ol>
+    }
+  }
+</div>

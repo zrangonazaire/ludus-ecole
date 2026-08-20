@@ -1,0 +1,49 @@
+@if (visible()) {
+  <div class="coachmark-layer">
+    <section #panel class="coachmark" role="dialog" aria-modal="true"
+             [attr.aria-labelledby]="titleId()" [attr.aria-describedby]="descriptionId()"
+             tabindex="-1" (click)="stopPropagation($event)">
+      <div class="coachmark__accent" aria-hidden="true"></div>
+
+      <header class="coachmark__header">
+        <span class="coachmark__count">Étape {{ stepNumber() }} sur {{ totalSteps() }}</span>
+        <button type="button" class="coachmark__close" aria-label="Fermer cette aide"
+                (click)="dismiss()">×</button>
+      </header>
+
+      <div class="coachmark__body">
+        <div class="coachmark__symbol" aria-hidden="true">
+          <span>{{ stepNumber() }}</span>
+          <i></i>
+        </div>
+        <div>
+          <p class="coachmark__eyebrow">{{ eyebrow() }}</p>
+          <h2 [id]="titleId()">{{ title() }}</h2>
+          <p [id]="descriptionId()" class="coachmark__description">{{ description() }}</p>
+        </div>
+      </div>
+
+      @if (points().length) {
+        <ul class="coachmark__points">
+          @for (point of points(); track point) {
+            <li><span aria-hidden="true">✓</span>{{ point }}</li>
+          }
+        </ul>
+      }
+
+      <footer class="coachmark__footer">
+        <small>Ce conseil s’affiche automatiquement une seule fois. Le bouton Aide permet de le revoir.</small>
+        <button type="button" class="coachmark__cta" (click)="accept()">
+          {{ ctaLabel() }} <span aria-hidden="true">→</span>
+        </button>
+      </footer>
+    </section>
+  </div>
+} @else {
+  <button #helpButton type="button" class="coachmark-help"
+          aria-label="Réafficher l’aide de cette étape" title="Aide sur cette étape"
+          (click)="open()">
+    <span aria-hidden="true">?</span>
+    <small>Aide</small>
+  </button>
+}

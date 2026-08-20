@@ -1,0 +1,26 @@
+# =====================================================================
+# TEST profile - Testcontainers provide Postgres/Redis; mail is captured
+# =====================================================================
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    clean-disabled: false
+
+logging:
+  level:
+    ci.company.eduops: DEBUG
+    org.testcontainers: INFO
+
+eduops:
+  mail:
+    provider: TEST_SMTP
+    enabled: false
+  demo:
+    enabled: false
+  rate-limit:
+    enabled: false
+  security:
+    jwt:
+      secret: test_only_secret_test_only_secret_test_only_secret_test_only_1234

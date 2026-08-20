@@ -1,0 +1,218 @@
+<div class="signup">
+  <aside class="signup__aside" aria-hidden="true">
+    <a class="signup__brand" routerLink="/">
+      <span class="signup__logo">E</span>
+      <span class="signup__brandname">EduOps</span>
+    </a>
+    <blockquote class="signup__quote">
+      <p>En quelques minutes, votre etablissement est pret : annee scolaire ouverte,
+         trimestres crees, compte administrateur actif.</p>
+    </blockquote>
+    <ul class="signup__points">
+      <li>Vos donnees sont isolees des autres etablissements</li>
+      <li>Aucune carte bancaire demandee pour configurer la demonstration</li>
+      <li>Assistant guide pour les cycles, classes et frais</li>
+    </ul>
+  </aside>
+
+  <main class="signup__main" id="main-content">
+    <div class="signup__panel">
+      <a class="signup__back" [routerLink]="hasDemoDraft() ? '/commencer' : '/'">
+        &lsaquo; {{ hasDemoDraft() ? 'Retour à ma configuration' : 'Retour à l’accueil' }}
+      </a>
+
+      @if (hasDemoDraft()) {
+        <div class="demo-context" role="status">
+          <span class="demo-context__icon" aria-hidden="true">✓</span>
+          <div>
+            <strong>Votre scénario de démonstration est prêt</strong>
+            <p>{{ demoSummary() }}. Il reste attaché à cet onglet et vous pourrez encore l’ajuster.</p>
+          </div>
+        </div>
+      }
+
+      <ol class="steps" aria-label="Etapes">
+        <li class="steps__item" [class.steps__item--active]="step() >= 1">
+          <span class="steps__index">1</span> Etablissement
+        </li>
+        <li class="steps__item" [class.steps__item--active]="step() >= 2">
+          <span class="steps__index">2</span> Administrateur
+        </li>
+      </ol>
+
+      <!-- ═══ Etape 1 : l'etablissement ═══ -->
+      @if (step() === 1) {
+        <form class="form" [formGroup]="schoolForm" (ngSubmit)="goToStep2()">
+          <h1 class="form__title">Créer mon espace EduOps</h1>
+          <p class="form__lead">Ces informations identifieront votre école témoin et son administrateur.</p>
+
+          <div class="field">
+            <label class="field__label field__label--required" for="schoolName">
+              Nom de l'etablissement
+            </label>
+            <input id="schoolName" class="input" type="text" formControlName="schoolName"
+                   placeholder="Groupe Scolaire Horizon" autocomplete="organization" />
+            @if (schoolForm.controls.schoolName.touched && schoolForm.controls.schoolName.invalid) {
+              <span class="field__error">Le nom est obligatoire.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label field__label--required" for="schoolCode">
+              Code etablissement
+            </label>
+            <input id="schoolCode" class="input" type="text" formControlName="schoolCode"
+                   placeholder="GSH" maxlength="30"
+                   [class.is-invalid]="codeAvailable() === false" />
+            @if (checkingCode()) {
+              <span class="field__hint">Verification...</span>
+            } @else if (codeAvailable() === false) {
+              <span class="field__error">Ce code est deja utilise, choisissez-en un autre.</span>
+            } @else if (codeAvailable() === true) {
+              <span class="field__hint field__hint--ok">Ce code est disponible.</span>
+            } @else {
+              <span class="field__hint">
+                Identifiant court et unique. Il servira de prefixe aux matricules :
+                <strong>{{ (schoolForm.controls.schoolCode.value || 'GSH').toUpperCase() }}-2026-000123</strong>
+              </span>
+            }
+            @if (schoolForm.controls.schoolCode.touched && schoolForm.controls.schoolCode.errors?.['pattern']) {
+              <span class="field__error">Lettres, chiffres et tirets uniquement.</span>
+            }
+          </div>
+
+          <div class="form__row">
+            <div class="field">
+              <label class="field__label" for="city">Ville</label>
+              <input id="city" class="input" type="text" formControlName="city"
+                     placeholder="Abidjan" autocomplete="address-level2" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="country">Pays</label>
+              <input id="country" class="input" type="text" formControlName="country"
+                     autocomplete="country-name" />
+            </div>
+          </div>
+
+          <div class="form__row">
+            <div class="field">
+              <label class="field__label" for="schoolPhone">Telephone</label>
+              <input id="schoolPhone" class="input" type="tel" formControlName="schoolPhone"
+                     placeholder="+225 27 20 00 00 00" autocomplete="tel" />
+            </div>
+            <div class="field">
+              <label class="field__label field__label--required" for="currency">Devise</label>
+              <select id="currency" class="select" formControlName="currency">
+                <option value="XOF">Franc CFA (XOF)</option>
+                <option value="XAF">Franc CFA (XAF)</option>
+                <option value="EUR">Euro (EUR)</option>
+                <option value="USD">Dollar (USD)</option>
+                <option value="MAD">Dirham (MAD)</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn--primary btn--block btn--lg"
+                  [disabled]="codeAvailable() === false">
+            Continuer
+          </button>
+
+          <p class="form__switch">
+            Vous avez deja un compte ? <a routerLink="/login">Se connecter</a>
+          </p>
+        </form>
+      }
+
+      <!-- ═══ Etape 2 : l'administrateur ═══ -->
+      @if (step() === 2) {
+        <form class="form" [formGroup]="adminForm" (ngSubmit)="submit()">
+          <h1 class="form__title">Votre compte administrateur</h1>
+          <p class="form__lead">
+            Ce compte pourra tout gerer dans <strong>{{ schoolForm.controls.schoolName.value }}</strong>
+            et creer les autres utilisateurs.
+          </p>
+
+          <div class="form__row">
+            <div class="field">
+              <label class="field__label field__label--required" for="firstName">Prenom</label>
+              <input id="firstName" class="input" type="text" formControlName="firstName"
+                     autocomplete="given-name" />
+              @if (adminForm.controls.firstName.touched && adminForm.controls.firstName.invalid) {
+                <span class="field__error">Le prenom est obligatoire.</span>
+              }
+            </div>
+            <div class="field">
+              <label class="field__label field__label--required" for="lastName">Nom</label>
+              <input id="lastName" class="input" type="text" formControlName="lastName"
+                     autocomplete="family-name" />
+              @if (adminForm.controls.lastName.touched && adminForm.controls.lastName.invalid) {
+                <span class="field__error">Le nom est obligatoire.</span>
+              }
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field__label field__label--required" for="email">Email</label>
+            <input id="email" class="input" type="email" formControlName="email"
+                   placeholder="directeur@monecole.ci" autocomplete="email"
+                   [class.is-invalid]="emailAvailable() === false" />
+            @if (checkingEmail()) {
+              <span class="field__hint">Verification...</span>
+            } @else if (emailAvailable() === false) {
+              <span class="field__error">Un compte existe deja avec cet email.</span>
+            } @else if (adminForm.controls.email.touched && adminForm.controls.email.invalid) {
+              <span class="field__error">Format d'email invalide.</span>
+            } @else {
+              <span class="field__hint">Il servira d'identifiant de connexion.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="phone">Telephone</label>
+            <input id="phone" class="input" type="tel" formControlName="phone"
+                   autocomplete="tel" />
+          </div>
+
+          <div class="field">
+            <label class="field__label field__label--required" for="password">Mot de passe</label>
+            <input id="password" class="input" type="password" formControlName="password"
+                   autocomplete="new-password" />
+
+            @if (adminForm.controls.password.value) {
+              <div class="strength">
+                <div class="strength__bar">
+                  <span class="strength__fill"
+                        [style.width.%]="passwordStrength().score * 25"
+                        [class]="'strength__fill--' + passwordStrength().score"></span>
+                </div>
+                <span class="strength__label">{{ passwordStrength().label }}</span>
+              </div>
+              <ul class="checks">
+                <li [class.checks--ok]="passwordStrength().checks.length">Au moins 10 caracteres</li>
+                <li [class.checks--ok]="passwordStrength().checks.upper">Une majuscule</li>
+                <li [class.checks--ok]="passwordStrength().checks.lower">Une minuscule</li>
+                <li [class.checks--ok]="passwordStrength().checks.digit">Un chiffre</li>
+              </ul>
+            }
+          </div>
+
+          <label class="terms">
+            <input type="checkbox" formControlName="acceptedTerms" />
+            <span>J'accepte les conditions d'utilisation et la politique de confidentialite.</span>
+          </label>
+          @if (adminForm.controls.acceptedTerms.touched && adminForm.controls.acceptedTerms.invalid) {
+            <span class="field__error">Vous devez accepter les conditions.</span>
+          }
+
+          <div class="form__actions">
+            <button type="button" class="btn btn--secondary" (click)="back()">Retour</button>
+            <button type="submit" class="btn btn--primary btn--lg"
+                    [disabled]="submitting() || !passwordStrength().valid">
+              {{ submitting() ? 'Creation en cours...' : 'Creer mon etablissement' }}
+            </button>
+          </div>
+        </form>
+      }
+    </div>
+  </main>
+</div>

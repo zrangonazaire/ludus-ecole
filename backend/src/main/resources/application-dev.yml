@@ -1,0 +1,46 @@
+# =====================================================================
+# DEV profile - Mailpit, verbose logs, demo data loader available
+# =====================================================================
+spring:
+  # A local Maven/IDE launch does not load Docker's .env by itself. Import the
+  # repository file from either common working directory (backend/ or root/).
+  # Both locations are optional and are absent from the Docker image, where
+  # Compose supplies the same settings as real environment variables.
+  config:
+    import:
+      - optional:file:../.env[.properties]
+      - optional:file:.env[.properties]
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+
+logging:
+  level:
+    ci.company.eduops: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.springframework.security: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+eduops:
+  mail:
+    provider: MAILPIT
+  demo:
+    # Loads a realistic school (school, campus, year, terms, cycles, levels,
+    # classes, subjects, teachers, students, fees) on an empty database.
+    enabled: ${EDUOPS_DEMO_DATA:true}
+  security:
+    jwt:
+      expiration-ms: 28800000    # 8 h in dev for comfort

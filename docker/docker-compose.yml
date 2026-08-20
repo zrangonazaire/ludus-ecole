@@ -1,0 +1,178 @@
+# ============================================================
+# EduOps - Full development / demo stack
+#
+#   cd docker && docker compose up -d
+#
+# (The repository root exposes a link to this same file, so the
+#  command also works from the root.)
+# ============================================================
+name: ${COMPOSE_PROJECT_NAME:-eduops}
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: eduops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${SCHOOL_TIMEZONE:-Africa/Abidjan}
+      PGTZ: ${SCHOOL_TIMEZONE:-Africa/Abidjan}
+    ports:
+      - "${POSTGRES_EXPOSED_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [eduops-net]
+
+  redis:
+    image: redis:7-alpine
+    container_name: eduops-redis
+    restart: unless-stopped
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]
+    ports:
+      - "${REDIS_EXPOSED_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks: [eduops-net]
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: eduops-mailpit
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      MP_DATABASE: /data/mailpit.db
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    volumes:
+      - mailpit_data:/data
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [eduops-net]
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile
+    image: ${DOCKER_REGISTRY:-localhost:5000}/eduops-backend:${IMAGE_TAG:-latest}
+    container_name: eduops-backend
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      mailpit:  { condition: service_started }
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_FROM: ${MAIL_FROM}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION}
+      APP_BASE_URL: ${APP_BASE_URL}
+      API_BASE_URL: ${API_BASE_URL}
+      SCHOOL_NAME: ${SCHOOL_NAME}
+      SCHOOL_CODE: ${SCHOOL_CODE}
+      SCHOOL_CURRENCY: ${SCHOOL_CURRENCY}
+      SCHOOL_TIMEZONE: ${SCHOOL_TIMEZONE}
+      STUDENT_NUMBER_PATTERN: ${STUDENT_NUMBER_PATTERN}
+      RECEIPT_NUMBER_PATTERN: ${RECEIPT_NUMBER_PATTERN}
+      INVOICE_NUMBER_PATTERN: ${INVOICE_NUMBER_PATTERN}
+      EDUOPS_ADMIN_EMAIL: ${EDUOPS_ADMIN_EMAIL}
+      EDUOPS_ADMIN_PASSWORD: ${EDUOPS_ADMIN_PASSWORD}
+      TZ: ${SCHOOL_TIMEZONE:-Africa/Abidjan}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - backend_storage:/app/storage
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    networks: [eduops-net]
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile
+      args:
+        API_BASE_URL: ${API_BASE_URL}
+    image: ${DOCKER_REGISTRY:-localhost:5000}/eduops-frontend:${IMAGE_TAG:-latest}
+    container_name: eduops-frontend
+    restart: unless-stopped
+    depends_on:
+      backend: { condition: service_started }
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [eduops-net]
+
+  registry:
+    image: registry:2
+    container_name: eduops-registry
+    restart: unless-stopped
+    profiles: ["registry"]
+    ports:
+      - "${REGISTRY_PORT:-5000}:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+      - ./registry/config.yml:/etc/docker/registry/config.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/v2/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [eduops-net]
+
+volumes:
+  postgres_data:
+  redis_data:
+  mailpit_data:
+  registry_data:
+  backend_storage:
+
+networks:
+  eduops-net:
+    driver: bridge

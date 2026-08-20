@@ -1,0 +1,31 @@
+/** Event names and channels published by the backend (sections 48, 77). */
+
+export const WS_CHANNELS = {
+  DASHBOARD: '/channels/dashboard',
+  ATTENDANCE: '/channels/attendance',
+  GRADES: '/channels/grades',
+  PAYMENTS: '/channels/payments',
+  ALERTS: '/channels/alerts',
+  NOTIFICATIONS: '/channels/notifications'
+} as const;
+
+export type WsChannel = (typeof WS_CHANNELS)[keyof typeof WS_CHANNELS];
+
+export const WS_EVENTS = {
+  STUDENT_ENROLLED: 'STUDENT_ENROLLED',
+  STUDENT_TRANSFERRED: 'STUDENT_TRANSFERRED',
+  ATTENDANCE_RECORDED: 'ATTENDANCE_RECORDED',
+  ABSENCE_RECORDED: 'ABSENCE_RECORDED',
+  GRADE_SUBMITTED: 'GRADE_SUBMITTED',
+  GRADE_VALIDATED: 'GRADE_VALIDATED',
+  GRADE_PUBLISHED: 'GRADE_PUBLISHED',
+  REPORT_CARD_PUBLISHED: 'REPORT_CARD_PUBLISHED',
+  PAYMENT_RECEIVED: 'PAYMENT_RECEIVED',
+  PAYMENT_CANCELLED: 'PAYMENT_CANCELLED',
+  OVERDUE_PAYMENT_DETECTED: 'OVERDUE_PAYMENT_DETECTED',
+  TIMETABLE_CHANGED: 'TIMETABLE_CHANGED',
+  ALERT_CREATED: 'ALERT_CREATED',
+  ANNOUNCEMENT_PUBLISHED: 'ANNOUNCEMENT_PUBLISHED'
+} as const;
+
+export type WsEventType = (typeof WS_EVENTS)[keyof typeof WS_EVENTS];

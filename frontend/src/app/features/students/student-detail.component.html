@@ -1,0 +1,170 @@
+<div class="page">
+  @if (loading()) {
+    <eduops-loading-state message="Chargement de la fiche eleve..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    @if (student(); as student) {
+
+    <header class="profile">
+      <eduops-avatar [name]="student.fullName" [photoUrl]="student.photoUrl" size="xl" />
+      <div class="profile__identity">
+        <h1 class="profile__name">{{ student.fullName }}</h1>
+        <p class="profile__meta numeric">
+          {{ student.studentNumber }}
+          <span class="dot">•</span>{{ student.classroomName }}
+          <span class="dot">•</span>{{ student.levelName }}
+          @if (student.age) { <span class="dot">•</span>{{ student.age }} ans }
+        </p>
+        <div class="profile__badges">
+          <eduops-status-badge [status]="student.status" />
+          @if (student.financialSummary; as finance) {
+            <eduops-status-badge [status]="finance.globalStatus" />
+          }
+        </div>
+      </div>
+      <div class="profile__actions">
+        <a class="btn btn--secondary" routerLink="/students">Retour</a>
+        <button type="button" class="btn btn--secondary">Certificat de scolarite</button>
+        <button type="button" class="btn btn--primary">Modifier</button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Sections de la fiche">
+      <button type="button" role="tab" class="tabs__tab"
+              [class.tabs__tab--active]="activeTab() === 'identity'"
+              [attr.aria-selected]="activeTab() === 'identity'"
+              (click)="activeTab.set('identity')">Identite &amp; responsables</button>
+      <button type="button" role="tab" class="tabs__tab"
+              [class.tabs__tab--active]="activeTab() === 'academic'"
+              [attr.aria-selected]="activeTab() === 'academic'"
+              (click)="activeTab.set('academic')">Scolarite</button>
+      <button type="button" role="tab" class="tabs__tab"
+              [class.tabs__tab--active]="activeTab() === 'attendance'"
+              [attr.aria-selected]="activeTab() === 'attendance'"
+              (click)="activeTab.set('attendance')">Presences</button>
+      <button type="button" role="tab" class="tabs__tab"
+              [class.tabs__tab--active]="activeTab() === 'finance'"
+              [attr.aria-selected]="activeTab() === 'finance'"
+              (click)="activeTab.set('finance')">Situation financiere</button>
+    </nav>
+
+    @switch (activeTab()) {
+      @case ('identity') {
+        <div class="grid grid--2">
+          <section class="card">
+            <header class="card__header"><h3 class="card__title">Etat civil</h3></header>
+            <dl class="definition card__body">
+              <div><dt>Matricule</dt><dd class="numeric">{{ student.studentNumber }}</dd></div>
+              <div><dt>Nom complet</dt><dd>{{ student.fullName }}</dd></div>
+              <div><dt>Sexe</dt><dd>{{ student.gender === 'FEMALE' ? 'Feminin' : 'Masculin' }}</dd></div>
+              <div><dt>Date de naissance</dt><dd>{{ student.birthDate | date:'dd/MM/yyyy' }}</dd></div>
+              <div><dt>Lieu de naissance</dt><dd>{{ student.birthPlace ?? '-' }}</dd></div>
+              <div><dt>Nationalite</dt><dd>{{ student.nationality ?? '-' }}</dd></div>
+              <div><dt>Date d'admission</dt><dd>{{ student.admissionDate | date:'dd/MM/yyyy' }}</dd></div>
+              <div><dt>Etablissement precedent</dt><dd>{{ student.previousSchool ?? '-' }}</dd></div>
+            </dl>
+          </section>
+
+          <section class="card">
+            <header class="card__header">
+              <h3 class="card__title">Responsables legaux</h3>
+            </header>
+            <ul class="guardians card__body">
+              @for (guardian of student.guardians; track guardian.id) {
+                <li class="guardian">
+                  <eduops-avatar [name]="guardian.fullName" size="md" />
+                  <div class="guardian__body">
+                    <p class="guardian__name">
+                      {{ guardian.fullName }}
+                      @if (guardian.primary) { <span class="badge badge--info">Principal</span> }
+                      @if (guardian.financialResponsibility) {
+                        <span class="badge badge--warning">Responsable financier</span>
+                      }
+                    </p>
+                    <p class="guardian__meta">
+                      {{ guardian.relationship | statusLabel }}
+                      <span class="dot">•</span><span class="numeric">{{ guardian.phone }}</span>
+                    </p>
+                  </div>
+                </li>
+              } @empty {
+                <li class="empty">Aucun responsable enregistre.</li>
+              }
+            </ul>
+          </section>
+        </div>
+      }
+
+      @case ('academic') {
+        <section class="card">
+          <header class="card__header"><h3 class="card__title">Parcours scolaire</h3></header>
+          <div class="card__body">
+            <p class="muted">
+              Historique complet des inscriptions, notes, moyennes et bulletins.
+              Consomme <code>GET /api/v1/students/{{ '{' }}id{{ '}' }}/history</code>.
+            </p>
+          </div>
+        </section>
+      }
+
+      @case ('attendance') {
+        @if (student.attendanceSummary; as attendance) {
+          <div class="grid grid--kpi">
+            <div class="stat card"><p class="stat__label">Taux de presence</p>
+              <p class="stat__value numeric">{{ attendance.attendanceRate }} %</p></div>
+            <div class="stat card"><p class="stat__label">Absences</p>
+              <p class="stat__value numeric">{{ attendance.absenceCount }}</p></div>
+            <div class="stat card"><p class="stat__label">Absences non justifiees</p>
+              <p class="stat__value numeric">{{ attendance.unjustifiedAbsenceCount }}</p></div>
+            <div class="stat card"><p class="stat__label">Retards</p>
+              <p class="stat__value numeric">{{ attendance.latenessCount }}</p></div>
+          </div>
+        }
+      }
+
+      @case ('finance') {
+        @if (student.financialSummary; as finance) {
+          <div class="grid grid--kpi">
+            <div class="stat card"><p class="stat__label">Total du</p>
+              <p class="stat__value money">{{ finance.totalDue | money }}</p></div>
+            <div class="stat card"><p class="stat__label">Total paye</p>
+              <p class="stat__value money stat__value--success">{{ finance.totalPaid | money }}</p></div>
+            <div class="stat card"><p class="stat__label">Reste a payer</p>
+              <p class="stat__value money stat__value--danger">{{ finance.outstandingAmount | money }}</p></div>
+            <div class="stat card"><p class="stat__label">Prochaine echeance</p>
+              <p class="stat__value">{{ finance.nextDueDate | date:'dd/MM/yyyy' }}</p></div>
+          </div>
+
+          <section class="card" style="margin-top: var(--space-6)">
+            <header class="card__header"><h3 class="card__title">Echeancier</h3></header>
+            <div class="table-wrapper">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Libelle</th><th class="numeric">Montant du</th>
+                    <th class="numeric">Paye</th><th class="numeric">Reste</th>
+                    <th>Echeance</th><th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (fee of finance.fees; track fee.id) {
+                    <tr>
+                      <td>{{ fee.label }}</td>
+                      <td class="numeric">{{ fee.amountDue | money }}</td>
+                      <td class="numeric">{{ fee.amountPaid | money }}</td>
+                      <td class="numeric">{{ fee.amountRemaining | money }}</td>
+                      <td>{{ fee.dueDate | date:'dd/MM/yyyy' }}</td>
+                      <td><eduops-status-badge [status]="fee.status" /></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+      }
+    }
+    }
+  }
+</div>

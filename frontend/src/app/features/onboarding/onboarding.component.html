@@ -1,0 +1,340 @@
+<div class="onboarding">
+  <header class="ob__header">
+    <div class="ob__brand">
+      <span class="ob__logo" aria-hidden="true">E</span>
+      <div>
+        <p class="ob__title">Configurons votre etablissement</p>
+        <p class="ob__subtitle">Bonjour {{ firstName() }} — quelques minutes suffisent</p>
+      </div>
+    </div>
+    <button type="button" class="btn btn--ghost btn--sm" (click)="skip()">
+      Passer, je ferai plus tard
+    </button>
+  </header>
+
+  <div class="ob__progress" role="progressbar" [attr.aria-valuenow]="step()"
+       aria-valuemin="1" aria-valuemax="4">
+    <span class="ob__progress-fill" [style.width.%]="step() * 25"></span>
+  </div>
+
+  <main class="ob__body" id="main-content">
+
+    <!-- ═══ 1. Cycles et niveaux ═══ -->
+    @if (step() === 1) {
+      <section class="pane">
+        <p class="pane__step">Etape 1 sur 4</p>
+        <h1 class="pane__title">Quels cycles enseignez-vous ?</h1>
+        <p class="pane__lead">
+          Structure d'un etablissement ivoirien courant, preremplie.
+          Decochez ce qui ne vous concerne pas — vous reglerez ensuite chaque niveau separement.
+        </p>
+
+        <div class="cycles">
+          @for (cycle of cycles(); track cycle.code) {
+            <article class="cycle" [class.cycle--on]="cycle.selected">
+              <label class="cycle__head">
+                <input type="checkbox" [checked]="cycle.selected"
+                       (change)="toggleCycle(cycle.code)" />
+                <span class="cycle__name">{{ cycle.name }}</span>
+                <span class="cycle__count">{{ cycle.levels.length }} niveaux</span>
+              </label>
+              @if (cycle.selected) {
+                <div class="cycle__levels">
+                  @for (level of cycle.levels; track level.code) {
+                    <label class="chip-check" [class.chip-check--on]="level.selected">
+                      <input type="checkbox" [checked]="level.selected"
+                             (change)="toggleLevel(cycle.code, level.code)" />
+                      {{ level.name }}
+                    </label>
+                  }
+                </div>
+              }
+            </article>
+          }
+        </div>
+
+        <p class="pane__summary">
+          <strong>{{ activeLevels().length }}</strong> niveaux selectionnes
+        </p>
+      </section>
+    }
+
+    <!-- ═══ 2. Classes, niveau par niveau ═══ -->
+    @if (step() === 2) {
+      <section class="pane pane--wide">
+        <p class="pane__step">Etape 2 sur 4</p>
+        <h1 class="pane__title">Les classes de chaque niveau</h1>
+        <p class="pane__lead">
+          Nombre, capacite et nom peuvent differer d'un niveau a l'autre.
+          Depliez un niveau pour l'ajuster, ou appliquez une valeur a tous d'un coup.
+        </p>
+
+        <!-- Application groupee -->
+        <div class="bulk">
+          <p class="bulk__title">Appliquer a tous les niveaux</p>
+          <div class="bulk__row">
+            <label class="bulk__field">
+              <span>Classes par niveau</span>
+              <input class="input input--small" type="number" min="1" max="20"
+                     [ngModel]="bulk().classCount" name="bulkClassCount"
+                     (ngModelChange)="setBulk('classCount', $event)" />
+            </label>
+            <button type="button" class="btn btn--secondary btn--sm"
+                    (click)="applyToAllLevels('classCount')">Appliquer</button>
+
+            <label class="bulk__field">
+              <span>Capacite</span>
+              <input class="input input--small" type="number" min="1" max="200"
+                     [ngModel]="bulk().capacity" name="bulkCapacity"
+                     (ngModelChange)="setBulk('capacity', $event)" />
+            </label>
+            <button type="button" class="btn btn--secondary btn--sm"
+                    (click)="applyToAllLevels('capacity')">Appliquer</button>
+          </div>
+        </div>
+
+        <!-- Detail par niveau -->
+        <div class="levels">
+          @for (level of activeLevels(); track level.code) {
+            <article class="level" [class.level--open]="openLevel() === level.code">
+              <button type="button" class="level__head" (click)="toggleOpenLevel(level.code)"
+                      [attr.aria-expanded]="openLevel() === level.code">
+                <span class="level__name">{{ level.name }}</span>
+                <span class="level__recap numeric">
+                  {{ level.classCount }} classe(s) × {{ level.capacity }} places
+                </span>
+                <span class="level__sign" aria-hidden="true">
+                  {{ openLevel() === level.code ? '−' : '+' }}
+                </span>
+              </button>
+
+              @if (openLevel() === level.code) {
+                <div class="level__body">
+                  <div class="level__grid">
+                    <label class="field">
+                      <span class="field__label">Nombre de classes</span>
+                      <input class="input" type="number" min="1" max="20"
+                             [ngModel]="level.classCount" [name]="'cc-' + level.code"
+                             (ngModelChange)="setClassCount(level.code, $event)" />
+                    </label>
+
+                    <label class="field">
+                      <span class="field__label">Capacite d'une classe</span>
+                      <input class="input" type="number" min="1" max="200"
+                             [ngModel]="level.capacity" [name]="'cap-' + level.code"
+                             (ngModelChange)="setCapacity(level.code, $event)" />
+                      <span class="field__hint">
+                        Au-dela, l'inscription exige une derogation justifiee.
+                      </span>
+                    </label>
+
+                    <label class="field">
+                      <span class="field__label">Nommage des classes</span>
+                      <select class="select" [ngModel]="level.naming"
+                              [name]="'nm-' + level.code"
+                              (ngModelChange)="setNaming(level.code, $event)">
+                        <option value="LETTER">Lettres — {{ level.name }} A, B, C</option>
+                        <option value="NUMBER">Chiffres — {{ level.name }} 1, 2, 3</option>
+                        <option value="CUSTOM">Noms personnalises</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  @if (level.naming === 'CUSTOM') {
+                    <label class="field">
+                      <span class="field__label">Noms des classes, separes par des virgules</span>
+                      <input class="input" type="text"
+                             [ngModel]="level.customNames" [name]="'cn-' + level.code"
+                             (ngModelChange)="setCustomNames(level.code, $event)"
+                             [placeholder]="level.name + ' Etoile, ' + level.name + ' Soleil'" />
+                      <span class="field__hint">
+                        Utile pour les noms de couleurs, de saints ou de promotions.
+                      </span>
+                    </label>
+                  }
+
+                  <div class="names-preview">
+                    <p class="names-preview__title">Classes qui seront creees</p>
+                    <div class="names-preview__chips">
+                      @for (name of classNamesFor(level); track name) {
+                        <span class="name-chip">{{ name }}</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </article>
+          } @empty {
+            <p class="empty">Revenez a l'etape 1 pour selectionner au moins un niveau.</p>
+          }
+        </div>
+
+        <div class="preview">
+          <p class="preview__title">Total</p>
+          <p class="preview__value numeric">{{ totalClasses() }} classes</p>
+          <p class="preview__detail numeric">
+            {{ activeLevels().length }} niveaux — {{ totalSeats() }} places au total
+          </p>
+        </div>
+      </section>
+    }
+
+    <!-- ═══ 3. Matieres ═══ -->
+    @if (step() === 3) {
+      <section class="pane">
+        <p class="pane__step">Etape 3 sur 4</p>
+        <h1 class="pane__title">Quelles matieres et quels coefficients ?</h1>
+        <p class="pane__lead">
+          Ces coefficients servent de base au calcul des moyennes. Ils restent
+          ajustables niveau par niveau depuis le programme scolaire.
+        </p>
+
+        <div class="subjects">
+          @for (subject of subjects(); track subject.code) {
+            <div class="subject" [class.subject--on]="subject.selected">
+              <label class="subject__pick">
+                <input type="checkbox" [checked]="subject.selected"
+                       (change)="toggleSubject(subject.code)" />
+                <span>
+                  <span class="subject__name">{{ subject.name }}</span>
+                  <span class="subject__code numeric">{{ subject.code }}</span>
+                </span>
+              </label>
+              @if (subject.selected) {
+                <div class="subject__coef">
+                  <label [attr.for]="'coef-' + subject.code">Coef.</label>
+                  <input [id]="'coef-' + subject.code" class="input input--tiny"
+                         type="number" min="1" max="10" [ngModel]="subject.coefficient"
+                         (ngModelChange)="updateCoefficient(subject.code, $event)"
+                         [name]="'coef-' + subject.code" />
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <p class="pane__summary">
+          <strong>{{ selectedSubjectCount() }}</strong> matieres selectionnees
+        </p>
+      </section>
+    }
+
+    <!-- ═══ 4. Scolarite, niveau par niveau ═══ -->
+    @if (step() === 4) {
+      <section class="pane pane--wide">
+        <p class="pane__step">Etape 4 sur 4</p>
+        <h1 class="pane__title">La scolarite de chaque niveau</h1>
+        <p class="pane__lead">
+          Les tarifs augmentent generalement avec le niveau. Chaque niveau a donc
+          ses propres frais et son propre echeancier, genere automatiquement a l'inscription.
+        </p>
+
+        <div class="bulk">
+          <p class="bulk__title">Appliquer a tous les niveaux</p>
+          <div class="bulk__row">
+            <label class="bulk__field">
+              <span>Inscription</span>
+              <input class="input input--small" type="number" min="0" step="1000"
+                     [ngModel]="bulk().registrationFee" name="bulkReg"
+                     (ngModelChange)="setBulk('registrationFee', $event)" />
+            </label>
+            <button type="button" class="btn btn--secondary btn--sm"
+                    (click)="applyToAllLevels('registrationFee')">Appliquer</button>
+
+            <label class="bulk__field">
+              <span>Scolarite annuelle</span>
+              <input class="input input--small" type="number" min="0" step="5000"
+                     [ngModel]="bulk().tuitionTotal" name="bulkTuition"
+                     (ngModelChange)="setBulk('tuitionTotal', $event)" />
+            </label>
+            <button type="button" class="btn btn--secondary btn--sm"
+                    (click)="applyToAllLevels('tuitionTotal')">Appliquer</button>
+
+            <label class="bulk__field">
+              <span>Echeances</span>
+              <input class="input input--small" type="number" min="1" max="12"
+                     [ngModel]="bulk().instalments" name="bulkInst"
+                     (ngModelChange)="setBulk('instalments', $event)" />
+            </label>
+            <button type="button" class="btn btn--secondary btn--sm"
+                    (click)="applyToAllLevels('instalments')">Appliquer</button>
+          </div>
+        </div>
+
+        <div class="table-wrapper fees">
+          <table class="table">
+            <caption class="visually-hidden">Frais de scolarite par niveau</caption>
+            <thead>
+              <tr>
+                <th>Niveau</th>
+                <th class="numeric">Inscription</th>
+                <th class="numeric">Scolarite annuelle</th>
+                <th class="numeric">Echeances</th>
+                <th class="numeric">Montant par echeance</th>
+                <th class="numeric">Total par eleve</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (level of activeLevels(); track level.code) {
+                <tr>
+                  <td><strong>{{ level.name }}</strong></td>
+                  <td class="numeric">
+                    <input class="input input--small" type="number" min="0" step="1000"
+                           [ngModel]="level.registrationFee" [name]="'reg-' + level.code"
+                           (ngModelChange)="setRegistrationFee(level.code, $event)" />
+                  </td>
+                  <td class="numeric">
+                    <input class="input input--small" type="number" min="0" step="5000"
+                           [ngModel]="level.tuitionTotal" [name]="'tui-' + level.code"
+                           (ngModelChange)="setTuitionTotal(level.code, $event)" />
+                  </td>
+                  <td class="numeric">
+                    <input class="input input--tiny" type="number" min="1" max="12"
+                           [ngModel]="level.instalments" [name]="'ins-' + level.code"
+                           (ngModelChange)="setInstalments(level.code, $event)" />
+                  </td>
+                  <td class="numeric money">{{ instalmentAmount(level) | number:'1.0-0' }}</td>
+                  <td class="numeric money">
+                    <strong>{{ totalPerStudent(level) | number:'1.0-0' }}</strong>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="empty">Aucun niveau selectionne.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (tuitionRange(); as range) {
+          <div class="preview">
+            <p class="preview__title">Fourchette de scolarite</p>
+            <p class="preview__value numeric">
+              {{ range.min | number:'1.0-0' }} — {{ range.max | number:'1.0-0' }} FCFA
+            </p>
+            <p class="preview__detail">
+              Un echeancier distinct sera cree pour chacun des
+              {{ activeLevels().length }} niveaux.
+            </p>
+          </div>
+        }
+      </section>
+    }
+  </main>
+
+  <footer class="ob__footer">
+    @if (step() > 1) {
+      <button type="button" class="btn btn--secondary" (click)="back()">Retour</button>
+    } @else {
+      <span></span>
+    }
+
+    @if (step() < 4) {
+      <button type="button" class="btn btn--primary btn--lg" (click)="next()">Continuer</button>
+    } @else {
+      <button type="button" class="btn btn--primary btn--lg"
+              [disabled]="saving()" (click)="finish()">
+        {{ saving() ? 'Configuration...' : 'Terminer la configuration' }}
+      </button>
+    }
+  </footer>
+</div>

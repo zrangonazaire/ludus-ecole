@@ -1,0 +1,32 @@
+# Test profile overrides. The datasource is supplied by Testcontainers.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    clean-disabled: false
+
+logging:
+  level:
+    root: WARN
+    ci.company.eduops: INFO
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+
+eduops:
+  security:
+    jwt:
+      secret: test_only_secret_test_only_secret_test_only_secret_test_only_1234
+  mail:
+    enabled: false
+  demo:
+    enabled: false
+  rate-limit:
+    enabled: false
+  events:
+    relay:
+      enabled: false

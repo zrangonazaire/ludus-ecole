@@ -1,0 +1,327 @@
+<a class="skip-link" href="#main-content">Aller au contenu</a>
+
+<div class="landing">
+  <header class="nav" [class.nav--open]="menuOpen()">
+    <div class="nav__inner">
+      <a class="brand" routerLink="/" aria-label="EduOps, accueil" (click)="closeMenu()">
+        <span class="brand__mark" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </span>
+        <span>EduOps</span>
+      </a>
+
+      <button class="nav__toggle" type="button" aria-label="Ouvrir le menu"
+              [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()">
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav class="nav__links" aria-label="Navigation principale">
+        <button type="button" (click)="scrollTo('solutions')">Solutions</button>
+        <button type="button" (click)="scrollTo('adaptation')">Paramétrage</button>
+        <button type="button" (click)="scrollTo('parcours')">La démo</button>
+        <button type="button" (click)="scrollTo('faq')">Questions</button>
+      </nav>
+
+      <div class="nav__actions">
+        @if (isAuthenticated()) {
+          <a class="nav__login" routerLink="/dashboard">Mon espace</a>
+        } @else {
+          <a class="nav__login" routerLink="/login">Se connecter</a>
+        }
+        <a class="button button--small" routerLink="/commencer" (click)="closeMenu(); prepareDemo()">
+          Composer ma démo
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="hero">
+      <div class="hero__glow hero__glow--one" aria-hidden="true"></div>
+      <div class="hero__glow hero__glow--two" aria-hidden="true"></div>
+      <div class="hero__inner">
+        <div class="hero__copy">
+          <p class="eyebrow"><span></span> Pensé pour les écoles qui ont leur propre façon de faire</p>
+          <h1>Votre école a ses règles.<br><em>EduOps s’y adapte.</em></h1>
+          <p class="hero__lead">
+            Configurez vos cycles, classes, bulletins, frais et accès dans un seul espace.
+            Commencez par une école témoin qui ressemble déjà à la vôtre.
+          </p>
+
+          <div class="hero__actions">
+            <a class="button button--primary button--large" routerLink="/commencer" (click)="prepareDemo()">
+              Composer ma démo <span aria-hidden="true">→</span>
+            </a>
+            <button class="button button--quiet button--large" type="button"
+                    (click)="scrollTo('adaptation')">
+              <span class="play" aria-hidden="true">▶</span> Voir comment ça s’adapte
+            </button>
+          </div>
+
+          <ul class="assurances" aria-label="Conditions de la démonstration">
+            <li><span aria-hidden="true">✓</span> Sans carte bancaire</li>
+            <li><span aria-hidden="true">✓</span> Sans installation</li>
+            <li><span aria-hidden="true">✓</span> Données fictives uniquement</li>
+          </ul>
+        </div>
+
+        <div class="hero__experience" aria-label="Aperçu interactif d’un espace EduOps">
+          <div class="profile-picker" role="group" aria-label="Type d’établissement à prévisualiser">
+            @for (preview of previews; track preview.id) {
+              <button type="button" [class.profile-picker__item--active]="activePreviewId() === preview.id"
+                      [attr.aria-pressed]="activePreviewId() === preview.id"
+                      (click)="selectPreview(preview.id)">
+                {{ preview.shortLabel }}
+              </button>
+            }
+          </div>
+
+          <div class="console">
+            <div class="console__bar">
+              <div class="console__dots" aria-hidden="true"><i></i><i></i><i></i></div>
+              <div class="console__address">aperçu.eduops.ci / direction</div>
+              <span class="console__live"><i></i> Démo</span>
+            </div>
+
+            <div class="console__body">
+              <aside class="console__side" aria-hidden="true">
+                <span class="console__mini-logo">E</span>
+                <i class="side-line side-line--active"></i>
+                <i class="side-line"></i><i class="side-line"></i><i class="side-line"></i>
+                <i class="side-line side-line--short"></i>
+              </aside>
+
+              <div class="console__main">
+                <div class="console__heading">
+                  <div>
+                    <small>École témoin</small>
+                    <h2>{{ activePreview().label }}</h2>
+                    <p>{{ activePreview().context }}</p>
+                  </div>
+                  <span class="status"><i></i> Configuration prête</span>
+                </div>
+
+                <div class="metrics">
+                  <article>
+                    <span class="metric__icon metric__icon--blue" aria-hidden="true">↗</span>
+                    <small>Élèves</small>
+                    <strong>{{ activePreview().students }}</strong>
+                    <em>Données fictives</em>
+                  </article>
+                  <article>
+                    <span class="metric__icon metric__icon--green" aria-hidden="true">✓</span>
+                    <small>Présence</small>
+                    <strong>{{ activePreview().attendance }}</strong>
+                    <em>Aujourd’hui</em>
+                  </article>
+                  <article>
+                    <span class="metric__icon metric__icon--gold" aria-hidden="true">◇</span>
+                    <small>Recouvrement</small>
+                    <strong>{{ activePreview().collection }}</strong>
+                    <em>Année en cours</em>
+                  </article>
+                </div>
+
+                <div class="console__lower">
+                  <article class="pulse-card">
+                    <div class="card-heading">
+                      <div><small>Activité</small><strong>Le rythme de l’école</strong></div>
+                      <span>7 jours</span>
+                    </div>
+                    <div class="bars" aria-hidden="true">
+                      <i style="--h: 36%"></i><i style="--h: 58%"></i><i style="--h: 48%"></i>
+                      <i style="--h: 76%"></i><i style="--h: 66%"></i><i style="--h: 88%"></i>
+                      <i class="bars__today" style="--h: 70%"></i>
+                    </div>
+                    <div class="days" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>Auj.</span></div>
+                  </article>
+
+                  <article class="priority-card">
+                    <small>Priorité configurée</small>
+                    <strong>{{ activePreview().focus }}</strong>
+                    <div class="priority-card__chips">
+                      @for (cycle of activePreview().cycles; track cycle) { <span>{{ cycle }}</span> }
+                    </div>
+                    <p><i aria-hidden="true">!</i> {{ activePreview().alert }}</p>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="floating-event floating-event--payment">
+            <span class="event-icon" aria-hidden="true">✓</span>
+            <div><small>Paiement rapproché</small><strong>Reçu généré automatiquement</strong></div>
+          </div>
+          <div class="floating-event floating-event--family">
+            <span class="event-icon event-icon--violet" aria-hidden="true">↗</span>
+            <div><small>Portail parent</small><strong>Information disponible</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="role-strip" aria-label="Une plateforme pour toute la communauté">
+      <p>Une même vérité, adaptée à chaque rôle</p>
+      <div>
+        <span><i class="role-dot role-dot--blue"></i> Direction <b>Piloter</b></span>
+        <span><i class="role-dot role-dot--green"></i> Enseignants <b>Agir</b></span>
+        <span><i class="role-dot role-dot--purple"></i> Parents <b>Suivre</b></span>
+        <span><i class="role-dot role-dot--gold"></i> Élèves <b>Progresser</b></span>
+      </div>
+    </section>
+
+    <section class="section challenges" id="solutions">
+      <div class="section__heading">
+        <p class="section-kicker">Commencer par le vrai problème</p>
+        <h2>Quel sujet voulez-vous<br><em>résoudre en premier ?</em></h2>
+        <p>EduOps ne vous impose pas un ordre. Votre démonstration met d’abord en scène ce qui compte maintenant pour votre équipe.</p>
+      </div>
+      <div class="challenge-grid">
+        @for (challenge of challenges; track challenge.index) {
+          <button type="button" class="challenge-card"
+                  [class.challenge-card--selected]="selectedChallenge() === challenge.index"
+                  [attr.aria-pressed]="selectedChallenge() === challenge.index"
+                  (click)="chooseChallenge(challenge)">
+            <span class="challenge-card__index">{{ challenge.index }}</span>
+            <h3>{{ challenge.title }}</h3>
+            <p>{{ challenge.text }}</p>
+            <div><span aria-hidden="true">↳</span> {{ challenge.result }}</div>
+          </button>
+        }
+      </div>
+    </section>
+
+    <section class="section adaptation" id="adaptation">
+      <div class="adaptation__copy">
+        <p class="section-kicker">Un logiciel qui parle votre langage</p>
+        <h2>Vos règles ne sont pas des exceptions.<br><em>Elles deviennent des paramètres.</em></h2>
+        <p>
+          Une école primaire, un lycée et un groupe multi-campus n’ont ni les mêmes rythmes,
+          ni les mêmes contrôles. Votre espace part de vos décisions, pas d’un modèle figé.
+        </p>
+        <ul>
+          <li><span>01</span><div><strong>Choisissez une base</strong><small>Un profil proche de votre organisation, jamais une page blanche.</small></div></li>
+          <li><span>02</span><div><strong>Ajustez ce qui compte</strong><small>Cycles, périodes, capacités, barèmes, finance et accès.</small></div></li>
+          <li><span>03</span><div><strong>Faites évoluer sans recommencer</strong><small>Les réglages suivent vos années scolaires et vos campus.</small></div></li>
+        </ul>
+        <a class="text-link" routerLink="/commencer" (click)="prepareDemo()">Configurer mon école témoin <span>→</span></a>
+      </div>
+
+      <div class="rule-board" aria-label="Exemple de paramètres EduOps">
+        <div class="rule-board__top">
+          <div><small>PROFIL ACTIF</small><strong>Groupe Scolaire Horizon</strong></div>
+          <span><i></i> Brouillon sauvegardé</span>
+        </div>
+        <div class="rule-board__grid">
+          @for (rule of ruleGroups; track rule.label) {
+            <article [class]="'rule rule--' + rule.tone">
+              <span class="rule__mark" aria-hidden="true"></span>
+              <small>{{ rule.label }}</small>
+              <strong>{{ rule.value }}</strong>
+              <p>{{ rule.detail }}</p>
+              <i class="toggle" aria-hidden="true"><span></span></i>
+            </article>
+          }
+        </div>
+        <div class="rule-board__footer">
+          <span>7 modules sélectionnés</span>
+          <div><i></i><i></i><i></i><b>+4</b></div>
+          <button type="button" (click)="scrollTo('parcours')">Voir le parcours</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="integrity">
+      <div class="integrity__inner">
+        <div class="integrity__title">
+          <p class="section-kicker section-kicker--light">La confiance est aussi une fonctionnalité</p>
+          <h2>Le système protège les règles<br>même quand personne ne regarde.</h2>
+        </div>
+        <div class="guard-grid">
+          <article>
+            <span class="guard-icon">40<span>/40</span></span>
+            <div><small>CAPACITÉ ATTEINTE</small><h3>Le 41e élève est signalé</h3><p>Une dérogation exige un motif : l’exception reste visible.</p></div>
+          </article>
+          <article>
+            <span class="guard-icon">24<span>/20</span></span>
+            <div><small>BARÈME DÉPASSÉ</small><h3>La note incohérente est bloquée</h3><p>Le contrôle vient de la règle définie par votre école.</p></div>
+          </article>
+          <article>
+            <span class="guard-icon">✓<span>reçu</span></span>
+            <div><small>PAIEMENT VALIDÉ</small><h3>L’historique ne disparaît pas</h3><p>Une correction se trace, elle ne réécrit pas le passé.</p></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section journey" id="parcours">
+      <div class="section__heading section__heading--center">
+        <p class="section-kicker">Votre école témoin, étape par étape</p>
+        <h2>Quelques choix. Puis un espace<br><em>qui raconte déjà votre quotidien.</em></h2>
+        <p>Le brouillon reste sur cet appareil jusqu’à la création de votre compte.</p>
+      </div>
+
+      <ol class="journey__steps">
+        <li><span>1</span><div class="journey__icon">⌂</div><h3>Votre profil</h3><p>Type d’école, taille, campus et contexte.</p></li>
+        <li><span>2</span><div class="journey__icon">◇</div><h3>Vos priorités</h3><p>Les modules qui doivent prendre vie en premier.</p></li>
+        <li><span>3</span><div class="journey__icon">≡</div><h3>Vos règles</h3><p>Périodes, barème, capacité et paiements.</p></li>
+        <li><span>4</span><div class="journey__icon">↗</div><h3>Votre espace</h3><p>Un compte administrateur et votre feuille de route.</p></li>
+      </ol>
+
+      <div class="journey__action">
+        <a class="button button--primary button--large" routerLink="/commencer" (click)="prepareDemo()">
+          Commencer la configuration <span aria-hidden="true">→</span>
+        </a>
+        <small>Vous pourrez revenir sur chaque choix.</small>
+      </div>
+    </section>
+
+    <section class="section faq" id="faq">
+      <div class="faq__intro">
+        <p class="section-kicker">Questions fréquentes</p>
+        <h2>Avant de<br><em>vous lancer.</em></h2>
+        <p>Une question plus précise sur votre établissement ? La démo vous permet déjà de tester vos principaux réglages.</p>
+        <a class="text-link" routerLink="/commencer" (click)="prepareDemo()">Essayer avec mon profil <span>→</span></a>
+      </div>
+      <div class="faq__list">
+        @for (item of faq(); track item.question; let index = $index) {
+          <article class="faq-item" [class.faq-item--open]="item.open">
+            <button type="button" [attr.aria-expanded]="item.open" (click)="toggleFaq(index)">
+              <span>{{ item.question }}</span><i aria-hidden="true"></i>
+            </button>
+            @if (item.open) { <p>{{ item.answer }}</p> }
+          </article>
+        }
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <div class="final-cta__orbit final-cta__orbit--one" aria-hidden="true"></div>
+      <div class="final-cta__orbit final-cta__orbit--two" aria-hidden="true"></div>
+      <p>La meilleure démo n’est pas la nôtre.</p>
+      <h2>C’est celle qui ressemble<br><em>à votre école.</em></h2>
+      <a class="button button--light button--large" routerLink="/commencer" (click)="prepareDemo()">
+        Composer mon école témoin <span aria-hidden="true">→</span>
+      </a>
+      <small>Configuration guidée · Sans carte bancaire · Données fictives</small>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <a class="brand brand--footer" routerLink="/">
+        <span class="brand__mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>EduOps</span>
+      </a>
+      <p>Le système d’exploitation des écoles qui avancent.</p>
+      <nav aria-label="Liens de pied de page">
+        <a routerLink="/login">Connexion</a>
+        <a routerLink="/commencer" (click)="prepareDemo()">Créer une démo</a>
+        <button type="button" (click)="scrollTo('faq')">Questions</button>
+      </nav>
+      <small>© {{ currentYear }} EduOps</small>
+    </div>
+  </footer>
+</div>

@@ -1,0 +1,23 @@
+PUPPETEER_MISSING
+node:internal/modules/cjs/loader:1423
+  throw err;
+  ^
+
+Error: Cannot find module 'puppeteer-core/package.json'
+Require stack:
+- c:\PROJET\LUDUS-ECOLE\presentation-front\capture\[eval]
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1420:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1058:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1063:22)
+    at Module._load (node:internal/modules/cjs/loader:1226:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:244:24)
+    at Module.require (node:internal/modules/cjs/loader:1503:12)
+    at require (node:internal/modules/helpers:152:16)
+    at [eval]:1:20
+    at runScriptInThisContext (node:internal/vm:219:10) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'c:\\PROJET\\LUDUS-ECOLE\\presentation-front\\capture\\[eval]' ]
+}
+
+Node.js v24.11.0

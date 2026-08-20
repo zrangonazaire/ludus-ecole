@@ -1,0 +1,52 @@
+{
+  "results": {
+    "landingDesktop": {
+      "title": "Votre école a ses règles.EduOps s’y adapte.",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "bodyWidth": 1440
+    },
+    "interactiveProfile": "Collège & lycée",
+    "profileHandOff": "on",
+    "landingMobile": {
+      "title": "Votre école a ses règles.EduOps s’y adapte.",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "bodyWidth": 390
+    },
+    "setupStep1": {
+      "title": "Votre école n’a pas à rentrer dans une case.",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "bodyWidth": 1440
+    },
+    "setupSummary": {
+      "title": "Votre école n’a pas à rentrer dans une case.",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "bodyWidth": 1440
+    },
+    "signupPrefill": {
+      "schoolName": "Groupe Scolaire Baobab",
+      "city": "Abidjan",
+      "country": "Côte d’Ivoire",
+      "currency": "XOF",
+      "hasScenarioBanner": true
+    },
+    "signup": {
+      "title": "Créer mon espace EduOps",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "bodyWidth": 1440
+    },
+    "setupMobile": {
+      "title": "Votre école n’a pas à rentrer dans une case.",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "bodyWidth": 390
+    }
+  },
+  "errors": [
+    "console: Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+  ]
+}

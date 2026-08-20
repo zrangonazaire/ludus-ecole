@@ -1,0 +1,31 @@
+node.exe                     30476 Console                    1   148 400 Ko
+ Le volume dans le lecteur C n’a pas de nom.
+ Le numéro de série du volume est 5A3E-C4D8
+
+ Répertoire de c:\PROJET\LUDUS-ECOLE\presentation-front\capture\screenshots
+
+18/08/2026  15:48    <DIR>          ..
+18/08/2026  15:46           126 511 09-payments.png
+18/08/2026  15:46    <DIR>          .
+18/08/2026  15:46           108 779 08-teachers.png
+18/08/2026  15:46           107 698 07-classes.png
+18/08/2026  15:45            68 067 06-enrollment-wizard.png
+18/08/2026  15:45           109 857 05-enrollments.png
+18/08/2026  15:45           104 032 04-student-detail.png
+18/08/2026  15:45           228 691 03-students.png
+18/08/2026  15:45           315 425 02-dashboard.png
+18/08/2026  15:45           238 425 01-login.png
+               9 fichier(s)        1 407 485 octets
+               2 Rép(s)  35 025 829 888 octets libres
+ Le volume dans le lecteur C n’a pas de nom.
+ Le numéro de série du volume est 5A3E-C4D8
+
+ Répertoire de c:\PROJET\LUDUS-ECOLE\presentation-front\capture
+
+18/08/2026  15:41             1 457 capture-results.txt
+
+ Répertoire de c:\PROJET\LUDUS-ECOLE\presentation-front\capture
+
+18/08/2026  15:46             1 217 run.log
+               2 fichier(s)            2 674 octets
+               0 Rép(s)  35 025 829 888 octets libres

@@ -1,0 +1,378 @@
+<a class="skip-link" href="#setup-main">Aller à la configuration</a>
+
+<div class="setup-page">
+  <eduops-step-coachmark
+    flow="demo-setup"
+    [stepKey]="'step-' + step()"
+    [stepNumber]="step()"
+    [totalSteps]="4"
+    eyebrow="Conseil pour cette étape"
+    [title]="coachmark().title"
+    [description]="coachmark().description"
+    [points]="coachmark().points"
+    [ctaLabel]="coachmark().ctaLabel"
+    (accepted)="focusStepStart()" />
+
+  <aside class="story-panel" aria-label="Présentation du configurateur">
+    <a class="brand" routerLink="/" aria-label="EduOps, revenir à l’accueil">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 28 28" role="img">
+          <path d="M7 9.5 14 5l7 4.5v9L14 23l-7-4.5v-9Z" />
+          <path d="M10.5 12.2 14 10l3.5 2.2v4.1L14 18.5l-3.5-2.2v-4.1Z" />
+        </svg>
+      </span>
+      <span>EduOps</span>
+    </a>
+
+    <div class="story-copy">
+      <span class="story-kicker">Atelier de démonstration</span>
+      <h1>Votre école n’a pas à rentrer dans une case.</h1>
+      <p>Composez un espace qui reprend vos cycles, vos règles et vos priorités — avant même de créer un compte.</p>
+    </div>
+
+    <div class="context-note">
+      @switch (step()) {
+        @case (1) {
+          <span class="context-index">01</span>
+          <div><strong>On part de votre réalité</strong><p>Le format proposé s’adapte à la taille et à la structure choisies.</p></div>
+        }
+        @case (2) {
+          <span class="context-index">02</span>
+          <div><strong>Vous choisissez le point de départ</strong><p>Les modules restent activables progressivement.</p></div>
+        }
+        @case (3) {
+          <span class="context-index">03</span>
+          <div><strong>Vos règles restent les vôtres</strong><p>Périodes, notes et paiements suivent votre fonctionnement.</p></div>
+        }
+        @case (4) {
+          <span class="context-index">04</span>
+          <div><strong>Le scénario est prêt</strong><p>Relisez votre configuration avant de poursuivre.</p></div>
+        }
+      }
+    </div>
+
+    <ul class="trust-list" aria-label="Garanties de la démonstration">
+      <li><span aria-hidden="true">✓</span> Sans carte bancaire</li>
+      <li><span aria-hidden="true">✓</span> Données de démonstration</li>
+      <li><span aria-hidden="true">✓</span> Rien n’est envoyé à cette étape</li>
+    </ul>
+  </aside>
+
+  <main class="workspace" id="setup-main">
+    <header class="workspace-topbar">
+      <a class="mobile-brand" routerLink="/" aria-label="EduOps, revenir à l’accueil">
+        <span class="brand-mark mini" aria-hidden="true">
+          <svg viewBox="0 0 28 28"><path d="M7 9.5 14 5l7 4.5v9L14 23l-7-4.5v-9Z" /></svg>
+        </span>
+        EduOps
+      </a>
+      <span class="draft-status"><i aria-hidden="true"></i> Brouillon conservé dans cet onglet</span>
+      <a class="exit-link" routerLink="/">
+        Retour au site
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg>
+      </a>
+    </header>
+
+    <div class="workspace-inner">
+      <nav class="stepper" aria-label="Progression de la configuration">
+        <div class="progress-track" aria-hidden="true"><span [style.width]="progressWidth()"></span></div>
+        <ol>
+          @for (item of stepItems; track item.id) {
+            <li [class.current]="step() === item.id" [class.done]="draft().completedStep >= item.id">
+              <button
+                type="button"
+                (click)="goToStep(item.id)"
+                [disabled]="item.id > maxReachableStep()"
+                [attr.aria-current]="step() === item.id ? 'step' : null">
+                <span>{{ draft().completedStep >= item.id ? '✓' : item.id }}</span>
+                <small>{{ item.label }}</small>
+              </button>
+            </li>
+          }
+        </ol>
+      </nav>
+
+      <div class="content-grid">
+        <section class="config-card" [class.final-card]="step() === 4">
+          @if (step() === 1) {
+            <header class="step-heading">
+              <span class="eyebrow">Étape 1 · Votre terrain</span>
+              <h2 id="setup-step-title" tabindex="-1">Parlez-nous de votre établissement</h2>
+              <p>Ces repères préparent une démonstration plus proche de votre quotidien.</p>
+            </header>
+
+            <form [formGroup]="profileForm" novalidate>
+              <fieldset class="form-section">
+                <legend>Quel profil vous ressemble le plus&nbsp;?</legend>
+                <div class="preset-grid">
+                  @for (preset of presets; track preset.id) {
+                    <label class="choice-card preset-card" [class.selected]="profileForm.controls.preset.value === preset.id">
+                      <input type="radio" formControlName="preset" [value]="preset.id" />
+                      <span class="preset-icon" aria-hidden="true">
+                        @switch (preset.id) {
+                          @case ('primary') { <svg viewBox="0 0 24 24"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H11v16H7.5A2.5 2.5 0 0 0 5 21.5v-16ZM19 5.5A2.5 2.5 0 0 0 16.5 3H13v16h3.5a2.5 2.5 0 0 1 2.5 2.5v-16Z" /></svg> }
+                          @case ('secondary') { <svg viewBox="0 0 24 24"><path d="m3 9 9-5 9 5-9 5-9-5Zm4 3v5c2.8 2.5 7.2 2.5 10 0v-5M21 9v6" /></svg> }
+                          @default { <svg viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13M8 21v-7h8v7M8 9h.01M12 9h.01M16 9h.01" /></svg> }
+                        }
+                      </span>
+                      <strong>{{ preset.label }}</strong>
+                      <small>{{ preset.description }}</small>
+                      <span class="choice-check" aria-hidden="true">✓</span>
+                    </label>
+                  }
+                </div>
+              </fieldset>
+
+              <div class="fields-grid">
+                <label class="field field-wide">
+                  <span>Nom de l’établissement <b aria-hidden="true">*</b></span>
+                  <input formControlName="schoolName" type="text" autocomplete="organization" placeholder="Ex. Groupe scolaire Les Horizons" />
+                  @if (profileForm.controls.schoolName.invalid && (formAttempted() || profileForm.controls.schoolName.touched)) {
+                    <small class="field-error">Indiquez le nom de votre établissement.</small>
+                  }
+                </label>
+                <label class="field">
+                  <span>Pays <b aria-hidden="true">*</b></span>
+                  <select formControlName="country">
+                    @for (country of countries; track country) { <option [value]="country">{{ country }}</option> }
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Ville <b aria-hidden="true">*</b></span>
+                  <input formControlName="city" type="text" autocomplete="address-level2" placeholder="Ex. Abidjan" />
+                  @if (profileForm.controls.city.invalid && (formAttempted() || profileForm.controls.city.touched)) {
+                    <small class="field-error">Indiquez votre ville.</small>
+                  }
+                </label>
+                <label class="field">
+                  <span>Effectif actuel</span>
+                  <select formControlName="studentBand">
+                    @for (band of studentBands; track band.value) { <option [value]="band.value">{{ band.label }}</option> }
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Nombre de campus</span>
+                  <input formControlName="campusCount" type="number" inputmode="numeric" min="1" max="20" />
+                  @if (profileForm.controls.campusCount.invalid && (formAttempted() || profileForm.controls.campusCount.touched)) {
+                    <small class="field-error">Choisissez une valeur entre 1 et 20.</small>
+                  }
+                </label>
+              </div>
+            </form>
+          }
+
+          @if (step() === 2) {
+            <header class="step-heading">
+              <span class="eyebrow">Étape 2 · Votre cap</span>
+              <h2 id="setup-step-title" tabindex="-1">Que voulez-vous améliorer en premier&nbsp;?</h2>
+              <p>Donnez une direction à la démo, puis activez les espaces à explorer.</p>
+            </header>
+
+            <fieldset class="form-section">
+              <legend>Votre priorité principale</legend>
+              <div class="priority-grid">
+                @for (item of priorities; track item.id) {
+                  <label class="choice-card priority-card" [class.selected]="priority() === item.id">
+                    <input type="radio" name="priority" [value]="item.id" [checked]="priority() === item.id" (change)="choosePriority(item.id)" />
+                    <span class="priority-number" aria-hidden="true">0{{ $index + 1 }}</span>
+                    <strong>{{ item.label }}</strong>
+                    <small>{{ item.description }}</small>
+                    <span class="choice-check" aria-hidden="true">✓</span>
+                  </label>
+                }
+              </div>
+            </fieldset>
+
+            <fieldset class="form-section module-section">
+              <legend>Les espaces à inclure dans votre démo</legend>
+              <p class="legend-help">Sélectionnez au moins un module. Vous pourrez tout modifier plus tard.</p>
+              <div class="module-grid">
+                @for (module of availableModules; track module.id) {
+                  <label class="module-card" [class.selected]="modules().includes(module.id)">
+                    <input type="checkbox" [checked]="modules().includes(module.id)" (change)="toggleModule(module.id)" />
+                    <span class="module-mark" aria-hidden="true">{{ modules().includes(module.id) ? '✓' : '+' }}</span>
+                    <span><strong>{{ module.label }}</strong><small>{{ module.description }}</small></span>
+                  </label>
+                }
+              </div>
+              @if (formAttempted() && modules().length === 0) {
+                <p class="selection-error" role="alert">Choisissez au moins un espace pour continuer.</p>
+              }
+            </fieldset>
+          }
+
+          @if (step() === 3) {
+            <header class="step-heading">
+              <span class="eyebrow">Étape 3 · Vos règles</span>
+              <h2 id="setup-step-title" tabindex="-1">Réglez les détails qui comptent</h2>
+              <p>Quelques choix suffisent pour donner à l’aperçu votre logique de fonctionnement.</p>
+            </header>
+
+            <form [formGroup]="rulesForm" novalidate>
+              <div class="rule-grid">
+                <fieldset class="rule-block">
+                  <legend>Découpage de l’année</legend>
+                  <div class="segmented">
+                    <label [class.selected]="rulesForm.controls.periodScheme.value === 'trimester'">
+                      <input type="radio" formControlName="periodScheme" value="trimester" />3 trimestres
+                    </label>
+                    <label [class.selected]="rulesForm.controls.periodScheme.value === 'semester'">
+                      <input type="radio" formControlName="periodScheme" value="semester" />2 semestres
+                    </label>
+                  </div>
+                </fieldset>
+
+                <fieldset class="rule-block">
+                  <legend>Système d’évaluation</legend>
+                  <div class="segmented three">
+                    <label [class.selected]="rulesForm.controls.gradingScale.value === '20'">
+                      <input type="radio" formControlName="gradingScale" value="20" />/ 20
+                    </label>
+                    <label [class.selected]="rulesForm.controls.gradingScale.value === '100'">
+                      <input type="radio" formControlName="gradingScale" value="100" />/ 100
+                    </label>
+                    <label [class.selected]="rulesForm.controls.gradingScale.value === 'competency'">
+                      <input type="radio" formControlName="gradingScale" value="competency" />Compétences
+                    </label>
+                  </div>
+                </fieldset>
+
+                <label class="rule-line">
+                  <span><strong>Classement des élèves</strong><small>Afficher le rang dans les résultats</small></span>
+                  <span class="switch"><input type="checkbox" formControlName="rankingEnabled" /><i aria-hidden="true"></i></span>
+                </label>
+
+                <label class="field compact-field">
+                  <span>Capacité indicative par classe</span>
+                  <div class="input-suffix"><input type="number" formControlName="classCapacity" min="10" max="100" inputmode="numeric" /><span>élèves</span></div>
+                  @if (rulesForm.controls.classCapacity.invalid && (formAttempted() || rulesForm.controls.classCapacity.touched)) {
+                    <small class="field-error">Choisissez une valeur entre 10 et 100.</small>
+                  }
+                </label>
+
+                <label class="field compact-field">
+                  <span>Devise de référence</span>
+                  <select formControlName="currency">
+                    @for (currency of currencies; track currency.value) { <option [value]="currency.value">{{ currency.label }}</option> }
+                  </select>
+                </label>
+              </div>
+            </form>
+
+            <fieldset class="form-section payment-section">
+              <legend>Modes de paiement à prévoir</legend>
+              <div class="payment-grid">
+                @for (mode of paymentChoices; track mode.id) {
+                  <label class="payment-card" [class.selected]="paymentModes().includes(mode.id)">
+                    <input type="checkbox" [checked]="paymentModes().includes(mode.id)" (change)="togglePaymentMode(mode.id)" />
+                    <span class="payment-check" aria-hidden="true">✓</span>
+                    <strong>{{ mode.label }}</strong>
+                    <small>{{ mode.description }}</small>
+                  </label>
+                }
+              </div>
+              @if (formAttempted() && paymentModes().length === 0) {
+                <p class="selection-error" role="alert">Choisissez au moins un mode de paiement.</p>
+              }
+            </fieldset>
+          }
+
+          @if (step() === 4) {
+            <div class="final-content">
+              <span class="success-mark" aria-hidden="true">
+                <svg viewBox="0 0 32 32"><path d="m9 16 4.5 4.5L23 11" /></svg>
+              </span>
+              <span class="eyebrow">Votre scénario EduOps</span>
+              <h2 id="setup-step-title" tabindex="-1">Votre démo a maintenant une personnalité.</h2>
+              <p>Nous avons préparé le cadre. Créez votre compte pour poursuivre la mise en place de votre espace.</p>
+
+              <div class="recap-grid">
+                <article>
+                  <span class="recap-index">01</span>
+                  <small>Établissement</small>
+                  <strong>{{ draft().profile.schoolName }}</strong>
+                  <p>{{ presetLabel(draft().profile.preset) }} · {{ draft().profile.city }}</p>
+                </article>
+                <article>
+                  <span class="recap-index">02</span>
+                  <small>Direction</small>
+                  <strong>{{ priorityLabel(draft().priorities.mainPriority) }}</strong>
+                  <p>{{ draft().priorities.modules.length }} espace{{ draft().priorities.modules.length > 1 ? 's' : '' }} sélectionné{{ draft().priorities.modules.length > 1 ? 's' : '' }}</p>
+                </article>
+                <article>
+                  <span class="recap-index">03</span>
+                  <small>Cadre scolaire</small>
+                  <strong>{{ periodLabel(draft().rules.periodScheme) }}</strong>
+                  <p>{{ scaleLabel(draft().rules.gradingScale) }} · {{ draft().rules.currency }}</p>
+                </article>
+              </div>
+
+              <div class="final-action">
+                <div><strong>Prêt à donner vie à cet espace&nbsp;?</strong><span>Aucune carte bancaire demandée.</span></div>
+                <a class="primary-button final-button" routerLink="/signup" (click)="complete()">
+                  Créer mon espace
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4" /></svg>
+                </a>
+              </div>
+              <button class="restart-button" type="button" (click)="restart()">Recommencer la configuration</button>
+            </div>
+          }
+
+          @if (step() < 4) {
+            <footer class="card-footer">
+              @if (step() > 1) {
+                <button class="secondary-button" type="button" (click)="previous()">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10H5m4-4-4 4 4 4" /></svg>
+                  Retour
+                </button>
+              } @else {
+                <a class="secondary-button" routerLink="/">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10H5m4-4-4 4 4 4" /></svg>
+                  Accueil
+                </a>
+              }
+              <span class="step-count">{{ step() }} / 4</span>
+              <button class="primary-button" type="button" (click)="next()">
+                {{ step() === 3 ? 'Voir mon scénario' : 'Continuer' }}
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4" /></svg>
+              </button>
+            </footer>
+          }
+        </section>
+
+        <aside class="live-preview" aria-label="Résumé de votre configuration">
+          <div class="preview-head">
+            <span>Aperçu vivant</span>
+            <i aria-hidden="true"></i>
+          </div>
+          <div class="school-avatar" aria-hidden="true">{{ draft().profile.schoolName ? draft().profile.schoolName.charAt(0).toUpperCase() : 'E' }}</div>
+          <h3>{{ draft().profile.schoolName || 'Votre établissement' }}</h3>
+          <p>{{ draft().profile.city || 'Ville à préciser' }} · {{ draft().profile.country }}</p>
+
+          <div class="preview-facts">
+            <div><small>Profil</small><strong>{{ presetLabel(draft().profile.preset) }}</strong></div>
+            <div><small>Campus</small><strong>{{ draft().profile.campusCount }}</strong></div>
+            <div><small>Devise</small><strong>{{ draft().rules.currency }}</strong></div>
+            <div><small>Classes</small><strong>{{ draft().rules.classCapacity }} élèves</strong></div>
+          </div>
+
+          <div class="preview-modules">
+            <small>Espaces choisis</small>
+            @if (selectedModuleLabels().length > 0) {
+              <div>
+                @for (label of selectedModuleLabels(); track label) { <span>{{ label }}</span> }
+              </div>
+            } @else {
+              <p>Aucun espace sélectionné</p>
+            }
+          </div>
+
+          <div class="privacy-note">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 8V6a3.5 3.5 0 0 1 7 0v2M5 8h10v8H5V8Z" /></svg>
+            <span><strong>Brouillon privé</strong>Conservé uniquement pour cette session.</span>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>

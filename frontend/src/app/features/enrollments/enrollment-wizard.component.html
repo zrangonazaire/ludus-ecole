@@ -1,0 +1,170 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Nouvelle inscription</h1>
+      <p class="page__meta">Selection de l'eleve, affectation de classe, controles serveur.</p>
+    </div>
+  </header>
+
+  <!-- Steps -->
+  <ol class="steps" aria-label="Etapes de l'inscription">
+    <li class="steps__item" [class.steps__item--active]="step() >= 1">
+      <span class="steps__index">1</span> Eleve
+    </li>
+    <li class="steps__item" [class.steps__item--active]="step() >= 2">
+      <span class="steps__index">2</span> Classe
+    </li>
+    <li class="steps__item" [class.steps__item--active]="step() >= 3">
+      <span class="steps__index">3</span> Controles &amp; validation
+    </li>
+  </ol>
+
+  <!-- Step 1: student -->
+  @if (step() === 1) {
+    <section class="card">
+      <header class="card__header"><h2 class="card__title">Rechercher l'eleve</h2></header>
+      <div class="card__body">
+        <div class="field">
+          <label class="field__label" for="wizard-student">Nom, prenom ou matricule</label>
+          <input id="wizard-student" class="input" type="search"
+                 placeholder="Au moins 2 caracteres"
+                 (input)="searchStudents($any($event.target).value)" />
+          <span class="field__hint">
+            L'eleve doit etre au statut Admis ou Actif pour pouvoir etre inscrit.
+          </span>
+        </div>
+
+        <ul class="picker">
+          @for (candidate of candidates(); track candidate.id) {
+            <li>
+              <button type="button" class="picker__row" (click)="chooseStudent(candidate)">
+                <eduops-avatar [name]="candidate.fullName" size="sm" />
+                <span class="picker__body">
+                  <span class="picker__title">{{ candidate.fullName }}</span>
+                  <span class="picker__meta numeric">
+                    {{ candidate.studentNumber }} — {{ candidate.classroomName ?? 'Sans classe' }}
+                  </span>
+                </span>
+                <eduops-status-badge [status]="candidate.status" />
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
+    </section>
+  }
+
+  <!-- Step 2: classroom -->
+  @if (step() === 2) {
+    <section class="card">
+      <header class="card__header">
+        <h2 class="card__title">Choisir la classe</h2>
+        <button type="button" class="btn btn--ghost btn--sm" (click)="back()">Retour</button>
+      </header>
+      <div class="card__body">
+        <p class="selected">
+          Eleve selectionne :
+          <strong>{{ selectedStudent()?.fullName }}</strong>
+          <span class="numeric">({{ selectedStudent()?.studentNumber }})</span>
+        </p>
+
+        <ul class="picker">
+          @for (classroom of availableClasses(); track classroom.id) {
+            <li>
+              <button type="button" class="picker__row" (click)="chooseClassroom(classroom)"
+                      [disabled]="checking()">
+                <span class="picker__body">
+                  <span class="picker__title">{{ classroom.name }}</span>
+                  <span class="picker__meta numeric">
+                    {{ classroom.activeEnrollments }}/{{ classroom.capacityMaximum }} eleves
+                    — {{ classroom.availableSeats }} place(s) restante(s)
+                  </span>
+                </span>
+                <eduops-status-badge [status]="classroom.capacityStatus" />
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
+    </section>
+  }
+
+  <!-- Step 3: server checks -->
+  @if (step() === 3) {
+    <section class="card">
+      <header class="card__header">
+        <h2 class="card__title">Controles serveur</h2>
+        <button type="button" class="btn btn--ghost btn--sm" (click)="back()">Retour</button>
+      </header>
+
+      <div class="card__body">
+        <dl class="summary">
+          <div><dt>Eleve</dt><dd>{{ selectedStudent()?.fullName }}</dd></div>
+          <div><dt>Matricule</dt><dd class="numeric">{{ selectedStudent()?.studentNumber }}</dd></div>
+          <div><dt>Classe</dt><dd>{{ selectedClassroom()?.name }}</dd></div>
+        </dl>
+
+        @if (checkResult(); as result) {
+          <div class="capacity">
+            <p class="capacity__line numeric">
+              Capacite : <strong>{{ result.occupiedSeats }}/{{ result.capacityMaximum }}</strong>
+              — places disponibles : <strong>{{ result.availableSeats }}</strong>
+              — projetees : <strong>{{ result.projectedAvailableSeats }}</strong>
+            </p>
+          </div>
+
+          @if (result.allowed) {
+            <p class="verdict verdict--ok" role="status">
+              Tous les controles sont passes. L'inscription peut etre validee.
+            </p>
+          } @else {
+            <div class="verdict verdict--ko" role="alert">
+              <p class="verdict__title">L'inscription est refusee par le serveur :</p>
+              <ul>
+                @for (blocker of result.blockers; track blocker) {
+                  <li>{{ blockerMessage(blocker) }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          @for (warning of result.warnings; track warning) {
+            <p class="verdict verdict--warn">Attention : la classe est presque pleine.</p>
+          }
+
+          <!-- Capacity override: permission + justification, both audited -->
+          @if (!result.allowed && canOverride()) {
+            <div class="override">
+              <label class="override__toggle">
+                <input type="checkbox" [(ngModel)]="overrideRequested" name="override" />
+                Demander une derogation de capacite
+              </label>
+              @if (overrideRequested) {
+                <div class="field">
+                  <label class="field__label field__label--required" for="override-reason">
+                    Justification de la derogation
+                  </label>
+                  <textarea id="override-reason" class="textarea" rows="3"
+                            [(ngModel)]="overrideReason" name="overrideReason"
+                            placeholder="Motif detaille (minimum 10 caracteres)"></textarea>
+                  <span class="field__hint">
+                    Cette derogation exige la permission ENROLLMENT_OVERRIDE_CAPACITY et sera
+                    conservee dans le journal d'audit.
+                  </span>
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <footer class="card__footer row row--between">
+        <span class="footer-note">Les controles sont rejoues cote serveur au moment de la validation.</span>
+        <button type="button" class="btn btn--primary"
+                [disabled]="!canSubmit() || submitting()" (click)="submit()">
+          {{ submitting() ? 'Enregistrement...' : "Valider l'inscription" }}
+        </button>
+      </footer>
+    </section>
+  }
+</div>

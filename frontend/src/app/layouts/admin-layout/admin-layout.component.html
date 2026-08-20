@@ -1,0 +1,73 @@
+<div class="shell" [class.shell--drawer-open]="drawerOpen()">
+
+  <!-- ============ Topbar (64px) ============ -->
+  <header class="topbar">
+    <button type="button" class="topbar__burger" aria-label="Ouvrir le menu"
+            [attr.aria-expanded]="drawerOpen()" (click)="toggleDrawer()">
+      <span aria-hidden="true">☰</span>
+    </button>
+
+    <a class="topbar__brand" routerLink="/dashboard">
+      <span class="topbar__logo" aria-hidden="true">E</span>
+      <span class="topbar__name">EduOps</span>
+    </a>
+
+    <!-- Global search: matricule, eleve, parent, enseignant, classe, recu (section 60) -->
+    <form class="search" role="search" (submit)="$event.preventDefault()">
+      <label class="visually-hidden" for="global-search">Recherche globale</label>
+      <span class="search__icon" aria-hidden="true">⌕</span>
+      <input id="global-search" class="search__input" type="search"
+             placeholder="Rechercher un eleve, un matricule, une classe, un recu..."
+             [value]="searchTerm()"
+             (input)="searchTerm.set($any($event.target).value)" />
+    </form>
+
+    <div class="topbar__actions">
+      <span class="ws-indicator" [class]="'ws-indicator--' + ws.state()"
+            [attr.title]="'Temps reel : ' + ws.state()" aria-hidden="true"></span>
+
+      <button type="button" class="icon-btn" aria-label="Notifications">
+        <span aria-hidden="true">◔</span>
+        <span class="icon-btn__dot" aria-hidden="true"></span>
+      </button>
+
+      <div class="user">
+        <eduops-avatar [name]="user()?.fullName ?? ''" size="sm" />
+        <div class="user__meta">
+          <span class="user__name">{{ user()?.fullName }}</span>
+          <span class="user__role">{{ user()?.roles?.[0] }}</span>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm" (click)="logout()">Deconnexion</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ Sidebar (248px) ============ -->
+  <aside class="sidebar" [attr.aria-hidden]="!drawerOpen() && null">
+    <nav class="sidebar__nav" aria-label="Navigation principale">
+      @for (group of navigation(); track group.section) {
+        <div class="sidebar__group">
+          <p class="sidebar__section">{{ group.section }}</p>
+          @for (item of group.items; track item.route) {
+            <a class="sidebar__link" [routerLink]="item.route"
+               routerLinkActive="sidebar__link--active" (click)="closeDrawer()">
+              <span class="sidebar__icon" aria-hidden="true">{{ item.icon }}</span>
+              <span>{{ item.label }}</span>
+              @if (item.badge && item.badge(); as badge) {
+                <span class="sidebar__badge numeric"
+                      [attr.aria-label]="'Configuration : ' + badge + ' etapes'">{{ badge }}</span>
+              }
+            </a>
+          }
+        </div>
+      }
+    </nav>
+  </aside>
+
+  <div class="scrim" (click)="closeDrawer()"></div>
+
+  <!-- ============ Content ============ -->
+  <main class="content" id="main-content" tabindex="-1">
+    <router-outlet />
+  </main>
+</div>

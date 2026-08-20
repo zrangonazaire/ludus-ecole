@@ -1,0 +1,12 @@
+start
+15:50:03  browser launched
+15:50:03  == portal teacher
+15:50:03    login goto prof@eduops.local
+15:50:06    ERREUR teacher: net::ERR_CONNECTION_REFUSED at http://localhost:4200/login
+15:50:06  == portal parent
+15:50:06    login goto parent@eduops.local
+15:50:06    ERREUR parent: net::ERR_CONNECTION_REFUSED at http://localhost:4200/login
+15:50:06  == portal student
+15:50:06    login goto eleve@eduops.local
+15:50:08    ERREUR student: net::ERR_CONNECTION_REFUSED at http://localhost:4200/login
+15:50:08  DONE

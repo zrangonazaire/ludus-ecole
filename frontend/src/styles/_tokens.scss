@@ -1,0 +1,130 @@
+/* =====================================================================
+   EduOps design tokens - the single source of truth for colour, spacing
+   and elevation. Components must never hard-code a hex value.
+   ===================================================================== */
+
+:root {
+  /* ---------- Brand ---------- */
+  --brand: #1f5fd6;
+  --brand-hover: #1a52bd;
+  --brand-tint: #eaf1fe;
+  --brand-tint-border: #cfe0fb;
+
+  /* ---------- Text ---------- */
+  --text-strong: #1b2435;
+  --text-normal: #3a4660;
+  --text-muted: #7b8499;
+  --text-light: #9aa3b4;
+  --text-on-brand: #ffffff;
+
+  /* ---------- Surfaces ---------- */
+  --surface-page: #f6f8fb;
+  --surface-card: #ffffff;
+  --surface-hover: #f9fafc;
+  --surface-sunken: #f1f4f9;
+
+  /* ---------- Borders ---------- */
+  --border: #e9edf3;
+  --border-light: #eef1f6;
+  --border-strong: #d9e0ea;
+
+  /* ---------- Semantic ---------- */
+  --success: #16915a;
+  --success-bg: #e7f4ed;
+  --warning: #d97a16;
+  --warning-bg: #fdf0e1;
+  --danger: #dc3545;
+  --danger-bg: #fdf4f5;
+  --info: #1f5fd6;
+  --info-bg: #eaf1fe;
+
+  /* ---------- Charts (accessible, distinguishable hues) ---------- */
+  --chart-1: #1f5fd6;
+  --chart-2: #16915a;
+  --chart-3: #d97a16;
+  --chart-4: #7c5cd6;
+  --chart-5: #0f9bb3;
+  --chart-6: #dc3545;
+
+  /* ---------- Radius (section 89) ---------- */
+  --radius-card: 14px;
+  --radius-button: 10px;
+  --radius-badge: 7px;
+  --radius-pill: 20px;
+  --radius-input: 10px;
+
+  /* ---------- Elevation: light only, never heavy ---------- */
+  --shadow-xs: 0 1px 2px rgba(27, 36, 53, 0.04);
+  --shadow-sm: 0 1px 3px rgba(27, 36, 53, 0.06), 0 1px 2px rgba(27, 36, 53, 0.04);
+  --shadow-md: 0 4px 12px rgba(27, 36, 53, 0.08);
+  --shadow-lg: 0 12px 28px rgba(27, 36, 53, 0.12);
+
+  /* ---------- Spacing scale ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ---------- Layout (section 56) ---------- */
+  --topbar-height: 64px;
+  --sidebar-width: 248px;
+  --sidebar-width-collapsed: 72px;
+  --bottom-tab-height: 60px;
+  --content-max-width: 1560px;
+
+  /* ---------- Typography (section 51) ---------- */
+  --font-display: 'Bricolage Grotesque', 'Public Sans', system-ui, sans-serif;
+  --font-body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 34px;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* ---------- Motion ---------- */
+  --transition-fast: 120ms ease;
+  --transition-base: 180ms ease;
+
+  /* ---------- Z-index ---------- */
+  --z-dropdown: 1000;
+  --z-sticky: 1010;
+  --z-sidebar: 1020;
+  --z-topbar: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-toast: 1060;
+}
+
+/* ---------- Breakpoints (section 88) ---------- */
+$breakpoint-mobile: 767px;
+$breakpoint-tablet: 1199px;
+$breakpoint-desktop: 1200px;
+
+@mixin mobile {
+  @media (max-width: #{$breakpoint-mobile}) { @content; }
+}
+
+@mixin tablet {
+  @media (min-width: #{$breakpoint-mobile + 1}) and (max-width: #{$breakpoint-tablet}) { @content; }
+}
+
+@mixin tablet-down {
+  @media (max-width: #{$breakpoint-tablet}) { @content; }
+}
+
+@mixin desktop {
+  @media (min-width: #{$breakpoint-desktop}) { @content; }
+}

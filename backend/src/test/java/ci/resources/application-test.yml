@@ -1,0 +1,3 @@
+# Unused. The effective test configuration lives in
+# backend/src/test/resources/application-test.yml
+# (this path is not on the Maven test resources classpath).

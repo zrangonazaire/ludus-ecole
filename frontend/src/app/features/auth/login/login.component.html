@@ -1,0 +1,66 @@
+<div class="login">
+  <div class="login__panel">
+    <div class="login__brand">
+      <span class="login__logo" aria-hidden="true">E</span>
+      <div>
+        <h1 class="login__title">EduOps</h1>
+        <p class="login__subtitle">{{ schoolName }}</p>
+      </div>
+    </div>
+
+    <form class="login__form" [formGroup]="form" (ngSubmit)="submit()">
+      <h2 class="login__heading">Connexion</h2>
+
+      @if (errorMessage(); as message) {
+        <p class="login__error" role="alert">{{ message }}</p>
+      }
+
+      <div class="field">
+        <label class="field__label" for="login">Identifiant ou email</label>
+        <input id="login" class="input" type="text" formControlName="login"
+               autocomplete="username" placeholder="prenom.nom@eduops.local" />
+        @if (form.controls.login.touched && form.controls.login.invalid) {
+          <span class="field__error">L'identifiant est obligatoire.</span>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="password">Mot de passe</label>
+        <input id="password" class="input" type="password" formControlName="password"
+               autocomplete="current-password" placeholder="••••••••" />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <span class="field__error">Le mot de passe est obligatoire.</span>
+        }
+      </div>
+
+      <button type="submit" class="btn btn--primary btn--block btn--lg" [disabled]="submitting()">
+        {{ submitting() ? 'Connexion...' : 'Se connecter' }}
+      </button>
+
+      <a class="login__forgot" href="#" (click)="$event.preventDefault()">Mot de passe oublie ?</a>
+    </form>
+
+    @if (demoMode) {
+      <div class="login__demo">
+        <p class="login__demo-title">Mode demonstration — profils disponibles</p>
+        <div class="login__demo-grid">
+          <button type="button" class="btn btn--secondary btn--sm"
+                  (click)="useDemoProfile('admin@eduops.local')">Administration</button>
+          <button type="button" class="btn btn--secondary btn--sm"
+                  (click)="useDemoProfile('prof@eduops.local')">Enseignant</button>
+          <button type="button" class="btn btn--secondary btn--sm"
+                  (click)="useDemoProfile('parent@eduops.local')">Parent</button>
+          <button type="button" class="btn btn--secondary btn--sm"
+                  (click)="useDemoProfile('eleve@eduops.local')">Eleve</button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <aside class="login__aside" aria-hidden="true">
+    <blockquote class="login__quote">
+      <p>Chaque note, chaque presence, chaque paiement raconte la scolarite d'un eleve.</p>
+      <footer>EduOps — administration, pedagogie, finance</footer>
+    </blockquote>
+  </aside>
+</div>

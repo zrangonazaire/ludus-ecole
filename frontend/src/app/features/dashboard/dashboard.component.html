@@ -1,0 +1,229 @@
+<div class="page">
+
+  <!-- ============ Header (section 56) ============ -->
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Tableau de bord</h1>
+      @if (data(); as dashboard) {
+        <p class="page__meta">
+          <strong>{{ dashboard.academicYear.code }}</strong>
+          <span class="dot">•</span>{{ dashboard.campusName }}
+          @if (dashboard.currentTerm) {
+            <span class="dot">•</span>{{ dashboard.currentTerm.name }}
+          }
+          <span class="dot">•</span>{{ today() }}
+        </p>
+      }
+    </div>
+
+    <div class="page__actions">
+      <button type="button" class="btn btn--secondary" (click)="load()">
+        <span aria-hidden="true">⟳</span> Actualiser
+      </button>
+      <a class="btn btn--primary" routerLink="/enrollments/new">
+        <span aria-hidden="true">+</span> Nouvelle inscription
+      </a>
+    </div>
+  </header>
+
+  <!-- Rappel tant que la configuration n'est pas terminee -->
+  @if (setupIncomplete()) {
+    @if (setup(); as progress) {
+      <aside class="setup-banner" role="status">
+        <div class="setup-banner__bar" aria-hidden="true">
+          <span class="setup-banner__fill" [style.width.%]="progress.percentComplete"></span>
+        </div>
+        <div class="setup-banner__text">
+          <p class="setup-banner__title">
+            Configuration incomplete —
+            <span class="numeric">{{ progress.completedSteps }}/{{ progress.totalSteps }}</span>
+            etapes
+          </p>
+          <p class="setup-banner__lead">
+            Certains chiffres resteront vides tant que les classes, les frais ou les
+            inscriptions ne sont pas renseignes.
+          </p>
+        </div>
+        <a class="btn btn--primary btn--sm" routerLink="/setup">Terminer la configuration</a>
+      </aside>
+    }
+  }
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement du tableau de bord..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    @if (data(); as dashboard) {
+
+    <!-- ============ KPI grid (section 57) ============ -->
+    <section class="grid grid--kpi" aria-label="Indicateurs cles">
+      @for (kpi of dashboard.kpis; track kpi.key) {
+        <eduops-kpi-card [kpi]="kpi" />
+      }
+    </section>
+
+    <!-- ============ Charts (section 58) ============ -->
+    <section class="grid grid--2 section-gap">
+      <eduops-chart-card title="Effectifs par niveau"
+                         subtitle="Repartition des eleves inscrits"
+                         [data]="dashboard.enrollmentByLevel" type="bar" />
+
+      <eduops-chart-card title="Presence / absence"
+                         subtitle="Evolution sur les 8 dernieres semaines"
+                         [data]="dashboard.attendanceTrend" type="line" />
+
+      <eduops-chart-card title="Performance academique"
+                         subtitle="Evolution de la moyenne generale"
+                         [data]="dashboard.academicPerformance" type="area" />
+
+      <eduops-chart-card title="Encaissements"
+                         subtitle="Realise contre attendu, par mois"
+                         [data]="dashboard.monthlyCollections" type="bar" />
+    </section>
+
+    <!-- ============ Widgets (section 59) ============ -->
+    <section class="grid grid--3 section-gap">
+
+      <!-- Dernieres inscriptions -->
+      <article class="card">
+        <header class="card__header">
+          <h3 class="card__title">Dernieres inscriptions</h3>
+          <a class="link-sm" routerLink="/enrollments">Tout voir</a>
+        </header>
+        <ul class="list">
+          @for (enrollment of dashboard.recentEnrollments; track enrollment.id) {
+            <li class="list__item">
+              <eduops-avatar [name]="enrollment.studentName" size="sm" />
+              <div class="list__body">
+                <p class="list__title">{{ enrollment.studentName }}</p>
+                <p class="list__meta numeric">{{ enrollment.studentNumber }} — {{ enrollment.classroomName }}</p>
+              </div>
+              <eduops-status-badge [status]="enrollment.status" />
+            </li>
+          } @empty {
+            <li class="list__empty">Aucune inscription recente.</li>
+          }
+        </ul>
+      </article>
+
+      <!-- Absences du jour -->
+      <article class="card">
+        <header class="card__header">
+          <h3 class="card__title">Absences du jour</h3>
+          <span class="badge badge--warning badge--live">LIVE</span>
+        </header>
+        <ul class="list">
+          @for (absence of dashboard.todayAbsences; track absence.studentId) {
+            <li class="list__item">
+              <eduops-avatar [name]="absence.studentName" size="sm" />
+              <div class="list__body">
+                <p class="list__title">{{ absence.studentName }}</p>
+                <p class="list__meta numeric">{{ absence.studentNumber }}</p>
+              </div>
+              <eduops-status-badge [status]="absence.status" />
+            </li>
+          } @empty {
+            <li class="list__empty">Aucune absence signalee aujourd'hui.</li>
+          }
+        </ul>
+      </article>
+
+      <!-- Paiements recents -->
+      <article class="card">
+        <header class="card__header">
+          <h3 class="card__title">Paiements recents</h3>
+          <a class="link-sm" routerLink="/payments">Tout voir</a>
+        </header>
+        <ul class="list">
+          @for (payment of dashboard.recentPayments; track payment.id) {
+            <li class="list__item">
+              <div class="list__body">
+                <p class="list__title">{{ payment.studentName }}</p>
+                <p class="list__meta numeric">{{ payment.receiptNumber }}</p>
+              </div>
+              <span class="list__amount money">{{ payment.amount | money }}</span>
+            </li>
+          } @empty {
+            <li class="list__empty">Aucun paiement enregistre.</li>
+          }
+        </ul>
+      </article>
+
+      <!-- Alertes importantes -->
+      <article class="card">
+        <header class="card__header">
+          <h3 class="card__title">Alertes importantes</h3>
+          <a class="link-sm" routerLink="/reports">Tout voir</a>
+        </header>
+        <ul class="list">
+          @for (alert of dashboard.alerts; track alert.id) {
+            <li class="list__item list__item--alert">
+              <span class="alert-dot" [class]="'alert-dot--' + alert.severity.toLowerCase()"
+                    aria-hidden="true"></span>
+              <div class="list__body">
+                <p class="list__title">{{ alert.title }}</p>
+                <p class="list__meta">{{ alert.message }}</p>
+              </div>
+            </li>
+          } @empty {
+            <li class="list__empty">Aucune alerte active.</li>
+          }
+        </ul>
+      </article>
+
+      <!-- Evaluations a venir -->
+      <article class="card">
+        <header class="card__header">
+          <h3 class="card__title">Evaluations a venir</h3>
+          <a class="link-sm" routerLink="/assessments">Tout voir</a>
+        </header>
+        <ul class="list">
+          @for (assessment of dashboard.upcomingAssessments; track assessment.id) {
+            <li class="list__item">
+              <div class="list__body">
+                <p class="list__title">{{ assessment.title }}</p>
+                <p class="list__meta">
+                  {{ assessment.classroomName }} — {{ assessment.subjectName }}
+                  <span class="dot">•</span>{{ assessment.assessmentDate | date:'dd/MM' }}
+                </p>
+              </div>
+              <eduops-status-badge [status]="assessment.status" />
+            </li>
+          } @empty {
+            <li class="list__empty">Aucune evaluation programmee.</li>
+          }
+        </ul>
+      </article>
+
+      <!-- Classes necessitant attention -->
+      <article class="card">
+        <header class="card__header">
+          <h3 class="card__title">Classes a surveiller</h3>
+          <a class="link-sm" routerLink="/classes">Tout voir</a>
+        </header>
+        <ul class="list">
+          @for (classroom of dashboard.classesNeedingAttention; track classroom.id) {
+            <li class="list__item">
+              <div class="list__body">
+                <p class="list__title">{{ classroom.name }}</p>
+                <p class="list__meta numeric">
+                  {{ classroom.activeEnrollments }}/{{ classroom.capacityMaximum }} eleves
+                  <span class="dot">•</span>{{ classroom.occupancyRate }} %
+                </p>
+              </div>
+              <eduops-status-badge [status]="classroom.capacityStatus" />
+            </li>
+          } @empty {
+            <li class="list__empty">Toutes les classes sont dans les seuils.</li>
+          }
+        </ul>
+      </article>
+    </section>
+
+      @if (lastRefresh(); as refreshed) {
+        <p class="refresh-note">Derniere actualisation : {{ refreshed | date:'HH:mm:ss' }}</p>
+      }
+    }
+  }
+</div>
