@@ -18,7 +18,7 @@
       <div class="field">
         <label class="field__label" for="login">Identifiant ou email</label>
         <input id="login" class="input" type="text" formControlName="login"
-               autocomplete="username" placeholder="prenom.nom@eduops.local" />
+               autocomplete="username" placeholder="prénom.nom@eduops.local" />
         @if (form.controls.login.touched && form.controls.login.invalid) {
           <span class="field__error">L'identifiant est obligatoire.</span>
         }
@@ -51,7 +51,7 @@
           <button type="button" class="btn btn--secondary btn--sm"
                   (click)="useDemoProfile('parent@eduops.local')">Parent</button>
           <button type="button" class="btn btn--secondary btn--sm"
-                  (click)="useDemoProfile('eleve@eduops.local')">Eleve</button>
+                  (click)="useDemoProfile('eleve@eduops.local')">Élève</button>
         </div>
       </div>
     }
@@ -59,7 +59,7 @@
 
   <aside class="login__aside" aria-hidden="true">
     <blockquote class="login__quote">
-      <p>Chaque note, chaque presence, chaque paiement raconte la scolarite d'un eleve.</p>
+      <p>Chaque note, chaque présence, chaque paiement raconte la scolarité d'un élève.</p>
       <footer>EduOps — administration, pedagogie, finance</footer>
     </blockquote>
   </aside>

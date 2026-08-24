@@ -70,31 +70,3 @@
   font-size: var(--text-xs);
   color: var(--text-light);
 }
-
-/* ── Rappel de configuration ── */
-.setup-banner {
-  position: relative;
-  display: flex; align-items: center; gap: var(--space-4);
-  padding: var(--space-5);
-  margin-bottom: var(--space-6);
-  background: var(--warning-bg);
-  border: 1px solid #f2d9b4;
-  border-radius: var(--radius-card);
-  overflow: hidden;
-}
-.setup-banner__bar {
-  position: absolute; inset: auto 0 0 0; height: 3px;
-  background: rgba(217, 122, 22, .18);
-}
-.setup-banner__fill {
-  display: block; height: 100%; background: var(--warning);
-  transition: width 500ms ease;
-}
-.setup-banner__text { flex: 1; min-width: 0; }
-.setup-banner__title { margin: 0; font-weight: 700; color: var(--warning); }
-.setup-banner__lead { margin: 2px 0 0; font-size: var(--text-sm); color: var(--text-normal); }
-
-@media (max-width: 767px) {
-  .setup-banner { flex-direction: column; align-items: flex-start; }
-  .setup-banner .btn { width: 100%; }
-}

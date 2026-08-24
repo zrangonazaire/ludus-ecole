@@ -1,6 +1,6 @@
 <div class="page">
   @if (loading()) {
-    <eduops-loading-state message="Chargement de la fiche eleve..." />
+    <eduops-loading-state message="Chargement de la fiche élève..." />
   } @else if (error()) {
     <eduops-error-state (retry)="load()" />
   } @else {
@@ -25,7 +25,7 @@
       </div>
       <div class="profile__actions">
         <a class="btn btn--secondary" routerLink="/students">Retour</a>
-        <button type="button" class="btn btn--secondary">Certificat de scolarite</button>
+        <button type="button" class="btn btn--secondary">Certificat de scolarité</button>
         <button type="button" class="btn btn--primary">Modifier</button>
       </div>
     </header>
@@ -34,15 +34,15 @@
       <button type="button" role="tab" class="tabs__tab"
               [class.tabs__tab--active]="activeTab() === 'identity'"
               [attr.aria-selected]="activeTab() === 'identity'"
-              (click)="activeTab.set('identity')">Identite &amp; responsables</button>
+              (click)="activeTab.set('identity')">Identité &amp; responsables</button>
       <button type="button" role="tab" class="tabs__tab"
               [class.tabs__tab--active]="activeTab() === 'academic'"
               [attr.aria-selected]="activeTab() === 'academic'"
-              (click)="activeTab.set('academic')">Scolarite</button>
+              (click)="activeTab.set('academic')">Scolarité</button>
       <button type="button" role="tab" class="tabs__tab"
               [class.tabs__tab--active]="activeTab() === 'attendance'"
               [attr.aria-selected]="activeTab() === 'attendance'"
-              (click)="activeTab.set('attendance')">Presences</button>
+              (click)="activeTab.set('attendance')">Présences</button>
       <button type="button" role="tab" class="tabs__tab"
               [class.tabs__tab--active]="activeTab() === 'finance'"
               [attr.aria-selected]="activeTab() === 'finance'"
@@ -53,7 +53,7 @@
       @case ('identity') {
         <div class="grid grid--2">
           <section class="card">
-            <header class="card__header"><h3 class="card__title">Etat civil</h3></header>
+            <header class="card__header"><h3 class="card__title">État civil</h3></header>
             <dl class="definition card__body">
               <div><dt>Matricule</dt><dd class="numeric">{{ student.studentNumber }}</dd></div>
               <div><dt>Nom complet</dt><dd>{{ student.fullName }}</dd></div>
@@ -62,7 +62,7 @@
               <div><dt>Lieu de naissance</dt><dd>{{ student.birthPlace ?? '-' }}</dd></div>
               <div><dt>Nationalite</dt><dd>{{ student.nationality ?? '-' }}</dd></div>
               <div><dt>Date d'admission</dt><dd>{{ student.admissionDate | date:'dd/MM/yyyy' }}</dd></div>
-              <div><dt>Etablissement precedent</dt><dd>{{ student.previousSchool ?? '-' }}</dd></div>
+              <div><dt>Établissement precedent</dt><dd>{{ student.previousSchool ?? '-' }}</dd></div>
             </dl>
           </section>
 
@@ -89,7 +89,7 @@
                   </div>
                 </li>
               } @empty {
-                <li class="empty">Aucun responsable enregistre.</li>
+                <li class="empty">Aucun responsable enregistré.</li>
               }
             </ul>
           </section>
@@ -111,7 +111,7 @@
       @case ('attendance') {
         @if (student.attendanceSummary; as attendance) {
           <div class="grid grid--kpi">
-            <div class="stat card"><p class="stat__label">Taux de presence</p>
+            <div class="stat card"><p class="stat__label">Taux de présence</p>
               <p class="stat__value numeric">{{ attendance.attendanceRate }} %</p></div>
             <div class="stat card"><p class="stat__label">Absences</p>
               <p class="stat__value numeric">{{ attendance.absenceCount }}</p></div>
@@ -132,19 +132,19 @@
               <p class="stat__value money stat__value--success">{{ finance.totalPaid | money }}</p></div>
             <div class="stat card"><p class="stat__label">Reste a payer</p>
               <p class="stat__value money stat__value--danger">{{ finance.outstandingAmount | money }}</p></div>
-            <div class="stat card"><p class="stat__label">Prochaine echeance</p>
+            <div class="stat card"><p class="stat__label">Prochaine échéance</p>
               <p class="stat__value">{{ finance.nextDueDate | date:'dd/MM/yyyy' }}</p></div>
           </div>
 
           <section class="card" style="margin-top: var(--space-6)">
-            <header class="card__header"><h3 class="card__title">Echeancier</h3></header>
+            <header class="card__header"><h3 class="card__title">Échéancier</h3></header>
             <div class="table-wrapper">
               <table class="table">
                 <thead>
                   <tr>
-                    <th>Libelle</th><th class="numeric">Montant du</th>
+                    <th>Libellé</th><th class="numeric">Montant du</th>
                     <th class="numeric">Paye</th><th class="numeric">Reste</th>
-                    <th>Echeance</th><th>Statut</th>
+                    <th>Échéance</th><th>Statut</th>
                   </tr>
                 </thead>
                 <tbody>

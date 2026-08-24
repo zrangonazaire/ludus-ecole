@@ -20,6 +20,63 @@ public interface TimetableSlotRepository extends JpaRepository<TimetableSlot, UU
 
     List<TimetableSlot> findByTeacherIdAndActiveTrue(UUID teacherId);
 
+    /**
+     * Every slot of one class for the year, with its references already loaded.
+     *
+     * <p>The fetch joins are not an optimisation detail: without them the grid
+     * issues one query per cell, and a full week is thirty-odd cells.</p>
+     */
+    @Query("""
+           SELECT s FROM TimetableSlot s
+           JOIN FETCH s.subject
+           JOIN FETCH s.teacher
+           LEFT JOIN FETCH s.room
+           JOIN FETCH s.classroom
+           WHERE s.classroom.id = :classroomId
+             AND s.academicYear.id = :academicYearId
+             AND s.active = true
+           ORDER BY s.dayOfWeek, s.startTime
+           """)
+    List<TimetableSlot> findGridByClassroom(@Param("classroomId") UUID classroomId,
+                                            @Param("academicYearId") UUID academicYearId);
+
+    /** Same grid, seen from one teacher: reveals overloads and idle gaps. */
+    @Query("""
+           SELECT s FROM TimetableSlot s
+           JOIN FETCH s.subject
+           JOIN FETCH s.teacher
+           LEFT JOIN FETCH s.room
+           JOIN FETCH s.classroom
+           WHERE s.teacher.id = :teacherId
+             AND s.academicYear.id = :academicYearId
+             AND s.active = true
+           ORDER BY s.dayOfWeek, s.startTime
+           """)
+    List<TimetableSlot> findGridByTeacher(@Param("teacherId") UUID teacherId,
+                                          @Param("academicYearId") UUID academicYearId);
+
+    /** Same grid, seen from one room: shows when a lab or IT room is free. */
+    @Query("""
+           SELECT s FROM TimetableSlot s
+           JOIN FETCH s.subject
+           JOIN FETCH s.teacher
+           LEFT JOIN FETCH s.room
+           JOIN FETCH s.classroom
+           WHERE s.room.id = :roomId
+             AND s.academicYear.id = :academicYearId
+             AND s.active = true
+           ORDER BY s.dayOfWeek, s.startTime
+           """)
+    List<TimetableSlot> findGridByRoom(@Param("roomId") UUID roomId,
+                                       @Param("academicYearId") UUID academicYearId);
+
+    /** Weekly minutes taught by one teacher, to flag overloads. */
+    @Query("""
+           SELECT s FROM TimetableSlot s
+           WHERE s.academicYear.id = :academicYearId AND s.active = true
+           """)
+    List<TimetableSlot> findAllActiveForYear(@Param("academicYearId") UUID academicYearId);
+
     /** checkTeacherConflict(): any overlapping slot for this teacher that day. */
     @Query("""
            SELECT s FROM TimetableSlot s

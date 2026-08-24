@@ -14,7 +14,7 @@ import {
 export const MOCK_ACADEMIC_YEAR: AcademicYear = {
   id: 'ay-2026-2027',
   code: '2026-2027',
-  label: 'Annee scolaire 2026-2027',
+  label: 'Année scolaire 2026-2027',
   startDate: '2026-09-14',
   endDate: '2027-07-03',
   status: 'ACTIVE',
@@ -33,7 +33,7 @@ export const MOCK_TERMS: Term[] = [
 
 export const MOCK_SUBJECTS: Subject[] = [
   { id: 's-mat', code: 'MAT', name: 'Mathematiques', shortName: 'Maths', category: 'SCIENCE', colorHex: '#1f5fd6', graded: true },
-  { id: 's-fra', code: 'FRA', name: 'Francais', shortName: 'Fr', category: 'LITERATURE', colorHex: '#7c5cd6', graded: true },
+  { id: 's-fra', code: 'FRA', name: 'Français', shortName: 'Fr', category: 'LITERATURE', colorHex: '#7c5cd6', graded: true },
   { id: 's-ang', code: 'ANG', name: 'Anglais', shortName: 'Ang', category: 'LANGUAGE', colorHex: '#0f9bb3', graded: true },
   { id: 's-svt', code: 'SVT', name: 'Sciences de la Vie et de la Terre', shortName: 'SVT', category: 'SCIENCE', colorHex: '#16915a', graded: true },
   { id: 's-pc', code: 'PC', name: 'Physique-Chimie', shortName: 'PC', category: 'SCIENCE', colorHex: '#d97a16', graded: true },
@@ -107,7 +107,7 @@ export const MOCK_TEACHERS: Teacher[] = [
     speciality: 'Mathematiques', status: 'ACTIVE', subjectNames: ['Mathematiques'], classCount: 4 },
   { id: 'tc-2', employeeNumber: 'ENS-0002', firstName: 'Adjoua', lastName: 'Bamba',
     fullName: 'Adjoua Bamba', email: 'adjoua.bamba@eduops.local', phone: '+225 07 00 00 02',
-    speciality: 'Francais', status: 'ACTIVE', subjectNames: ['Francais'], classCount: 5 },
+    speciality: 'Français', status: 'ACTIVE', subjectNames: ['Français'], classCount: 5 },
   { id: 'tc-3', employeeNumber: 'ENS-0003', firstName: 'Ibrahim', lastName: 'Cisse',
     fullName: 'Ibrahim Cisse', email: 'ibrahim.cisse@eduops.local', phone: '+225 07 00 00 03',
     speciality: 'Sciences physiques', status: 'ACTIVE', subjectNames: ['Physique-Chimie'], classCount: 6 },
@@ -161,7 +161,7 @@ export const MOCK_UPCOMING_ASSESSMENTS: Assessment[] = [
     assessmentDate: '2027-03-16', maxScore: 20, coefficient: 3, status: 'PLANNED',
     gradedCount: 0, studentCount: 36 },
   { id: 'as-2', title: 'Devoir surveille n°4', classroomId: 'c-4a', classroomName: '4eme A',
-    subjectId: 's-fra', subjectName: 'Francais', termId: 't2', assessmentType: 'TEST',
+    subjectId: 's-fra', subjectName: 'Français', termId: 't2', assessmentType: 'TEST',
     assessmentDate: '2027-03-18', maxScore: 20, coefficient: 2, status: 'PLANNED',
     gradedCount: 0, studentCount: 34 },
   { id: 'as-3', title: 'Interrogation ecrite', classroomId: 'c-6a', classroomName: '6eme A',
@@ -177,15 +177,15 @@ export const MOCK_DASHBOARD: DashboardData = {
   currentTerm: MOCK_TERMS[1],
   generatedAt: new Date().toISOString(),
   kpis: [
-    { key: 'enrolled', label: 'Eleves inscrits', value: 1284, formatted: '1 284',
-      delta: 46, deltaLabel: 'vs annee precedente', trend: 'up' },
-    { key: 'attendance', label: 'Taux de presence', value: 94.8, formatted: '94,8',
+    { key: 'enrolled', label: 'Élèves inscrits', value: 1284, formatted: '1 284',
+      delta: 46, deltaLabel: 'vs année precedente', trend: 'up' },
+    { key: 'attendance', label: 'Taux de présence', value: 94.8, formatted: '94,8',
       suffix: ' %', tone: 'success', trend: 'flat' },
     { key: 'absent-today', label: "Absents aujourd'hui", value: 37, formatted: '37',
       live: true, tone: 'warning' },
     { key: 'teachers-present', label: 'Enseignants presents', value: '68/72', formatted: '68/72' },
     { key: 'classes', label: 'Classes actives', value: 42, formatted: '42' },
-    { key: 'average', label: 'Moyenne generale', value: 13.4, formatted: '13,4',
+    { key: 'average', label: 'Moyenne générale', value: 13.4, formatted: '13,4',
       suffix: '/20', tone: 'success' },
     { key: 'collections', label: 'Encaissements du mois', value: 18450000,
       formatted: '18 450 000', suffix: ' FCFA', tone: 'success', trend: 'up', delta: 12,
@@ -200,13 +200,13 @@ export const MOCK_DASHBOARD: DashboardData = {
   attendanceTrend: {
     categories: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'],
     series: [
-      { name: 'Presence (%)', data: [96.2, 95.8, 94.1, 95.5, 93.8, 94.9, 95.2, 94.8] },
+      { name: 'Présence (%)', data: [96.2, 95.8, 94.1, 95.5, 93.8, 94.9, 95.2, 94.8] },
       { name: 'Absence (%)', data: [3.8, 4.2, 5.9, 4.5, 6.2, 5.1, 4.8, 5.2] }
     ]
   },
   academicPerformance: {
     categories: ['T1 2025', 'T2 2025', 'T3 2025', 'T1 2026', 'T2 2026'],
-    series: [{ name: 'Moyenne generale', data: [12.6, 12.9, 13.1, 13.2, 13.4] }]
+    series: [{ name: 'Moyenne générale', data: [12.6, 12.9, 13.1, 13.2, 13.4] }]
   },
   monthlyCollections: {
     categories: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Fev'],
@@ -229,14 +229,14 @@ export const MOCK_DASHBOARD: DashboardData = {
   })),
   recentPayments: MOCK_RECENT_PAYMENTS,
   alerts: [
-    { id: 'al-1', type: 'CLASS_FULL', severity: 'WARNING', title: 'Classe complete',
-      message: 'La classe 5eme A a atteint sa capacite maximale (40/40).',
+    { id: 'al-1', type: 'CLASS_FULL', severity: 'WARNING', title: 'Classe complète',
+      message: 'La classe 5eme A a atteint sa capacité maximale (40/40).',
       classroomName: '5eme A', createdAt: new Date().toISOString() },
     { id: 'al-2', type: 'PAYMENT_OVERDUE', severity: 'CRITICAL', title: 'Impayes en hausse',
-      message: '153 eleves presentent un impaye depuis plus de 30 jours.',
+      message: '153 élèves presentent un impaye depuis plus de 30 jours.',
       createdAt: new Date().toISOString() },
     { id: 'al-3', type: 'GRADE_ENTRY_DELAY', severity: 'WARNING', title: 'Saisie des notes en retard',
-      message: '4 evaluations du 2e trimestre attendent encore leurs notes.',
+      message: '4 évaluations du 2e trimestre attendent encore leurs notes.',
       createdAt: new Date().toISOString() },
     { id: 'al-4', type: 'STUDENT_REPEATED_ABSENCE', severity: 'WARNING', title: 'Absenteisme repete',
       message: 'Yao Brou (EDU-2026-000031) cumule 7 absences non justifiees.',

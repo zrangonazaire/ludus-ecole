@@ -28,4 +28,19 @@ public interface CurriculumRepository extends JpaRepository<Curriculum, UUID> {
                                           @Param("levelId") UUID levelId);
 
     boolean existsByAcademicYearIdAndLevelId(UUID academicYearId, UUID levelId);
+
+    /**
+     * Levels whose programme actually holds a graded subject.
+     *
+     * <p>Counting curriculum rows is not the same thing: opening a level's
+     * programme creates the row, so a school that clicked once and left would
+     * see the configuration step tick itself off with nothing inside.</p>
+     */
+    @Query("""
+           SELECT COUNT(DISTINCT c.id) FROM Curriculum c
+           JOIN c.subjects cs
+           WHERE c.academicYear.id = :academicYearId
+             AND cs.subject.graded = true
+           """)
+    long countReady(@Param("academicYearId") UUID academicYearId);
 }

@@ -1,12 +1,12 @@
 <div class="page">
   <header class="page__header">
     <div>
-      <h1 class="page__title">Configuration de l'etablissement</h1>
+      <h1 class="page__title">Configuration de l'établissement</h1>
       @if (status(); as setup) {
         <p class="page__meta">
           {{ setup.schoolName }}
           @if (setup.academicYearCode) {
-            <span class="dot">•</span>Annee {{ setup.academicYearCode }}
+            <span class="dot">•</span>Année {{ setup.academicYearCode }}
           }
         </p>
       }
@@ -18,7 +18,7 @@
   </header>
 
   @if (loading()) {
-    <eduops-loading-state message="Verification de votre configuration..." />
+    <eduops-loading-state message="Vérification de votre configuration..." />
   } @else if (error()) {
     <eduops-error-state (retry)="load()" />
   } @else {
@@ -28,18 +28,18 @@
     <section class="progress-card card" [class.progress-card--done]="setup.complete">
       <div class="progress-card__text">
         @if (setup.complete) {
-          <h2 class="progress-card__title">Configuration terminee</h2>
+          <h2 class="progress-card__title">Configuration terminée</h2>
           <p class="progress-card__lead">
             Tout est en place. Vous pouvez inscrire, noter et encaisser sereinement.
           </p>
         } @else {
           <h2 class="progress-card__title">
-            {{ setup.completedSteps }} etape{{ setup.completedSteps > 1 ? 's' : '' }}
+            {{ setup.completedSteps }} étape{{ setup.completedSteps > 1 ? 's' : '' }}
             sur {{ setup.totalSteps }}
           </h2>
           <p class="progress-card__lead">
-            Il reste {{ setup.totalSteps - setup.completedSteps }} etape(s).
-            L'etablissement reste utilisable entre-temps : rien ne vous oblige a tout finir d'un coup.
+            Il reste {{ setup.totalSteps - setup.completedSteps }} étape(s).
+            L'établissement reste utilisable entre-temps : rien ne vous oblige a tout finir d'un coup.
           </p>
         }
       </div>
@@ -70,8 +70,6 @@
               <h3 class="step__label">{{ step.label }}</h3>
               @if (step.done) {
                 <span class="badge badge--success">Fait</span>
-              } @else if (setup.nextStepKey === step.key) {
-                <span class="badge badge--info">A faire maintenant</span>
               }
             </div>
             <p class="step__description">{{ step.description }}</p>

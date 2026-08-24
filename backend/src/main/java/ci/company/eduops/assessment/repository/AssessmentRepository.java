@@ -20,6 +20,25 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
 
     List<Assessment> findByClassroomIdAndSubjectIdAndTermId(UUID classroomId, UUID subjectId, UUID termId);
 
+    /**
+     * Does this subject already carry assessments on that level?
+     *
+     * <p>Asked before a subject is detached from a curriculum. Removing a
+     * subject that already holds marks would leave those marks pointing at a
+     * coefficient that no longer exists, and every average computed since
+     * would silently change.</p>
+     */
+    @Query("""
+           SELECT COUNT(a) > 0 FROM Assessment a
+           WHERE a.subject.id = :subjectId
+             AND a.classroom.level.id = :levelId
+           """)
+    boolean existsForSubjectAndLevel(@Param("subjectId") UUID subjectId,
+                                     @Param("levelId") UUID levelId);
+
+    @Query("SELECT COUNT(a) > 0 FROM Assessment a WHERE a.subject.id = :subjectId")
+    boolean existsForSubject(@Param("subjectId") UUID subjectId);
+
     /** Assessments feeding a subject average: validated or published only. */
     @Query("""
            SELECT a FROM Assessment a

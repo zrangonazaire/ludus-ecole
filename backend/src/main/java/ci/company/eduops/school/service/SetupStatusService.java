@@ -7,6 +7,8 @@ import ci.company.eduops.classroom.repository.ClassroomRepository;
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.exception.ErrorCode;
 import ci.company.eduops.common.tenant.TenantContext;
+import ci.company.eduops.curriculum.repository.CurriculumRepository;
+import ci.company.eduops.curriculum.repository.TeacherAssignmentRepository;
 import ci.company.eduops.cycle.repository.CycleRepository;
 import ci.company.eduops.enrollment.repository.EnrollmentRepository;
 import ci.company.eduops.finance.repository.FeeScheduleRepository;
@@ -44,6 +46,8 @@ public class SetupStatusService {
     private final FeeScheduleRepository feeScheduleRepository;
     private final TeacherRepository teacherRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final CurriculumRepository curriculumRepository;
+    private final TeacherAssignmentRepository assignmentRepository;
 
     public SetupStatusService(SchoolRepository schoolRepository,
                               AcademicYearRepository academicYearRepository,
@@ -53,7 +57,9 @@ public class SetupStatusService {
                               SubjectRepository subjectRepository,
                               FeeScheduleRepository feeScheduleRepository,
                               TeacherRepository teacherRepository,
-                              EnrollmentRepository enrollmentRepository) {
+                              EnrollmentRepository enrollmentRepository,
+                              CurriculumRepository curriculumRepository,
+                              TeacherAssignmentRepository assignmentRepository) {
         this.schoolRepository = schoolRepository;
         this.academicYearRepository = academicYearRepository;
         this.cycleRepository = cycleRepository;
@@ -63,6 +69,8 @@ public class SetupStatusService {
         this.feeScheduleRepository = feeScheduleRepository;
         this.teacherRepository = teacherRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.curriculumRepository = curriculumRepository;
+        this.assignmentRepository = assignmentRepository;
     }
 
     @Transactional(readOnly = true)
@@ -70,7 +78,7 @@ public class SetupStatusService {
         UUID schoolId = TenantContext.getSchoolId();
         if (schoolId == null) {
             throw BusinessException.of(ErrorCode.PORTAL_PROFILE_MISSING,
-                    "Aucun etablissement associe a ce compte.");
+                    "Aucun établissement associé à ce compte.");
         }
 
         School school = schoolRepository.findById(schoolId)
@@ -83,42 +91,68 @@ public class SetupStatusService {
 
         List<SetupStepResponse> steps = new ArrayList<>();
 
+        // Ordered the way a school actually sets itself up: nothing below can
+        // be done before the line above it exists.
         steps.add(new SetupStepResponse(
-                "CYCLES", "Cycles et niveaux",
-                "Definissez les cycles enseignes et leurs niveaux : primaire, college, lycee.",
+                "ACADEMIC_YEAR", "Activer l'année scolaire",
+                "Définissez la période de référence et ouvrez la campagne d'inscriptions.",
+                true,
+                year == null ? 0 : 1,
+                "/administration",
+                "Configurer l'année"));
+
+        steps.add(new SetupStepResponse(
+                "CYCLES", "Définir les cycles",
+                "Préscolaire, primaire, collège, lycée : indiquez ce que vous enseignez.",
+                true,
+                cycleRepository.findBySchoolIdOrderBySequenceAsc(schoolId).size(),
+                "/onboarding",
+                "Choisir les cycles"));
+
+        steps.add(new SetupStepResponse(
+                "LEVELS", "Créer les niveaux",
+                "Les niveaux de chaque cycle, dans l'ordre de progression des élèves.",
                 true,
                 countLevels(schoolId),
                 "/onboarding",
-                "Configurer"));
+                "Définir les niveaux"));
 
         steps.add(new SetupStepResponse(
-                "CLASSES", "Classes",
-                "Creez les classes de chaque niveau, avec leur capacite maximale.",
+                "CLASSES", "Créer les classes",
+                "Les classes de chaque niveau, avec leur nom et leur capacité maximale.",
                 true,
                 yearId == null ? 0 : classroomRepository.countActive(yearId),
                 "/classes",
-                "Gerer les classes"));
+                "Gérer les classes"));
 
         steps.add(new SetupStepResponse(
-                "SUBJECTS", "Matieres",
-                "Renseignez les matieres enseignees et leurs coefficients.",
+                "SUBJECTS", "Déclarer les matières",
+                "La liste des matières enseignees dans l'établissement.",
                 true,
                 subjectRepository.findBySchoolIdAndStatusOrderByNameAsc(
                         schoolId, ci.company.eduops.common.domain.CommonStatus.ACTIVE).size(),
                 "/subjects",
-                "Gerer les matieres"));
+                "Gérer les matières"));
 
         steps.add(new SetupStepResponse(
-                "FEES", "Frais de scolarite",
-                "Fixez les frais par niveau et leur echeancier.",
+                "CURRICULUM", "Programme et coefficients",
+                "Rattachez les matières à chaque niveau avec leur coefficient : sans cela, aucune moyenne ne peut être calculée.",
                 true,
-                yearId == null ? 0 : feeScheduleRepository.findByAcademicYearId(yearId).size(),
-                "/finance",
-                "Definir les frais"));
+                yearId == null ? 0 : curriculumRepository.countReady(yearId),
+                "/subjects",
+                "Définir le programme"));
 
         steps.add(new SetupStepResponse(
-                "TEACHERS", "Enseignants",
-                "Ajoutez les enseignants et affectez-les aux classes et matieres.",
+                "FEES", "Frais de scolarité",
+                "Les frais par niveau et leur échéancier, appliqués à chaque inscription.",
+                true,
+                yearId == null ? 0 : feeScheduleRepository.countPricedLevels(yearId),
+                "/finance",
+                "Définir les frais"));
+
+        steps.add(new SetupStepResponse(
+                "TEACHERS", "Ajouter les enseignants",
+                "Le personnel enseignant de l'établissement.",
                 true,
                 teacherRepository.countBySchoolIdAndStatus(
                         schoolId, ci.company.eduops.teacher.domain.TeacherStatus.ACTIVE),
@@ -126,12 +160,20 @@ public class SetupStatusService {
                 "Ajouter des enseignants"));
 
         steps.add(new SetupStepResponse(
-                "STUDENTS", "Eleves inscrits",
-                "Inscrivez vos premiers eleves, un a un ou par import Excel.",
+                "ASSIGNMENTS", "Affecter les enseignants",
+                "Qui enseigne quelle matière, à quelle classe. Détermine aussi ce que chacun peut saisir.",
+                true,
+                yearId == null ? 0 : assignmentRepository.countActiveForYear(yearId),
+                "/teachers",
+                "Affecter aux classes"));
+
+        steps.add(new SetupStepResponse(
+                "STUDENTS", "Inscrire les élèves",
+                "Vos premiers élèves, un à un ou par import Excel.",
                 true,
                 yearId == null ? 0 : enrollmentRepository.countActiveForYear(yearId),
                 "/enrollments",
-                "Inscrire des eleves"));
+                "Inscrire des élèves"));
 
         return summarise(school, year, steps);
     }

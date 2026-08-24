@@ -2,6 +2,19 @@ import { InjectionToken } from '@angular/core';
 import { Observable } from 'rxjs';
 import { PageQuery, PageResponse } from '../models/common.models';
 import {
+  ClassroomBulkCreatePayload, ClassroomCreatePayload, ClassroomUpdatePayload, LevelCapacity
+} from '../models/classroom.models';
+import {
+  PaletteEntry, SlotUpsertPayload, TimetableConflict, TimetableGrid, TimetableSlot
+} from '../models/timetable.models';
+import {
+  CurriculumApplyPayload, CurriculumSubjectPayload, LevelCurriculum,
+  SubjectItem, SubjectUpsertPayload
+} from '../models/curriculum.models';
+import {
+  FeeApplyPayload, FeeSchedulePayload, FeeType, FeeTypeUpsertPayload, LevelFees
+} from '../models/fee.models';
+import {
   AcademicYear, Assessment, AttendanceSheet, Classroom, DashboardData, Enrollment,
   EnrollmentCheckResult, FinancialSummary, Grade, GlobalSearchResult, Payment,
   ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term
@@ -36,6 +49,14 @@ export interface ClassroomDataSource {
   search(query: PageQuery & { levelId?: string }): Observable<PageResponse<Classroom>>;
   getById(id: string): Observable<Classroom>;
   getStudents(classroomId: string): Observable<StudentSummary[]>;
+
+  /** Remplissage de chaque niveau, avec la proposition de classe suivante. */
+  levelCapacities(academicYearId?: string): Observable<LevelCapacity[]>;
+  create(payload: ClassroomCreatePayload): Observable<Classroom>;
+  createMany(payload: ClassroomBulkCreatePayload): Observable<Classroom[]>;
+  update(id: string, payload: ClassroomUpdatePayload): Observable<Classroom>;
+  activate(id: string): Observable<Classroom>;
+  close(id: string, reason?: string): Observable<Classroom>;
 }
 
 export interface TeacherDataSource {
@@ -66,6 +87,49 @@ export interface DashboardDataSource {
   load(academicYearId?: string, campusId?: string): Observable<DashboardData>;
 }
 
+export interface TimetableDataSource {
+  classroomGrid(classroomId: string): Observable<TimetableGrid>;
+  teacherGrid(teacherId: string): Observable<TimetableGrid>;
+  roomGrid(roomId: string): Observable<TimetableGrid>;
+  palette(classroomId: string): Observable<PaletteEntry[]>;
+  /** Vérifie un placement sans rien écrire : utilisé pendant le survol. */
+  check(payload: SlotUpsertPayload, excludeSlotId?: string): Observable<TimetableConflict[]>;
+  createSlot(payload: SlotUpsertPayload): Observable<TimetableSlot>;
+  updateSlot(slotId: string, payload: SlotUpsertPayload): Observable<TimetableSlot>;
+  deleteSlot(slotId: string): Observable<void>;
+  publish(classroomId: string): Observable<TimetableGrid>;
+}
+
+export interface CurriculumDataSource {
+  /** Catalogue des matières de l'établissement. */
+  listSubjects(includeArchived?: boolean): Observable<SubjectItem[]>;
+  createSubject(payload: SubjectUpsertPayload): Observable<SubjectItem>;
+  updateSubject(id: string, payload: SubjectUpsertPayload): Observable<SubjectItem>;
+  archiveSubject(id: string): Observable<SubjectItem>;
+  restoreSubject(id: string): Observable<SubjectItem>;
+
+  /** Programme de chaque niveau, y compris les niveaux encore vides. */
+  levels(): Observable<LevelCurriculum[]>;
+  upsertLevelSubject(levelId: string,
+                     payload: CurriculumSubjectPayload): Observable<LevelCurriculum>;
+  removeLevelSubject(levelId: string, subjectId: string): Observable<LevelCurriculum>;
+  apply(payload: CurriculumApplyPayload): Observable<LevelCurriculum[]>;
+}
+
+export interface FeeDataSource {
+  /** Catalogue des types de frais. */
+  listTypes(): Observable<FeeType[]>;
+  createType(payload: FeeTypeUpsertPayload): Observable<FeeType>;
+  updateType(id: string, payload: FeeTypeUpsertPayload): Observable<FeeType>;
+  archiveType(id: string): Observable<FeeType>;
+
+  /** Coût de chaque niveau, y compris les niveaux sans tarif. */
+  levels(): Observable<LevelFees[]>;
+  saveSchedule(payload: FeeSchedulePayload): Observable<LevelFees[]>;
+  deleteSchedule(scheduleId: string): Observable<void>;
+  apply(payload: FeeApplyPayload): Observable<LevelFees[]>;
+}
+
 export interface ReferenceDataSource {
   academicYears(): Observable<AcademicYear[]>;
   terms(academicYearId: string): Observable<Term[]>;
@@ -81,4 +145,7 @@ export const ATTENDANCE_DATA_SOURCE = new InjectionToken<AttendanceDataSource>('
 export const GRADE_DATA_SOURCE = new InjectionToken<GradeDataSource>('GradeDataSource');
 export const FINANCE_DATA_SOURCE = new InjectionToken<FinanceDataSource>('FinanceDataSource');
 export const DASHBOARD_DATA_SOURCE = new InjectionToken<DashboardDataSource>('DashboardDataSource');
+export const TIMETABLE_DATA_SOURCE = new InjectionToken<TimetableDataSource>('TimetableDataSource');
+export const CURRICULUM_DATA_SOURCE = new InjectionToken<CurriculumDataSource>('CurriculumDataSource');
+export const FEE_DATA_SOURCE = new InjectionToken<FeeDataSource>('FeeDataSource');
 export const REFERENCE_DATA_SOURCE = new InjectionToken<ReferenceDataSource>('ReferenceDataSource');

@@ -34,7 +34,7 @@ public class PaymentCreateRequest {
     private LocalDate paymentDate;
 
     @Size(max = 120)
-    @Schema(description = "Bank or mobile money transaction reference")
+    @Schema(description = "Bank or mobile money transaction référence")
     private String externalReference;
 
     @Size(max = 200)

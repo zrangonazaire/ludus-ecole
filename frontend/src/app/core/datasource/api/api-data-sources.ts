@@ -9,7 +9,20 @@ import {
   ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term
 } from '@core/models/domain.models';
 import {
-  AttendanceDataSource, ClassroomDataSource, DashboardDataSource, EnrollmentDataSource,
+  ClassroomBulkCreatePayload, ClassroomCreatePayload, ClassroomUpdatePayload, LevelCapacity
+} from '@core/models/classroom.models';
+import {
+  PaletteEntry, SlotUpsertPayload, TimetableConflict, TimetableGrid, TimetableSlot
+} from '@core/models/timetable.models';
+import {
+  CurriculumApplyPayload, CurriculumSubjectPayload, LevelCurriculum,
+  SubjectItem, SubjectUpsertPayload
+} from '@core/models/curriculum.models';
+import {
+  FeeApplyPayload, FeeSchedulePayload, FeeType, FeeTypeUpsertPayload, LevelFees
+} from '@core/models/fee.models';
+import {
+  AttendanceDataSource, ClassroomDataSource, TimetableDataSource, CurriculumDataSource, FeeDataSource, DashboardDataSource, EnrollmentDataSource,
   FinanceDataSource, GradeDataSource, ReferenceDataSource, StudentDataSource, TeacherDataSource
 } from '../data-source';
 
@@ -89,19 +102,45 @@ export class ApiClassroomDataSource implements ClassroomDataSource {
   private readonly http = inject(HttpClient);
 
   list(academicYearId?: string): Observable<Classroom[]> {
-    return this.http.get<Classroom[]>(`${API}/classes`, { params: toParams({ academicYearId }) });
+    return this.http.get<Classroom[]>(`${API}/classrooms`, { params: toParams({ academicYearId }) });
   }
 
   search(query: PageQuery & { levelId?: string }): Observable<PageResponse<Classroom>> {
-    return this.http.get<PageResponse<Classroom>>(`${API}/classes`, { params: toParams(query) });
+    return this.http.get<PageResponse<Classroom>>(`${API}/classrooms`, { params: toParams(query) });
   }
 
   getById(id: string): Observable<Classroom> {
-    return this.http.get<Classroom>(`${API}/classes/${id}`);
+    return this.http.get<Classroom>(`${API}/classrooms/${id}`);
   }
 
   getStudents(classroomId: string): Observable<StudentSummary[]> {
-    return this.http.get<StudentSummary[]>(`${API}/classes/${classroomId}/students`);
+    return this.http.get<StudentSummary[]>(`${API}/classrooms/${classroomId}/students`);
+  }
+
+  levelCapacities(academicYearId?: string): Observable<LevelCapacity[]> {
+    return this.http.get<LevelCapacity[]>(`${API}/classrooms/levels`,
+      { params: toParams({ academicYearId }) });
+  }
+
+  create(payload: ClassroomCreatePayload): Observable<Classroom> {
+    return this.http.post<Classroom>(`${API}/classrooms`, payload);
+  }
+
+  createMany(payload: ClassroomBulkCreatePayload): Observable<Classroom[]> {
+    return this.http.post<Classroom[]>(`${API}/classrooms/batch`, payload);
+  }
+
+  update(id: string, payload: ClassroomUpdatePayload): Observable<Classroom> {
+    return this.http.put<Classroom>(`${API}/classrooms/${id}`, payload);
+  }
+
+  activate(id: string): Observable<Classroom> {
+    return this.http.post<Classroom>(`${API}/classrooms/${id}/activate`, {});
+  }
+
+  close(id: string, reason?: string): Observable<Classroom> {
+    return this.http.post<Classroom>(`${API}/classrooms/${id}/close`, {},
+      { params: toParams({ reason }) });
   }
 }
 
@@ -206,5 +245,130 @@ export class ApiReferenceDataSource implements ReferenceDataSource {
 
   globalSearch(term: string): Observable<GlobalSearchResult[]> {
     return this.http.get<GlobalSearchResult[]>(`${API}/search`, { params: toParams({ q: term }) });
+  }
+}
+
+@Injectable()
+export class ApiTimetableDataSource implements TimetableDataSource {
+  private readonly http = inject(HttpClient);
+
+  classroomGrid(classroomId: string): Observable<TimetableGrid> {
+    return this.http.get<TimetableGrid>(`${API}/timetables/classroom/${classroomId}`);
+  }
+
+  teacherGrid(teacherId: string): Observable<TimetableGrid> {
+    return this.http.get<TimetableGrid>(`${API}/timetables/teacher/${teacherId}`);
+  }
+
+  roomGrid(roomId: string): Observable<TimetableGrid> {
+    return this.http.get<TimetableGrid>(`${API}/timetables/room/${roomId}`);
+  }
+
+  palette(classroomId: string): Observable<PaletteEntry[]> {
+    return this.http.get<PaletteEntry[]>(`${API}/timetables/classroom/${classroomId}/palette`);
+  }
+
+  check(payload: SlotUpsertPayload, excludeSlotId?: string): Observable<TimetableConflict[]> {
+    return this.http.post<TimetableConflict[]>(`${API}/timetables/slots/check`, payload,
+      { params: toParams({ excludeSlotId }) });
+  }
+
+  createSlot(payload: SlotUpsertPayload): Observable<TimetableSlot> {
+    return this.http.post<TimetableSlot>(`${API}/timetables/slots`, payload);
+  }
+
+  updateSlot(slotId: string, payload: SlotUpsertPayload): Observable<TimetableSlot> {
+    return this.http.put<TimetableSlot>(`${API}/timetables/slots/${slotId}`, payload);
+  }
+
+  deleteSlot(slotId: string): Observable<void> {
+    return this.http.delete<void>(`${API}/timetables/slots/${slotId}`);
+  }
+
+  publish(classroomId: string): Observable<TimetableGrid> {
+    return this.http.post<TimetableGrid>(
+      `${API}/timetables/classroom/${classroomId}/publish`, {});
+  }
+}
+
+@Injectable()
+export class ApiCurriculumDataSource implements CurriculumDataSource {
+  private readonly http = inject(HttpClient);
+
+  listSubjects(includeArchived = false): Observable<SubjectItem[]> {
+    return this.http.get<SubjectItem[]>(`${API}/subjects`,
+      { params: toParams({ includeArchived }) });
+  }
+
+  createSubject(payload: SubjectUpsertPayload): Observable<SubjectItem> {
+    return this.http.post<SubjectItem>(`${API}/subjects`, payload);
+  }
+
+  updateSubject(id: string, payload: SubjectUpsertPayload): Observable<SubjectItem> {
+    return this.http.put<SubjectItem>(`${API}/subjects/${id}`, payload);
+  }
+
+  archiveSubject(id: string): Observable<SubjectItem> {
+    return this.http.post<SubjectItem>(`${API}/subjects/${id}/archive`, {});
+  }
+
+  restoreSubject(id: string): Observable<SubjectItem> {
+    return this.http.post<SubjectItem>(`${API}/subjects/${id}/restore`, {});
+  }
+
+  levels(): Observable<LevelCurriculum[]> {
+    return this.http.get<LevelCurriculum[]>(`${API}/curriculum/levels`);
+  }
+
+  upsertLevelSubject(levelId: string,
+                     payload: CurriculumSubjectPayload): Observable<LevelCurriculum> {
+    return this.http.put<LevelCurriculum>(
+      `${API}/curriculum/levels/${levelId}/subjects`, payload);
+  }
+
+  removeLevelSubject(levelId: string, subjectId: string): Observable<LevelCurriculum> {
+    return this.http.delete<LevelCurriculum>(
+      `${API}/curriculum/levels/${levelId}/subjects/${subjectId}`);
+  }
+
+  apply(payload: CurriculumApplyPayload): Observable<LevelCurriculum[]> {
+    return this.http.post<LevelCurriculum[]>(`${API}/curriculum/apply`, payload);
+  }
+}
+
+@Injectable()
+export class ApiFeeDataSource implements FeeDataSource {
+  private readonly http = inject(HttpClient);
+
+  listTypes(): Observable<FeeType[]> {
+    return this.http.get<FeeType[]>(`${API}/fees/types`);
+  }
+
+  createType(payload: FeeTypeUpsertPayload): Observable<FeeType> {
+    return this.http.post<FeeType>(`${API}/fees/types`, payload);
+  }
+
+  updateType(id: string, payload: FeeTypeUpsertPayload): Observable<FeeType> {
+    return this.http.put<FeeType>(`${API}/fees/types/${id}`, payload);
+  }
+
+  archiveType(id: string): Observable<FeeType> {
+    return this.http.post<FeeType>(`${API}/fees/types/${id}/archive`, {});
+  }
+
+  levels(): Observable<LevelFees[]> {
+    return this.http.get<LevelFees[]>(`${API}/fees/levels`);
+  }
+
+  saveSchedule(payload: FeeSchedulePayload): Observable<LevelFees[]> {
+    return this.http.put<LevelFees[]>(`${API}/fees/schedules`, payload);
+  }
+
+  deleteSchedule(scheduleId: string): Observable<void> {
+    return this.http.delete<void>(`${API}/fees/schedules/${scheduleId}`);
+  }
+
+  apply(payload: FeeApplyPayload): Observable<LevelFees[]> {
+    return this.http.post<LevelFees[]>(`${API}/fees/apply`, payload);
   }
 }

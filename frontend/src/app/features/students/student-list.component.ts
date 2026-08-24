@@ -49,7 +49,7 @@ export class StudentListComponent implements OnInit {
 
   ngOnInit(): void {
     this.columns = [
-      { key: 'fullName', label: 'Eleve', template: this.identityTpl, width: '32%' },
+      { key: 'fullName', label: 'Élève', template: this.identityTpl, width: '32%' },
       { key: 'studentNumber', label: 'Matricule', numeric: true, width: '18%' },
       { key: 'classroomName', label: 'Classe', width: '15%' },
       { key: 'levelName', label: 'Niveau', width: '12%' },

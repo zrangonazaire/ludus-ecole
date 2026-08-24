@@ -31,4 +31,36 @@ public interface FeeScheduleRepository extends JpaRepository<FeeSchedule, UUID> 
                                      @Param("campusId") UUID campusId);
 
     List<FeeSchedule> findByAcademicYearId(UUID academicYearId);
+
+    /** Every price of the year, instalments included, in one query. */
+    @Query("""
+           SELECT DISTINCT s FROM FeeSchedule s
+           LEFT JOIN FETCH s.instalments
+           LEFT JOIN FETCH s.feeType
+           LEFT JOIN FETCH s.level
+           WHERE s.academicYear.id = :academicYearId
+             AND s.status = 'ACTIVE'
+           """)
+    List<FeeSchedule> findAllOfYear(@Param("academicYearId") UUID academicYearId);
+
+    /**
+     * Levels that carry at least one price.
+     *
+     * <p>Drives the configuration checklist: a school with prices on two levels
+     * out of sixteen has not finished this step, and the count says so.</p>
+     */
+    @Query("""
+           SELECT COUNT(DISTINCT s.level.id) FROM FeeSchedule s
+           WHERE s.academicYear.id = :academicYearId
+             AND s.status = 'ACTIVE'
+             AND s.level IS NOT NULL
+           """)
+    long countPricedLevels(@Param("academicYearId") UUID academicYearId);
+
+    boolean existsByAcademicYearIdAndFeeTypeIdAndLevelId(UUID academicYearId,
+                                                         UUID feeTypeId,
+                                                         UUID levelId);
+
+    long countByFeeTypeIdAndStatus(UUID feeTypeId,
+                                   ci.company.eduops.common.domain.CommonStatus status);
 }

@@ -39,3 +39,6 @@ Thumbs.db
 logs/
 *.log
 storage/
+
+# --- Large local media ---
+demo.mp4

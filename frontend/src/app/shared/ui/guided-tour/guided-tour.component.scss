@@ -1,0 +1,101 @@
+@import 'styles/tokens';
+
+.tour { position: fixed; inset: 0; z-index: var(--z-modal); }
+
+.tour__backdrop {
+  position: absolute; inset: 0;
+  background: rgba(20, 40, 90, .55);
+  backdrop-filter: blur(1px);
+}
+
+/* Trou lumineux autour de l'element explique */
+.tour__spotlight {
+  position: absolute;
+  border-radius: var(--radius-card);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 9999px rgba(20, 40, 90, .55);
+  pointer-events: none;
+  transition: top 260ms ease, left 260ms ease, width 260ms ease, height 260ms ease;
+}
+
+/* ── Bulle ── */
+.bubble {
+  position: absolute;
+  width: min(360px, calc(100vw - 32px));
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-5);
+  animation: bubble-in 200ms ease;
+}
+.bubble--centred {
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+@keyframes bubble-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+.bubble--centred { animation: bubble-in-centred 200ms ease; }
+@keyframes bubble-in-centred {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(.98); }
+}
+
+.bubble__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); margin-bottom: var(--space-3);
+}
+.bubble__badge {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-xs); font-weight: 600; color: var(--brand);
+}
+.bubble__icon {
+  width: 20px; height: 20px; display: grid; place-items: center;
+  border-radius: 6px; background: var(--brand-tint); font-size: 11px;
+}
+.bubble__close {
+  background: none; border: 0; cursor: pointer;
+  font-size: 20px; line-height: 1; color: var(--text-light); padding: 0 2px;
+}
+.bubble__close:hover { color: var(--text-strong); }
+
+.bubble__title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display); font-size: var(--text-md);
+  font-weight: 700; color: var(--text-strong);
+}
+.bubble__text {
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-sm); color: var(--text-normal);
+  line-height: var(--leading-relaxed);
+}
+
+.bubble__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+
+.bubble__prev {
+  background: none; border: 0; cursor: pointer;
+  font: inherit; font-size: var(--text-sm); font-weight: 600;
+  color: var(--text-muted); padding: 0;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.bubble__prev:disabled { opacity: .4; cursor: not-allowed; }
+.bubble__prev:not(:disabled):hover { color: var(--brand); }
+
+.bubble__done { background: var(--success); color: #fff; }
+.bubble__done:hover { filter: brightness(.95); }
+
+/* ── Points de progression ── */
+.dots { display: flex; gap: 5px; }
+.dot {
+  width: 6px; height: 6px; padding: 0;
+  border: 0; border-radius: var(--radius-pill);
+  background: var(--border-strong); cursor: pointer;
+  transition: width var(--transition-fast), background var(--transition-fast);
+}
+.dot--on { width: 18px; background: var(--brand); }
+
+@include mobile {
+  .bubble {
+    top: auto !important; left: 50% !important; bottom: var(--space-4);
+    transform: translateX(-50%);
+    width: calc(100vw - 32px);
+  }
+  .bubble--centred { top: 50% !important; transform: translate(-50%, -50%); }
+}

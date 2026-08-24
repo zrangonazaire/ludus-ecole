@@ -48,7 +48,7 @@ import { PERMISSIONS } from '@core/models/auth.models';
         <div class="card__header">
           <label class="visually-hidden" for="payment-search">Rechercher un paiement</label>
           <input id="payment-search" class="input" type="search" style="max-width: 380px"
-                 placeholder="Eleve, matricule, reference ou numero de recu"
+                 placeholder="Élève, matricule, référence ou numéro de reçu"
                  (input)="onSearch($any($event.target).value)" />
         </div>
         <eduops-data-table
@@ -122,8 +122,8 @@ export class PaymentListComponent implements OnInit {
   ngOnInit(): void {
     this.columns = [
       { key: 'paymentDate', label: 'Date', width: '10%' },
-      { key: 'receiptNumber', label: 'Recu', numeric: true, width: '16%' },
-      { key: 'studentName', label: 'Eleve', width: '20%' },
+      { key: 'receiptNumber', label: 'Reçu', numeric: true, width: '16%' },
+      { key: 'studentName', label: 'Élève', width: '20%' },
       { key: 'studentNumber', label: 'Matricule', numeric: true, width: '14%' },
       { key: 'amount', label: 'Montant', numeric: true, template: this.amountTpl, width: '14%' },
       { key: 'paymentMethod', label: 'Mode', template: this.methodTpl, width: '10%' },

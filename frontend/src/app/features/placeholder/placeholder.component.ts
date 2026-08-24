@@ -21,12 +21,12 @@ import { EmptyStateComponent } from '@shared/ui/empty-state/empty-state.componen
       <div class="card">
         <div class="card__body">
           <eduops-empty-state
-            title="Ecran a implementer"
+            title="Écran a implementer"
             [message]="'Cette page consommera : ' + endpoint">
             <p class="hint">
               Le backend expose deja cet endpoint. Le composant Angular reste a construire
               en suivant le meme patron que le tableau de bord : injection d'un DataSource,
-              etats loading / error / empty, aucun appel direct a HttpClient.
+              états loading / error / empty, aucun appel direct a HttpClient.
             </p>
           </eduops-empty-state>
         </div>

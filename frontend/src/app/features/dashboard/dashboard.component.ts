@@ -14,6 +14,7 @@ import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.co
 import { ErrorStateComponent } from '@shared/ui/error-state/error-state.component';
 import { AvatarComponent } from '@shared/ui/avatar/avatar.component';
 import { MoneyPipe } from '@shared/pipes/money.pipe';
+import { SetupProgressComponent } from '@shared/ui/setup-progress/setup-progress.component';
 
 /**
  * Direction dashboard (sections 56 to 59).
@@ -26,7 +27,8 @@ import { MoneyPipe } from '@shared/pipes/money.pipe';
   standalone: true,
   imports: [
     CommonModule, RouterLink, KpiCardComponent, ChartCardComponent, StatusBadgeComponent,
-    LoadingStateComponent, ErrorStateComponent, AvatarComponent, MoneyPipe
+    LoadingStateComponent, ErrorStateComponent, AvatarComponent, MoneyPipe,
+    SetupProgressComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard.component.html',

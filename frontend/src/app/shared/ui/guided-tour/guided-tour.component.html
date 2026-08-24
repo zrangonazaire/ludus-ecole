@@ -1,0 +1,56 @@
+@if (tour.current(); as step) {
+  <div class="tour" role="dialog" aria-modal="true" [attr.aria-label]="step.title">
+
+    <!-- Fond assombri, troue autour de l'element explique -->
+    <div class="tour__backdrop" (click)="onBackdropClick()" aria-hidden="true"></div>
+
+    @if (spotlight(); as box) {
+      <div class="tour__spotlight" aria-hidden="true"
+           [style.top.px]="box.top" [style.left.px]="box.left"
+           [style.width.px]="box.width" [style.height.px]="box.height"></div>
+    }
+
+    <!-- Bulle -->
+    <div class="bubble" [class.bubble--centred]="centred()"
+         [style.top.px]="centred() ? null : bubbleTop()"
+         [style.left.px]="centred() ? null : bubbleLeft()">
+
+      <header class="bubble__head">
+        <span class="bubble__badge">
+          <span class="bubble__icon" aria-hidden="true">◈</span>
+          Piloter l'établissement · <span class="numeric">{{ tour.position() }}</span>
+        </span>
+        <button type="button" class="bubble__close" aria-label="Fermer le guide"
+                (click)="tour.dismiss()">×</button>
+      </header>
+
+      <h2 class="bubble__title">{{ step.title }}</h2>
+      <p class="bubble__text">{{ step.text }}</p>
+
+      <footer class="bubble__foot">
+        <button type="button" class="bubble__prev" [disabled]="tour.isFirst()"
+                (click)="tour.previous()">
+          <span aria-hidden="true">‹</span> Precedent
+        </button>
+
+        <div class="dots" role="tablist" aria-label="Progression du guide">
+          @for (s of tour.steps(); track $index) {
+            <button type="button" class="dot" [class.dot--on]="$index === tour.index()"
+                    [attr.aria-label]="'Etape ' + ($index + 1)"
+                    (click)="tour.goTo($index)"></button>
+          }
+        </div>
+
+        <button type="button"
+                [class]="tour.isLast() ? 'btn btn--sm bubble__done' : 'btn btn--primary btn--sm'"
+                (click)="tour.next()">
+          @if (tour.isLast()) {
+            Terminer <span aria-hidden="true">✓</span>
+          } @else {
+            Suivant <span aria-hidden="true">›</span>
+          }
+        </button>
+      </footer>
+    </div>
+  </div>
+}

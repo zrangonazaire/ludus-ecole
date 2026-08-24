@@ -68,7 +68,7 @@ export class OnboardingComponent {
 
   readonly cycles = signal<CycleTemplate[]>([
     {
-      code: 'PRE', name: 'Prescolaire', selected: false,
+      code: 'PRE', name: 'Préscolaire', selected: false,
       levels: [
         { code: 'PS', name: 'Petite section', selected: true },
         { code: 'MS', name: 'Moyenne section', selected: true },
@@ -87,7 +87,7 @@ export class OnboardingComponent {
       ]
     },
     {
-      code: 'COL', name: 'College', selected: true,
+      code: 'COL', name: 'Collège', selected: true,
       levels: [
         { code: '6EME', name: '6eme', selected: true },
         { code: '5EME', name: '5eme', selected: true },
@@ -96,7 +96,7 @@ export class OnboardingComponent {
       ]
     },
     {
-      code: 'LYC', name: 'Lycee', selected: false,
+      code: 'LYC', name: 'Lycée', selected: false,
       levels: [
         { code: '2NDE', name: '2nde', selected: true },
         { code: '1ERE', name: '1ere', selected: true },
@@ -109,7 +109,7 @@ export class OnboardingComponent {
   readonly levelSetups = signal<LevelSetup[]>([]);
 
   readonly subjects = signal<SubjectTemplate[]>([
-    { code: 'FRA', name: 'Francais', coefficient: 4, selected: true },
+    { code: 'FRA', name: 'Français', coefficient: 4, selected: true },
     { code: 'MAT', name: 'Mathematiques', coefficient: 4, selected: true },
     { code: 'ANG', name: 'Anglais', coefficient: 2, selected: true },
     { code: 'HG', name: 'Histoire-Geographie', coefficient: 2, selected: true },
@@ -321,7 +321,7 @@ export class OnboardingComponent {
       this.notifications.success(
         `${this.activeLevels().length} niveaux, ${this.totalClasses()} classes et `
         + `${this.selectedSubjectCount()} matieres prets, avec une scolarite propre a chaque niveau.`,
-        'Etablissement configure');
+        'Établissement configure');
       void this.router.navigate(['/dashboard']);
     }, 900);
   }

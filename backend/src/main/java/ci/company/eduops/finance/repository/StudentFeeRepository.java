@@ -24,6 +24,19 @@ public interface StudentFeeRepository extends JpaRepository<StudentFee, UUID> {
     List<StudentFee> findByEnrollmentIdOrderBySequenceAsc(UUID enrollmentId);
 
     /**
+     * Has this price already produced fees for a family?
+     *
+     * <p>Asked before a price is deleted. Removing it would orphan the lines
+     * families are already paying against, and any receipt issued since would
+     * point at nothing.</p>
+     */
+    @Query("SELECT COUNT(f) > 0 FROM StudentFee f WHERE f.feeSchedule.id = :feeScheduleId")
+    boolean existsForSchedule(@Param("feeScheduleId") UUID feeScheduleId);
+
+    @Query("SELECT COUNT(f) > 0 FROM StudentFee f WHERE f.feeType.id = :feeTypeId")
+    boolean existsForFeeType(@Param("feeTypeId") UUID feeTypeId);
+
+    /**
      * Outstanding instalments, oldest first: the default allocation order when
      * a family pays without designating a specific line.
      */

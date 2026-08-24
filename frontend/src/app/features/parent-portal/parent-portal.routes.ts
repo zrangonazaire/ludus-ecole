@@ -21,7 +21,7 @@ export const PARENT_PORTAL_ROUTES: Routes = [
         path: 'academics',
         loadComponent: () => import('../placeholder/placeholder.component')
           .then((m) => m.PlaceholderComponent),
-        data: { title: 'Scolarite', endpoint: 'GET /api/v1/parent/children/{id}/grades' }
+        data: { title: 'Scolarité', endpoint: 'GET /api/v1/parent/children/{id}/grades' }
       },
       {
         path: 'payments',

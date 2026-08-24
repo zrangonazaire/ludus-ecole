@@ -15,12 +15,12 @@ public class SignupRequest {
 
     // ---------- the school ----------
 
-    @NotBlank(message = "Le nom de l'etablissement est obligatoire")
+    @NotBlank(message = "Le nom de l'établissement est obligatoire")
     @Size(max = 200)
     @Schema(example = "Groupe Scolaire Horizon")
     private String schoolName;
 
-    @NotBlank(message = "Le code etablissement est obligatoire")
+    @NotBlank(message = "Le code établissement est obligatoire")
     @Size(min = 2, max = 30)
     @Pattern(regexp = "^[A-Za-z0-9-]+$",
              message = "Le code ne peut contenir que des lettres, chiffres et tirets")
@@ -44,7 +44,7 @@ public class SignupRequest {
 
     // ---------- the administrator ----------
 
-    @NotBlank(message = "Le prenom est obligatoire")
+    @NotBlank(message = "Le prénom est obligatoire")
     @Size(max = 120)
     private String firstName;
 
@@ -61,8 +61,8 @@ public class SignupRequest {
     private String phone;
 
     @NotBlank(message = "Le mot de passe est obligatoire")
-    @Size(min = 10, max = 128, message = "Le mot de passe doit contenir au moins 10 caracteres")
-    @Schema(description = "Au moins 10 caracteres, avec majuscule, minuscule et chiffre")
+    @Size(min = 10, max = 128, message = "Le mot de passe doit contenir au moins 10 caractères")
+    @Schema(description = "Au moins 10 caractères, avec majuscule, minuscule et chiffre")
     private String password;
 
     @Schema(description = "Acceptation des conditions d'utilisation")

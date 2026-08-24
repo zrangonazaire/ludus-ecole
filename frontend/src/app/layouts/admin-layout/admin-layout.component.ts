@@ -4,6 +4,8 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 import { WebSocketService } from '@core/websocket/websocket.service';
 import { SetupStatusService } from '@core/services/setup-status.service';
+import { GuidedTourService } from '@core/services/guided-tour.service';
+import { GuidedTourComponent } from '@shared/ui/guided-tour/guided-tour.component';
 import { AvatarComponent } from '@shared/ui/avatar/avatar.component';
 import { PERMISSIONS } from '@core/models/auth.models';
 
@@ -27,7 +29,8 @@ interface NavItem {
 @Component({
   selector: 'eduops-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, AvatarComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, AvatarComponent,
+    GuidedTourComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './admin-layout.component.html',
   styleUrl: './admin-layout.component.scss'
@@ -35,6 +38,7 @@ interface NavItem {
 export class AdminLayoutComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly setupStatus = inject(SetupStatusService);
+  private readonly tour = inject(GuidedTourService);
   readonly ws = inject(WebSocketService);
   readonly setupBadge = this.setupStatus.badge;
   readonly setupIncomplete = this.setupStatus.incomplete;
@@ -49,24 +53,24 @@ export class AdminLayoutComponent implements OnInit {
     { section: 'Pilotage', label: 'Configuration', route: '/setup', icon: '◑',
       badge: () => this.setupBadge() },
 
-    { section: 'Scolarite', label: 'Eleves', route: '/students', icon: '◍',
+    { section: 'Scolarité', label: 'Élèves', route: '/students', icon: '◍',
       permissions: [PERMISSIONS.STUDENT_VIEW] },
-    { section: 'Scolarite', label: 'Admissions', route: '/admissions', icon: '◐',
+    { section: 'Scolarité', label: 'Admissions', route: '/admissions', icon: '◐',
       permissions: ['ADMISSION_VIEW'] },
-    { section: 'Scolarite', label: 'Inscriptions', route: '/enrollments', icon: '✓',
+    { section: 'Scolarité', label: 'Inscriptions', route: '/enrollments', icon: '✓',
       permissions: [PERMISSIONS.ENROLLMENT_VIEW] },
-    { section: 'Scolarite', label: 'Responsables', route: '/guardians', icon: '◎',
+    { section: 'Scolarité', label: 'Responsables', route: '/guardians', icon: '◎',
       permissions: ['GUARDIAN_VIEW'] },
 
     { section: 'Pedagogie', label: 'Classes', route: '/classes', icon: '▦',
       permissions: [PERMISSIONS.CLASS_VIEW] },
-    { section: 'Pedagogie', label: 'Matieres', route: '/subjects', icon: '◈',
+    { section: 'Pedagogie', label: 'Matières', route: '/subjects', icon: '◈',
       permissions: ['SUBJECT_VIEW'] },
     { section: 'Pedagogie', label: 'Emploi du temps', route: '/timetable', icon: '▥',
       permissions: [PERMISSIONS.TIMETABLE_VIEW] },
-    { section: 'Pedagogie', label: 'Presences', route: '/attendance', icon: '◇',
+    { section: 'Pedagogie', label: 'Présences', route: '/attendance', icon: '◇',
       permissions: [PERMISSIONS.ATTENDANCE_VIEW] },
-    { section: 'Pedagogie', label: 'Evaluations', route: '/assessments', icon: '◆',
+    { section: 'Pedagogie', label: 'Évaluations', route: '/assessments', icon: '◆',
       permissions: [PERMISSIONS.ASSESSMENT_VIEW] },
     { section: 'Pedagogie', label: 'Notes', route: '/grades', icon: '◉',
       permissions: [PERMISSIONS.GRADE_VIEW] },
@@ -84,7 +88,7 @@ export class AdminLayoutComponent implements OnInit {
 
     { section: 'Administration', label: 'Rapports', route: '/reports', icon: '▧',
       permissions: [PERMISSIONS.REPORT_VIEW] },
-    { section: 'Administration', label: 'Parametres', route: '/administration', icon: '◌',
+    { section: 'Administration', label: 'Paramètres', route: '/administration', icon: '◌',
       permissions: ['SCHOOL_VIEW'] }
   ];
 
@@ -104,6 +108,16 @@ export class AdminLayoutComponent implements OnInit {
   ngOnInit(): void {
     // Feeds the sidebar badge and the dashboard reminder.
     this.setupStatus.refresh();
+
+    // First visit only; afterwards it is replayed on demand from the sidebar.
+    // Delayed so the elements it highlights are laid out.
+    setTimeout(() => this.tour.start(this.tour.dashboardTour), 900);
+  }
+
+  /** "Reprendre le guide" in the sidebar footer. */
+  replayTour(): void {
+    this.closeDrawer();
+    this.tour.start(this.tour.dashboardTour, true);
   }
 
   toggleDrawer(): void {

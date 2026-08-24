@@ -19,7 +19,7 @@ import { KpiValue } from '@core/models/domain.models';
       <header class="kpi__head">
         <span class="kpi__label">{{ kpi.label }}</span>
         @if (kpi.live) {
-          <span class="badge badge--info badge--live" aria-label="Donnee temps reel">LIVE</span>
+          <span class="badge badge--info badge--live" aria-label="Donnée temps reel">LIVE</span>
         }
       </header>
 

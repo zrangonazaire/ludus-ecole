@@ -28,7 +28,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/v1/public")
-@Tag(name = "Public", description = "Inscription et verifications, sans authentification")
+@Tag(name = "Public", description = "Inscription et vérifications, sans authentification")
 @SecurityRequirements
 public class PublicSignupController {
 
@@ -45,18 +45,18 @@ public class PublicSignupController {
     }
 
     @PostMapping("/signup")
-    @Operation(summary = "Creer un etablissement et son compte administrateur",
+    @Operation(summary = "Créer un établissement et son compte administrateur",
             description = """
-                    Cree en une seule transaction l'etablissement, son campus principal,
-                    l'annee scolaire en cours avec ses trois trimestres, et le compte
+                    Créé en une seule transaction l'établissement, son campus principal,
+                    l'année scolaire en cours avec ses trois trimestres, et le compte
                     administrateur. Renvoie directement des jetons pour enchainer sur
-                    l'assistant de demarrage.
+                    l'assistant de démarrage.
                     """)
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Etablissement cree"),
-            @ApiResponse(responseCode = "409", description = "Code etablissement ou email deja utilise",
+            @ApiResponse(responseCode = "201", description = "Établissement créé"),
+            @ApiResponse(responseCode = "409", description = "Code établissement ou email déjà utilisé",
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
-            @ApiResponse(responseCode = "400", description = "Donnees invalides ou mot de passe trop faible",
+            @ApiResponse(responseCode = "400", description = "Données invalides ou mot de passe trop faible",
                     content = @Content(schema = @Schema(implementation = ApiError.class)))
     })
     public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
@@ -64,7 +64,7 @@ public class PublicSignupController {
     }
 
     @GetMapping("/check-school-code")
-    @Operation(summary = "Verifier la disponibilite d'un code etablissement",
+    @Operation(summary = "Vérifier la disponibilité d'un code établissement",
             description = "Permet au formulaire d'inscription de prevenir avant l'envoi.")
     public ResponseEntity<Map<String, Object>> checkSchoolCode(@RequestParam String code) {
         String normalised = code == null ? "" : code.trim().toUpperCase();
@@ -75,7 +75,7 @@ public class PublicSignupController {
     }
 
     @GetMapping("/check-email")
-    @Operation(summary = "Verifier la disponibilite d'un email")
+    @Operation(summary = "Vérifier la disponibilité d'un email")
     public ResponseEntity<Map<String, Object>> checkEmail(@RequestParam String email) {
         String normalised = email == null ? "" : email.trim().toLowerCase();
         boolean available = !normalised.isBlank()

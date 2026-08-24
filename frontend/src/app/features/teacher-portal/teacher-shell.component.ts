@@ -14,7 +14,7 @@ export class TeacherShellComponent {
   readonly tabs: TabItem[] = [
     { label: 'Accueil', route: '/teacher/home', icon: '▤' },
     { label: 'Classes', route: '/teacher/classes', icon: '▦' },
-    { label: 'Presences', route: '/teacher/attendance', icon: '◇' },
+    { label: 'Présences', route: '/teacher/attendance', icon: '◇' },
     { label: 'Notes', route: '/teacher/grades', icon: '◉' },
     { label: 'Profil', route: '/teacher/profile', icon: '◍' }
   ];

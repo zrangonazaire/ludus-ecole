@@ -5,11 +5,11 @@
       <span class="signup__brandname">EduOps</span>
     </a>
     <blockquote class="signup__quote">
-      <p>En quelques minutes, votre etablissement est pret : annee scolaire ouverte,
-         trimestres crees, compte administrateur actif.</p>
+      <p>En quelques minutes, votre établissement est prêt : année scolaire ouverte,
+         trimestres créés, compte administrateur actif.</p>
     </blockquote>
     <ul class="signup__points">
-      <li>Vos donnees sont isolees des autres etablissements</li>
+      <li>Vos données sont isolees des autres établissements</li>
       <li>Aucune carte bancaire demandee pour configurer la demonstration</li>
       <li>Assistant guide pour les cycles, classes et frais</li>
     </ul>
@@ -31,9 +31,9 @@
         </div>
       }
 
-      <ol class="steps" aria-label="Etapes">
+      <ol class="steps" aria-label="Étapes">
         <li class="steps__item" [class.steps__item--active]="step() >= 1">
-          <span class="steps__index">1</span> Etablissement
+          <span class="steps__index">1</span> Établissement
         </li>
         <li class="steps__item" [class.steps__item--active]="step() >= 2">
           <span class="steps__index">2</span> Administrateur
@@ -48,7 +48,7 @@
 
           <div class="field">
             <label class="field__label field__label--required" for="schoolName">
-              Nom de l'etablissement
+              Nom de l'établissement
             </label>
             <input id="schoolName" class="input" type="text" formControlName="schoolName"
                    placeholder="Groupe Scolaire Horizon" autocomplete="organization" />
@@ -59,15 +59,15 @@
 
           <div class="field">
             <label class="field__label field__label--required" for="schoolCode">
-              Code etablissement
+              Code établissement
             </label>
             <input id="schoolCode" class="input" type="text" formControlName="schoolCode"
                    placeholder="GSH" maxlength="30"
                    [class.is-invalid]="codeAvailable() === false" />
             @if (checkingCode()) {
-              <span class="field__hint">Verification...</span>
+              <span class="field__hint">Vérification...</span>
             } @else if (codeAvailable() === false) {
-              <span class="field__error">Ce code est deja utilise, choisissez-en un autre.</span>
+              <span class="field__error">Ce code est déjà utilisé, choisissez-en un autre.</span>
             } @else if (codeAvailable() === true) {
               <span class="field__hint field__hint--ok">Ce code est disponible.</span>
             } @else {
@@ -96,7 +96,7 @@
 
           <div class="form__row">
             <div class="field">
-              <label class="field__label" for="schoolPhone">Telephone</label>
+              <label class="field__label" for="schoolPhone">Téléphone</label>
               <input id="schoolPhone" class="input" type="tel" formControlName="schoolPhone"
                      placeholder="+225 27 20 00 00 00" autocomplete="tel" />
             </div>
@@ -118,7 +118,7 @@
           </button>
 
           <p class="form__switch">
-            Vous avez deja un compte ? <a routerLink="/login">Se connecter</a>
+            Vous avez déjà un compte ? <a routerLink="/login">Se connecter</a>
           </p>
         </form>
       }
@@ -129,16 +129,16 @@
           <h1 class="form__title">Votre compte administrateur</h1>
           <p class="form__lead">
             Ce compte pourra tout gerer dans <strong>{{ schoolForm.controls.schoolName.value }}</strong>
-            et creer les autres utilisateurs.
+            et créer les autres utilisateurs.
           </p>
 
           <div class="form__row">
             <div class="field">
-              <label class="field__label field__label--required" for="firstName">Prenom</label>
+              <label class="field__label field__label--required" for="firstName">Prénom</label>
               <input id="firstName" class="input" type="text" formControlName="firstName"
                      autocomplete="given-name" />
               @if (adminForm.controls.firstName.touched && adminForm.controls.firstName.invalid) {
-                <span class="field__error">Le prenom est obligatoire.</span>
+                <span class="field__error">Le prénom est obligatoire.</span>
               }
             </div>
             <div class="field">
@@ -157,9 +157,9 @@
                    placeholder="directeur@monecole.ci" autocomplete="email"
                    [class.is-invalid]="emailAvailable() === false" />
             @if (checkingEmail()) {
-              <span class="field__hint">Verification...</span>
+              <span class="field__hint">Vérification...</span>
             } @else if (emailAvailable() === false) {
-              <span class="field__error">Un compte existe deja avec cet email.</span>
+              <span class="field__error">Un compte existe déjà avec cet email.</span>
             } @else if (adminForm.controls.email.touched && adminForm.controls.email.invalid) {
               <span class="field__error">Format d'email invalide.</span>
             } @else {
@@ -168,7 +168,7 @@
           </div>
 
           <div class="field">
-            <label class="field__label" for="phone">Telephone</label>
+            <label class="field__label" for="phone">Téléphone</label>
             <input id="phone" class="input" type="tel" formControlName="phone"
                    autocomplete="tel" />
           </div>
@@ -188,7 +188,7 @@
                 <span class="strength__label">{{ passwordStrength().label }}</span>
               </div>
               <ul class="checks">
-                <li [class.checks--ok]="passwordStrength().checks.length">Au moins 10 caracteres</li>
+                <li [class.checks--ok]="passwordStrength().checks.length">Au moins 10 caractères</li>
                 <li [class.checks--ok]="passwordStrength().checks.upper">Une majuscule</li>
                 <li [class.checks--ok]="passwordStrength().checks.lower">Une minuscule</li>
                 <li [class.checks--ok]="passwordStrength().checks.digit">Un chiffre</li>

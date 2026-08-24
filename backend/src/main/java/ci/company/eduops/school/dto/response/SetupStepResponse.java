@@ -3,7 +3,7 @@ package ci.company.eduops.school.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /** One line of the setup checklist. */
-@Schema(name = "SetupStep", description = "Une etape de configuration de l'etablissement")
+@Schema(name = "SetupStep", description = "Une étape de configuration de l'établissement")
 public class SetupStepResponse {
 
     @Schema(example = "CLASSES")
@@ -14,16 +14,16 @@ public class SetupStepResponse {
 
     private String description;
 
-    @Schema(description = "Deduit des donnees reelles, pas d'un drapeau")
+    @Schema(description = "Deduit des données reelles, pas d'un drapeau")
     private boolean done;
 
-    @Schema(description = "Une etape facultative ne bloque pas la progression")
+    @Schema(description = "Une étape facultative ne bloque pas la progression")
     private boolean required;
 
-    @Schema(description = "Nombre d'elements deja crees", example = "12")
+    @Schema(description = "Nombre d'éléments déjà créés", example = "12")
     private long count;
 
-    @Schema(description = "Route Angular vers l'ecran concerne", example = "/classes")
+    @Schema(description = "Route Angular vers l'écran concerné", example = "/classes")
     private String actionRoute;
 
     private String actionLabel;

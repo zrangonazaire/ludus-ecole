@@ -1,7 +1,24 @@
 /** Configuration checklist of the current school. */
 
+/**
+ * The ten setup steps, ordered the way a school actually configures itself:
+ * nothing below can be done before the line above it exists.
+ */
+export type SetupStepKey =
+  | 'ACADEMIC_YEAR'
+  | 'CYCLES'
+  | 'LEVELS'
+  | 'CLASSES'
+  | 'SUBJECTS'
+  | 'CURRICULUM'
+  | 'FEES'
+  | 'TEACHERS'
+  | 'ASSIGNMENTS'
+  | 'STUDENTS';
+
 export interface SetupStep {
-  key: 'CYCLES' | 'CLASSES' | 'SUBJECTS' | 'FEES' | 'TEACHERS' | 'STUDENTS';
+  /** Mirrors the ten steps produced by SetupStatusService, in order. */
+  key: SetupStepKey;
   label: string;
   description: string;
   done: boolean;

@@ -79,9 +79,9 @@ export class TeacherListComponent implements OnInit {
     this.columns = [
       { key: 'fullName', label: 'Enseignant', template: this.identityTpl, width: '34%' },
       { key: 'employeeNumber', label: 'Matricule', numeric: true, width: '14%' },
-      { key: 'speciality', label: 'Specialite', width: '20%' },
+      { key: 'speciality', label: 'Spécialité', width: '20%' },
       { key: 'classCount', label: 'Classes', numeric: true, width: '10%' },
-      { key: 'phone', label: 'Telephone', width: '12%' },
+      { key: 'phone', label: 'Téléphone', width: '12%' },
       { key: 'status', label: 'Statut', template: this.statusTpl, width: '10%' }
     ];
     this.load();

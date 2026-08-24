@@ -1,15 +1,15 @@
 <div class="page">
   <header class="page__header">
     <div>
-      <h1 class="page__title">Eleves</h1>
+      <h1 class="page__title">Élèves</h1>
       @if (page(); as result) {
-        <p class="page__meta numeric">{{ result.totalElements }} eleve(s) enregistre(s)</p>
+        <p class="page__meta numeric">{{ result.totalElements }} élève(s) enregistré(s)</p>
       }
     </div>
     <div class="page__actions">
       <button type="button" class="btn btn--secondary">Exporter Excel</button>
       <button type="button" class="btn btn--primary" *eduopsHasPermission="createPermission">
-        <span aria-hidden="true">+</span> Nouvel eleve
+        <span aria-hidden="true">+</span> Nouvel élève
       </button>
     </div>
   </header>
@@ -17,9 +17,9 @@
   <section class="card">
     <div class="card__header filters">
       <div class="filters__search">
-        <label class="visually-hidden" for="student-search">Rechercher un eleve</label>
+        <label class="visually-hidden" for="student-search">Rechercher un élève</label>
         <input id="student-search" class="input" type="search"
-               placeholder="Nom, prenom ou matricule (ex. EDU-2026-000123)"
+               placeholder="Nom, prénom ou matricule (ex. EDU-2026-000123)"
                [value]="search()" (input)="onSearchChange($any($event.target).value)" />
       </div>
       <div class="filters__status">
@@ -42,8 +42,8 @@
       [page]="page()"
       [loading]="loading()"
       [rowClickable]="true"
-      caption="Liste des eleves"
-      emptyTitle="Aucun eleve trouve"
+      caption="Liste des élèves"
+      emptyTitle="Aucun élève trouve"
       emptyMessage="Ajustez la recherche ou le filtre de statut."
       (pageChange)="onPageChange($event)"
       (rowClick)="openStudent($event)" />

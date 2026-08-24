@@ -106,12 +106,12 @@ public class SignupService {
 
         if (schoolRepository.existsByCode(code)) {
             throw BusinessException.of(ErrorCode.CONFLICT,
-                            "Ce code etablissement est deja utilise.")
+                            "Ce code établissement est déjà utilisé.")
                     .detail("field", "schoolCode");
         }
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw BusinessException.of(ErrorCode.CONFLICT,
-                            "Un compte existe deja avec cet email.")
+                            "Un compte existe déjà avec cet email.")
                     .detail("field", "email");
         }
 
@@ -133,7 +133,7 @@ public class SignupService {
 
         sendWelcomeEmail(admin, school);
 
-        log.info("Nouvelle ecole '{}' ({}) creee par {}", school.getName(), code, email);
+        log.info("Nouvelle école '{}' ({}) créée par {}", school.getName(), code, email);
         return buildResponse(school, admin, year);
     }
 
@@ -152,7 +152,7 @@ public class SignupService {
             throw BusinessException.of(ErrorCode.PASSWORD_POLICY_VIOLATION,
                             "Le mot de passe doit contenir au moins "
                             + properties.getSecurity().getPasswordMinLength()
-                            + " caracteres, dont une majuscule, une minuscule et un chiffre.")
+                            + " caractères, dont une majuscule, une minuscule et un chiffre.")
                     .detail("field", "password");
         }
     }
@@ -204,7 +204,7 @@ public class SignupService {
         AcademicYear year = new AcademicYear();
         year.setSchool(school);
         year.setCode(startYear + "-" + (startYear + 1));
-        year.setLabel("Annee scolaire " + startYear + "-" + (startYear + 1));
+        year.setLabel("Année scolaire " + startYear + "-" + (startYear + 1));
         year.setStartDate(LocalDate.of(startYear, 9, 15));
         year.setEndDate(LocalDate.of(startYear + 1, 7, 10));
         year.setStatus(AcademicYearStatus.ACTIVE);
@@ -245,7 +245,7 @@ public class SignupService {
     private AppUser createAdministrator(SignupRequest request, School school, String email) {
         AppRole schoolAdmin = roleRepository.findByCode("SCHOOL_ADMIN")
                 .orElseThrow(() -> new IllegalStateException(
-                        "Role SCHOOL_ADMIN absent : la migration V30 a-t-elle ete appliquee ?"));
+                        "Rôle SCHOOL_ADMIN absent : la migration V30 a-t-elle été appliquée ?"));
 
         AppUser admin = new AppUser();
         admin.setUsername(email);
