@@ -14,7 +14,7 @@ import { AuthService } from '@core/auth/auth.service';
       <h1 class="forbidden__title">Acces refuse</h1>
       <p class="forbidden__message">
         Votre profil ne dispose pas des droits necessaires pour consulter cette page.
-        Si vous pensez qu'il s'agit d'une erreur, contactez l'administration de l'etablissement.
+        Si vous pensez qu'il s'agit d'une erreur, contactez l'administration de l'établissement.
       </p>
       <button type="button" class="btn btn--primary" (click)="goHome()">Retour a l'accueil</button>
     </div>

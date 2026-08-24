@@ -49,7 +49,7 @@ export class SetupComponent implements OnInit {
   /** Numbers read better than a bare count on an empty step. */
   countLabel(key: string, count: number): string {
     if (count === 0) {
-      return 'Rien de cree pour le moment';
+      return 'Rien de créé pour le moment';
     }
     switch (key) {
       case 'CYCLES': return `${count} niveau${count > 1 ? 'x' : ''} defini${count > 1 ? 's' : ''}`;

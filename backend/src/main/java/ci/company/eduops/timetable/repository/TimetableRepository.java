@@ -27,4 +27,16 @@ public interface TimetableRepository extends JpaRepository<Timetable, UUID> {
     Optional<Timetable> findPublishedWithSlots(@Param("classroomId") UUID classroomId);
 
     List<Timetable> findByAcademicYearId(UUID academicYearId);
+
+    /**
+     * The working timetable of a class: the draft if one exists, otherwise the
+     * published one. Editing always happens on a draft, never on what parents
+     * are currently reading.
+     */
+    Optional<Timetable> findFirstByClassroomIdAndAcademicYearIdAndStatusOrderByEffectiveFromDesc(
+            UUID classroomId, UUID academicYearId, TimetableStatus status);
+
+    boolean existsByClassroomIdAndAcademicYearIdAndStatus(UUID classroomId,
+                                                         UUID academicYearId,
+                                                         TimetableStatus status);
 }

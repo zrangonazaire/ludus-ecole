@@ -255,7 +255,7 @@ public class AcademicCalculationService {
             return "Excellent";
         }
         if (percent >= 70) {
-            return "Tres bien";
+            return "Très bien";
         }
         if (percent >= 60) {
             return "Bien";

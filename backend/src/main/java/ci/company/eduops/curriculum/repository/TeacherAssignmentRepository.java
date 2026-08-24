@@ -53,6 +53,10 @@ public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssign
     List<UUID> findClassroomIdsForTeacher(@Param("teacherId") UUID teacherId,
                                           @Param("academicYearId") UUID academicYearId);
 
+    @Query("SELECT COUNT(a) FROM TeacherAssignment a "
+         + "WHERE a.academicYear.id = :academicYearId AND a.status = 'ACTIVE'")
+    long countActiveForYear(@Param("academicYearId") UUID academicYearId);
+
     @Query("""
            SELECT COALESCE(SUM(a.weeklyHours), 0) FROM TeacherAssignment a
            WHERE a.teacher.id = :teacherId AND a.academicYear.id = :academicYearId

@@ -2,11 +2,20 @@
   <header class="page__header">
     <div>
       <h1 class="page__title">Classes</h1>
-      <p class="page__meta numeric">{{ classes().length }} classe(s) pour l'annee active</p>
+      <p class="page__meta numeric">
+        {{ classes().length }} classe(s) — {{ totalEnrolled() }} élèves sur
+        {{ totalSeats() }} places
+      </p>
     </div>
     <div class="page__actions">
-      <button type="button" class="btn btn--secondary">Exporter</button>
-      <button type="button" class="btn btn--primary"><span aria-hidden="true">+</span> Nouvelle classe</button>
+      <button type="button" class="btn btn--secondary" (click)="openBulk()"
+              [disabled]="levels().length === 0">
+        Ajouter plusieurs classes
+      </button>
+      <button type="button" class="btn btn--primary" (click)="openCreate()"
+              [disabled]="levels().length === 0">
+        <span aria-hidden="true">+</span> Nouvelle classe
+      </button>
     </div>
   </header>
 
@@ -15,13 +24,78 @@
   } @else if (error()) {
     <eduops-error-state (retry)="load()" />
   } @else {
+
+    <!-- ═══ Niveaux saturés : la configuration initiale n'a pas prévu assez ═══ -->
+    @if (crowdedLevels().length > 0) {
+      <section class="alert-block" role="status">
+        <div class="alert-block__head">
+          <span class="alert-block__icon" aria-hidden="true">!</span>
+          <div>
+            <p class="alert-block__title">
+              {{ crowdedLevels().length }} niveau(x) arrivent à saturation
+            </p>
+            <p class="alert-block__text">
+              Le nombre de classes prévu à la configuration ne suffit plus.
+              Ouvrez-en une de plus : le nom continue la série existante.
+            </p>
+          </div>
+        </div>
+        <ul class="crowded">
+          @for (level of crowdedLevels(); track level.levelId) {
+            <li class="crowded__item">
+              <span class="crowded__name">{{ level.levelName }}</span>
+              <span class="crowded__meta numeric">
+                {{ level.totalEnrolled }}/{{ level.totalCapacity }} — {{ level.occupancyRate }} %
+                @if (level.classroomCount === 0) {
+                  <em>aucune classe</em>
+                }
+              </span>
+              <button type="button" class="btn btn--primary btn--sm"
+                      (click)="openCreate(level.levelId)">
+                Ouvrir {{ level.suggestedName }}
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <!-- ═══ Répartition par niveau, cliquable pour filtrer ═══ -->
+    @if (levels().length > 0) {
+      <section class="levels">
+        @for (level of levels(); track level.levelId) {
+          <button type="button" class="level-chip"
+                  [class.level-chip--on]="levelFilter() === level.levelId"
+                  (click)="filterByLevel(level.levelId)">
+            <span class="level-chip__name">{{ level.levelName }}</span>
+            <span class="level-chip__count numeric">
+              {{ level.classroomCount }} cl. — {{ level.occupancyRate }} %
+            </span>
+            <span class="level-chip__bar" aria-hidden="true">
+              <span class="level-chip__fill"
+                    [style.width.%]="level.occupancyRate > 100 ? 100 : level.occupancyRate"
+                    [class.level-chip__fill--hot]="level.needsMoreClasses"></span>
+            </span>
+          </button>
+        }
+        @if (levelFilter()) {
+          <button type="button" class="btn btn--ghost btn--sm" (click)="filterByLevel(null)">
+            Tout afficher
+          </button>
+        }
+      </section>
+    }
+
+    <!-- ═══ Les classes ═══ -->
     <section class="grid grid--3">
-      @for (classroom of classes(); track classroom.id) {
-        <article class="class-card card">
+      @for (classroom of visibleClasses(); track classroom.id) {
+        <article class="class-card card" [class.class-card--draft]="classroom.status === 'DRAFT'">
           <header class="class-card__head">
             <div>
               <h2 class="class-card__name">{{ classroom.name }}</h2>
-              <p class="class-card__meta numeric">{{ classroom.code }} — {{ classroom.levelName }}</p>
+              <p class="class-card__meta numeric">
+                {{ classroom.code }} — {{ classroom.levelName }}
+              </p>
             </div>
             <eduops-status-badge [status]="classroom.capacityStatus" />
           </header>
@@ -29,7 +103,7 @@
           <div class="class-card__body">
             <!-- Occupancy gauge: computed server-side, displayed here -->
             <div class="gauge" role="img"
-                 [attr.aria-label]="classroom.activeEnrollments + ' eleves sur ' + classroom.capacityMaximum">
+                 [attr.aria-label]="classroom.activeEnrollments + ' élèves sur ' + classroom.capacityMaximum">
               <div class="gauge__bar">
                 <span class="gauge__fill"
                       [style.width.%]="classroom.occupancyRate > 100 ? 100 : classroom.occupancyRate"
@@ -49,7 +123,7 @@
                 </dd>
               </div>
               <div>
-                <dt>Places projetees</dt>
+                <dt>Places projetées</dt>
                 <dd class="numeric"
                     [class.negative]="(classroom.projectedAvailableSeats ?? 0) < 0">
                   {{ classroom.projectedAvailableSeats ?? classroom.availableSeats }}
@@ -57,20 +131,246 @@
               </div>
               <div>
                 <dt>Professeur principal</dt>
-                <dd>{{ classroom.mainTeacherName ?? 'Non affecte' }}</dd>
+                <dd>{{ classroom.mainTeacherName ?? 'Non affecté' }}</dd>
               </div>
             </dl>
+
+            @if (classroom.status === 'DRAFT') {
+              <p class="draft-note">
+                Cette classe est en brouillon : elle n'accepte pas encore d'inscriptions.
+              </p>
+            }
           </div>
 
           <footer class="class-card__footer">
-            <button type="button" class="btn btn--ghost btn--sm">Eleves</button>
-            <button type="button" class="btn btn--ghost btn--sm">Emploi du temps</button>
-            <button type="button" class="btn btn--ghost btn--sm">Resultats</button>
+            <button type="button" class="btn btn--ghost btn--sm" (click)="openEdit(classroom)">
+              Modifier
+            </button>
+            @if (classroom.status === 'DRAFT') {
+              <button type="button" class="btn btn--ghost btn--sm" (click)="activate(classroom)">
+                Ouvrir
+              </button>
+            }
+            @if (classroom.status === 'ACTIVE' && classroom.activeEnrollments === 0) {
+              <button type="button" class="btn btn--ghost btn--sm" (click)="close(classroom)">
+                Fermer
+              </button>
+            }
+            <a class="btn btn--ghost btn--sm" routerLink="/students"
+               [queryParams]="{ classroomId: classroom.id }">Élèves</a>
+            <a class="btn btn--ghost btn--sm" routerLink="/timetable"
+               [queryParams]="{ classroomId: classroom.id }">Emploi du temps</a>
           </footer>
         </article>
       } @empty {
-        <p class="empty">Aucune classe definie pour cette annee scolaire.</p>
+        <div class="empty-state">
+          <p class="empty-state__title">
+            @if (levelFilter()) {
+              Aucune classe sur ce niveau.
+            } @else {
+              Aucune classe définie pour cette année scolaire.
+            }
+          </p>
+          <p class="empty-state__text">
+            Une classe se rattache à un niveau et porte un effectif maximum.
+            Les places restantes sont ensuite calculées automatiquement.
+          </p>
+          <button type="button" class="btn btn--primary"
+                  (click)="openCreate(levelFilter() ?? undefined)"
+                  [disabled]="levels().length === 0">
+            Créer une classe
+          </button>
+          @if (levels().length === 0) {
+            <p class="empty-state__hint">
+              Définissez d'abord vos cycles et vos niveaux dans
+              <a routerLink="/setup">la configuration</a>.
+            </p>
+          }
+        </div>
       }
     </section>
+  }
+
+  <!-- ═══════════════════ Panneau latéral ═══════════════════ -->
+  @if (panel(); as openPanel) {
+    <div class="drawer-backdrop" (click)="closePanel()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true">
+
+      <!-- ─── Une classe ─── -->
+      @if (openPanel === 'ONE') {
+        <header class="drawer__head">
+          <h2 class="drawer__title">Nouvelle classe</h2>
+          <button type="button" class="drawer__close" (click)="closePanel()"
+                  aria-label="Fermer">&times;</button>
+        </header>
+        <form class="drawer__body" [formGroup]="createForm">
+          <div class="field">
+            <label class="field__label field__label--required" for="levelId">Niveau</label>
+            <select id="levelId" class="select" formControlName="levelId"
+                    (change)="onLevelChange($any($event.target).value)">
+              @for (level of levels(); track level.levelId) {
+                <option [value]="level.levelId">
+                  {{ level.levelName }} — {{ level.classroomCount }} classe(s),
+                  {{ level.occupancyRate }} % occupé
+                </option>
+              }
+            </select>
+            <span class="field__hint">
+              Les frais de scolarité et le programme suivent le niveau, pas la classe.
+            </span>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label" for="name">Nom</label>
+              <input id="name" class="input" formControlName="name" />
+              <span class="field__hint">Proposé d'après la série existante.</span>
+            </div>
+            <div class="field">
+              <label class="field__label" for="code">Code</label>
+              <input id="code" class="input" formControlName="code" />
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label field__label--required" for="capacity">
+                Effectif maximum
+              </label>
+              <input id="capacity" class="input" type="number" min="1" max="300"
+                     formControlName="capacityMaximum" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="threshold">Seuil d'alerte (%)</label>
+              <input id="threshold" class="input" type="number" min="1" max="100"
+                     formControlName="capacityWarningThreshold" />
+              <span class="field__hint">Au-delà, la classe passe en « presque pleine ».</span>
+            </div>
+          </div>
+
+          <label class="switch">
+            <input type="checkbox" formControlName="activateImmediately" />
+            <span>Ouvrir immédiatement aux inscriptions</span>
+          </label>
+        </form>
+        <footer class="drawer__foot">
+          <button type="button" class="btn btn--secondary" (click)="closePanel()">Annuler</button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="createForm.invalid || saving()" (click)="submitCreate()">
+            {{ saving() ? 'Création...' : 'Créer la classe' }}
+          </button>
+        </footer>
+      }
+
+      <!-- ─── Plusieurs classes ─── -->
+      @if (openPanel === 'MANY') {
+        <header class="drawer__head">
+          <h2 class="drawer__title">Ajouter plusieurs classes</h2>
+          <button type="button" class="drawer__close" (click)="closePanel()"
+                  aria-label="Fermer">&times;</button>
+        </header>
+        <form class="drawer__body" [formGroup]="bulkForm">
+          <p class="hint-block">
+            À utiliser quand la configuration initiale n'a pas prévu assez de classes.
+            Les noms poursuivent la série : un niveau ayant déjà A et B reçoit C, D, E.
+          </p>
+
+          <div class="field">
+            <label class="field__label field__label--required" for="bulkLevel">Niveau</label>
+            <select id="bulkLevel" class="select" formControlName="levelId">
+              @for (level of levels(); track level.levelId) {
+                <option [value]="level.levelId">
+                  {{ level.levelName }} — {{ level.classroomCount }} classe(s),
+                  {{ level.occupancyRate }} % occupé
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label field__label--required" for="count">
+                Nombre de classes
+              </label>
+              <input id="count" class="input" type="number" min="1" max="26"
+                     formControlName="count" />
+            </div>
+            <div class="field">
+              <label class="field__label field__label--required" for="bulkCapacity">
+                Effectif de chacune
+              </label>
+              <input id="bulkCapacity" class="input" type="number" min="1" max="300"
+                     formControlName="capacityMaximum" />
+            </div>
+          </div>
+
+          <p class="preview-line numeric">
+            Places ajoutées :
+            <strong>{{ bulkForm.controls.count.value * bulkForm.controls.capacityMaximum.value }}</strong>
+          </p>
+
+          <label class="switch">
+            <input type="checkbox" formControlName="activateImmediately" />
+            <span>Ouvrir immédiatement aux inscriptions</span>
+          </label>
+        </form>
+        <footer class="drawer__foot">
+          <button type="button" class="btn btn--secondary" (click)="closePanel()">Annuler</button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="bulkForm.invalid || saving()" (click)="submitBulk()">
+            {{ saving() ? 'Création...' : 'Ajouter ' + bulkForm.controls.count.value + ' classe(s)' }}
+          </button>
+        </footer>
+      }
+
+      <!-- ─── Modification ─── -->
+      @if (openPanel === 'EDIT') {
+        <header class="drawer__head">
+          <h2 class="drawer__title">Modifier {{ editing()?.name }}</h2>
+          <button type="button" class="drawer__close" (click)="closePanel()"
+                  aria-label="Fermer">&times;</button>
+        </header>
+        <form class="drawer__body" [formGroup]="editForm">
+          <div class="field">
+            <label class="field__label field__label--required" for="editName">Nom</label>
+            <input id="editName" class="input" formControlName="name" />
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label field__label--required" for="editCapacity">
+                Effectif maximum
+              </label>
+              <input id="editCapacity" class="input" type="number"
+                     [min]="minimumCapacity()" max="300"
+                     formControlName="capacityMaximum" />
+              @if (minimumCapacity() > 0) {
+                <span class="field__hint numeric">
+                  Ne peut pas descendre sous {{ minimumCapacity() }} : c'est le nombre
+                  d'élèves déjà inscrits.
+                </span>
+              }
+            </div>
+            <div class="field">
+              <label class="field__label" for="editThreshold">Seuil d'alerte (%)</label>
+              <input id="editThreshold" class="input" type="number" min="1" max="100"
+                     formControlName="capacityWarningThreshold" />
+            </div>
+          </div>
+
+          <p class="hint-block">
+            Le niveau d'une classe n'est pas modifiable : le changer déplacerait
+            silencieusement tous les élèves inscrits. Un transfert se fait élève par élève.
+          </p>
+        </form>
+        <footer class="drawer__foot">
+          <button type="button" class="btn btn--secondary" (click)="closePanel()">Annuler</button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="editForm.invalid || saving()" (click)="submitEdit()">
+            {{ saving() ? 'Enregistrement...' : 'Enregistrer' }}
+          </button>
+        </footer>
+      }
+    </aside>
   }
 </div>

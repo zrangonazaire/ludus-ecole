@@ -1,0 +1,519 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Matières et programme</h1>
+      <p class="page__meta numeric">
+        {{ activeSubjects().length }} matière(s) —
+        {{ readyCount() }}/{{ levels().length }} niveau(x) avec un programme
+      </p>
+    </div>
+    <div class="page__actions">
+      @if (tab() === 'CATALOGUE') {
+        <button type="button" class="btn btn--secondary" (click)="toggleArchived()">
+          {{ showArchived() ? 'Masquer les archivées' : 'Voir les archivées' }}
+        </button>
+        <button type="button" class="btn btn--primary" (click)="openSubject()">
+          <span aria-hidden="true">+</span> Nouvelle matière
+        </button>
+      } @else {
+        <button type="button" class="btn btn--primary"
+                [disabled]="activeSubjects().length === 0"
+                (click)="openApply()">
+          Appliquer à plusieurs niveaux
+        </button>
+      }
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'CATALOGUE'"
+            [attr.aria-selected]="tab() === 'CATALOGUE'"
+            (click)="changeTab('CATALOGUE')">
+      Catalogue des matières
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'PROGRAMME'"
+            [attr.aria-selected]="tab() === 'PROGRAMME'"
+            (click)="changeTab('PROGRAMME')">
+      Programme et coefficients
+      @if (levelsWithoutProgramme().length > 0) {
+        <span class="tabs__badge numeric">{{ levelsWithoutProgramme().length }}</span>
+      }
+    </button>
+  </nav>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des matières..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+
+    <!-- ═══════════════ Catalogue ═══════════════ -->
+    @if (tab() === 'CATALOGUE') {
+      <p class="lead">
+        Une matière existe une seule fois pour tout l'établissement. Ce qui change
+        d'un niveau à l'autre, c'est son coefficient — il se règle dans l'onglet
+        <button type="button" class="linklike" (click)="changeTab('PROGRAMME')">
+          Programme et coefficients</button>.
+      </p>
+
+      <section class="grid grid--3">
+        @for (subject of subjects(); track subject.id) {
+          <article class="subject card"
+                   [class.subject--archived]="subject.status !== 'ACTIVE'"
+                   [style.--subject-color]="subject.colorHex || 'var(--brand)'">
+            <header class="subject__head">
+              <div class="subject__title">
+                <h2 class="subject__name">{{ subject.name }}</h2>
+                <p class="subject__meta numeric">
+                  {{ subject.code }} · {{ subject.categoryLabel }}
+                </p>
+              </div>
+              @if (!subject.graded) {
+                <span class="pill pill--muted">Non notée</span>
+              }
+              @if (subject.status !== 'ACTIVE') {
+                <span class="pill pill--archived">Archivée</span>
+              }
+            </header>
+
+            <div class="subject__body">
+              @if (subject.levelCount > 0) {
+                <p class="subject__usage numeric">
+                  Au programme de <strong>{{ subject.levelCount }}</strong> niveau(x)
+                </p>
+              } @else {
+                <p class="subject__usage subject__usage--none">
+                  Au programme d'aucun niveau
+                </p>
+              }
+              @if (!subject.graded) {
+                <p class="subject__note">
+                  Elle apparaît dans l'emploi du temps mais n'entre dans aucune moyenne.
+                </p>
+              }
+            </div>
+
+            <footer class="subject__footer">
+              <button type="button" class="btn btn--ghost btn--sm"
+                      (click)="openSubject(subject)">Modifier</button>
+              @if (subject.status === 'ACTIVE') {
+                <button type="button" class="btn btn--ghost btn--sm"
+                        [disabled]="subject.levelCount > 0"
+                        [attr.title]="subject.levelCount > 0
+                          ? 'Retirez-la d\'abord des programmes' : null"
+                        (click)="archiveSubject(subject)">Archiver</button>
+              } @else {
+                <button type="button" class="btn btn--ghost btn--sm"
+                        (click)="restoreSubject(subject)">Réactiver</button>
+              }
+            </footer>
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <p class="empty-state__title">Aucune matière déclarée.</p>
+            <p class="empty-state__text">
+              Commencez par la liste de ce que votre établissement enseigne.
+              Les coefficients viendront ensuite, niveau par niveau.
+            </p>
+            <button type="button" class="btn btn--primary" (click)="openSubject()">
+              Déclarer une matière
+            </button>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- ═══════════════ Programme ═══════════════ -->
+    @if (tab() === 'PROGRAMME') {
+
+      @if (levelsWithoutProgramme().length > 0) {
+        <section class="alert-block" role="status">
+          <div class="alert-block__head">
+            <span class="alert-block__icon" aria-hidden="true">!</span>
+            <div>
+              <p class="alert-block__title">
+                {{ levelsWithoutProgramme().length }} niveau(x) sans programme
+              </p>
+              <p class="alert-block__text">
+                Sans matière notée, aucune moyenne ne peut être calculée et aucun
+                bulletin publié pour ces niveaux.
+              </p>
+            </div>
+          </div>
+          <ul class="pending">
+            @for (level of levelsWithoutProgramme(); track level.levelId) {
+              <li class="pending__item">
+                <span class="pending__name">{{ level.levelName }}</span>
+                <span class="pending__cycle">{{ level.cycleName }}</span>
+                <button type="button" class="btn btn--primary btn--sm"
+                        (click)="openApply(level.levelId)">Définir le programme</button>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (activeSubjects().length === 0) {
+        <div class="empty-state">
+          <p class="empty-state__title">Déclarez d'abord vos matières.</p>
+          <p class="empty-state__text">
+            Le programme rattache des matières existantes à chaque niveau.
+            Il n'y a rien à rattacher pour l'instant.
+          </p>
+          <button type="button" class="btn btn--primary" (click)="changeTab('CATALOGUE')">
+            Aller au catalogue
+          </button>
+        </div>
+      }
+
+      <section class="levels">
+        @for (level of levels(); track level.levelId) {
+          <article class="level card" [class.level--open]="openLevelId() === level.levelId">
+            <button type="button" class="level__head" (click)="toggleLevel(level.levelId)"
+                    [attr.aria-expanded]="openLevelId() === level.levelId">
+              <span class="level__identity">
+                <span class="level__name">{{ level.levelName }}</span>
+                <span class="level__cycle">{{ level.cycleName }}</span>
+              </span>
+              <span class="level__stats numeric">
+                @if (level.subjectCount > 0) {
+                  {{ level.subjectCount }} matière(s) ·
+                  total des coefficients <strong>{{ level.totalCoefficient }}</strong> ·
+                  {{ level.totalWeeklyHours }} h
+                } @else {
+                  Aucune matière
+                }
+              </span>
+              @if (level.ready) {
+                <span class="pill pill--ok">Prêt</span>
+              } @else {
+                <span class="pill pill--warn">À définir</span>
+              }
+              <span class="level__chevron" aria-hidden="true">
+                {{ openLevelId() === level.levelId ? '−' : '+' }}
+              </span>
+            </button>
+
+            @if (openLevelId() === level.levelId) {
+              <div class="level__body">
+                @if (level.subjects.length > 0) {
+                  <div class="table-wrapper">
+                    <table class="table">
+                      <caption class="visually-hidden">
+                        Programme du niveau {{ level.levelName }}
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th>Matière</th>
+                          <th class="numeric">Coefficient</th>
+                          <th class="numeric">Heures / semaine</th>
+                          <th>Statut</th>
+                          <th><span class="visually-hidden">Actions</span></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of level.subjects; track row.subjectId) {
+                          <tr>
+                            <td>
+                              <span class="dot" aria-hidden="true"
+                                    [style.background]="row.subjectColor || 'var(--brand)'"></span>
+                              {{ row.subjectName }}
+                              <span class="muted numeric">{{ row.subjectCode }}</span>
+                            </td>
+                            <td class="numeric">
+                              <input class="input input--tiny" type="number"
+                                     min="0.5" max="20" step="0.5"
+                                     [value]="row.coefficient"
+                                     [disabled]="!row.graded"
+                                     (change)="changeCoefficient(level.levelId, row.subjectId,
+                                       $any($event.target).value, row.weeklyHours, row.mandatory)" />
+                            </td>
+                            <td class="numeric">
+                              <input class="input input--tiny" type="number"
+                                     min="0" max="40" step="0.5"
+                                     [value]="row.weeklyHours"
+                                     (change)="changeHours(level.levelId, row.subjectId,
+                                       $any($event.target).value, row.coefficient, row.mandatory)" />
+                            </td>
+                            <td>
+                              @if (!row.graded) {
+                                <span class="pill pill--muted">Non notée</span>
+                              } @else if (row.locked) {
+                                <span class="pill pill--lock">Notes saisies</span>
+                              } @else if (!row.mandatory) {
+                                <span class="pill pill--muted">Option</span>
+                              }
+                            </td>
+                            <td class="cell-actions">
+                              <button type="button" class="btn btn--ghost btn--sm"
+                                      [disabled]="row.locked"
+                                      [attr.title]="row.locked
+                                        ? 'Des évaluations existent déjà' : null"
+                                      (click)="removeRow(level.levelId, row.subjectId,
+                                                         row.subjectName)">
+                                Retirer
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                } @else {
+                  <p class="level__empty">
+                    Aucune matière rattachée à ce niveau.
+                  </p>
+                }
+
+                <!-- Ajouter une matière -->
+                @if (availableFor(level).length > 0) {
+                  <form class="add-row" [formGroup]="rowForm"
+                        (ngSubmit)="addRow(level)">
+                    <div class="field">
+                      <label class="field__label" [attr.for]="'sub-' + level.levelId">
+                        Matière
+                      </label>
+                      <select class="select" [id]="'sub-' + level.levelId"
+                              formControlName="subjectId">
+                        <option value="">Choisir…</option>
+                        @for (subject of availableFor(level); track subject.id) {
+                          <option [value]="subject.id">
+                            {{ subject.name }}@if (!subject.graded) { (non notée) }
+                          </option>
+                        }
+                      </select>
+                    </div>
+                    <div class="field field--tiny">
+                      <label class="field__label" [attr.for]="'coef-' + level.levelId">
+                        Coefficient
+                      </label>
+                      <input class="input" [id]="'coef-' + level.levelId" type="number"
+                             min="0.5" max="20" step="0.5" formControlName="coefficient" />
+                    </div>
+                    <div class="field field--tiny">
+                      <label class="field__label" [attr.for]="'h-' + level.levelId">
+                        Heures
+                      </label>
+                      <input class="input" [id]="'h-' + level.levelId" type="number"
+                             min="0" max="40" step="0.5" formControlName="weeklyHours" />
+                    </div>
+                    <button type="submit" class="btn btn--secondary"
+                            [disabled]="rowForm.invalid || saving()">Ajouter</button>
+                  </form>
+                } @else if (activeSubjects().length > 0) {
+                  <p class="level__empty">
+                    Toutes les matières du catalogue sont déjà au programme de ce niveau.
+                  </p>
+                }
+
+                <footer class="level__foot">
+                  <button type="button" class="btn btn--ghost btn--sm"
+                          [disabled]="level.subjects.length === 0"
+                          (click)="openApply(level.levelId)">
+                    Copier ce programme vers d'autres niveaux
+                  </button>
+                </footer>
+              </div>
+            }
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <p class="empty-state__title">Aucun niveau défini.</p>
+            <p class="empty-state__text">
+              Le programme se rattache aux niveaux. Créez-les d'abord dans
+              <a routerLink="/setup">la configuration</a>.
+            </p>
+          </div>
+        }
+      </section>
+    }
+  }
+
+  <!-- ═══════════════ Panneau latéral ═══════════════ -->
+  @if (panel(); as openPanel) {
+    <div class="drawer-backdrop" (click)="closePanel()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true">
+
+      <!-- ─── Matière ─── -->
+      @if (openPanel === 'SUBJECT') {
+        <header class="drawer__head">
+          <h2 class="drawer__title">
+            {{ editingSubject() ? 'Modifier la matière' : 'Nouvelle matière' }}
+          </h2>
+          <button type="button" class="drawer__close" (click)="closePanel()"
+                  aria-label="Fermer">&times;</button>
+        </header>
+        <form class="drawer__body" [formGroup]="subjectForm">
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label field__label--required" for="name">Nom</label>
+              <input id="name" class="input" formControlName="name"
+                     placeholder="Mathématiques" />
+            </div>
+            <div class="field">
+              <label class="field__label field__label--required" for="code">Code</label>
+              <input id="code" class="input" formControlName="code" placeholder="MATH" />
+              <span class="field__hint">
+                Mis en majuscules sans accent : il sert dans les exports.
+              </span>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label" for="shortName">Abréviation</label>
+              <input id="shortName" class="input" formControlName="shortName"
+                     placeholder="Maths" />
+              <span class="field__hint">Affichée dans l'emploi du temps.</span>
+            </div>
+            <div class="field">
+              <label class="field__label field__label--required" for="category">
+                Catégorie
+              </label>
+              <select id="category" class="select" formControlName="category">
+                @for (item of categories; track item.code) {
+                  <option [value]="item.code">{{ item.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="field__label">Couleur</span>
+            <div class="swatches">
+              @for (color of colors; track color) {
+                <button type="button" class="swatch"
+                        [class.swatch--on]="subjectForm.controls.colorHex.value === color"
+                        [style.background]="color"
+                        [attr.aria-label]="'Couleur ' + color"
+                        (click)="pickColor(color)"></button>
+              }
+            </div>
+            <span class="field__hint">Sert à repérer la matière dans la grille horaire.</span>
+          </div>
+
+          <label class="switch">
+            <input type="checkbox" formControlName="graded" />
+            <span>Matière notée, qui entre dans les moyennes</span>
+          </label>
+          @if (!subjectForm.controls.graded.value) {
+            <p class="hint-block">
+              Une matière non notée figure à l'emploi du temps et sur le bulletin,
+              mais son coefficient n'entre dans aucun calcul. C'est le cas de la
+              vie scolaire ou des activités d'éveil.
+            </p>
+          }
+        </form>
+        <footer class="drawer__foot">
+          <button type="button" class="btn btn--secondary" (click)="closePanel()">
+            Annuler
+          </button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="subjectForm.invalid || saving()" (click)="submitSubject()">
+            {{ saving() ? 'Enregistrement...' : 'Enregistrer' }}
+          </button>
+        </footer>
+      }
+
+      <!-- ─── Application groupée ─── -->
+      @if (openPanel === 'APPLY') {
+        <header class="drawer__head">
+          <h2 class="drawer__title">Appliquer un programme</h2>
+          <button type="button" class="drawer__close" (click)="closePanel()"
+                  aria-label="Fermer">&times;</button>
+        </header>
+        <div class="drawer__body">
+          <p class="hint-block">
+            Dans un cycle, le programme change rarement d'un niveau à l'autre.
+            Remplir quatre fois le même tableau, c'est quatre occasions de se tromper
+            de coefficient — et une erreur reste invisible jusqu'au premier bulletin.
+          </p>
+
+          <section>
+            <h3 class="drawer__section">1 · Les matières et leurs coefficients</h3>
+            <ul class="picker">
+              @for (subject of activeSubjects(); track subject.id) {
+                <li class="picker__row">
+                  <label class="picker__check">
+                    <input type="checkbox" [checked]="isApplyRow(subject.id)"
+                           (change)="toggleApplyRow(subject.id)" />
+                    <span class="dot" aria-hidden="true"
+                          [style.background]="subject.colorHex || 'var(--brand)'"></span>
+                    <span class="picker__name">{{ subject.name }}</span>
+                    @if (!subject.graded) {
+                      <span class="pill pill--muted">Non notée</span>
+                    }
+                  </label>
+                  @if (isApplyRow(subject.id)) {
+                    <input class="input input--tiny" type="number"
+                           min="0.5" max="20" step="0.5"
+                           [value]="applyCoefficientOf(subject.id)"
+                           [disabled]="!subject.graded"
+                           (change)="setApplyCoefficient(subject.id,
+                                                         $any($event.target).value)" />
+                  }
+                </li>
+              }
+            </ul>
+            @if (applyRows().size > 0) {
+              <p class="total numeric">
+                Total des coefficients : <strong>{{ applyTotal() }}</strong>
+              </p>
+            }
+          </section>
+
+          <section>
+            <h3 class="drawer__section">2 · Les niveaux concernés</h3>
+            @for (cycle of cycles(); track cycle.id) {
+              <div class="cycle">
+                <button type="button" class="cycle__all"
+                        (click)="toggleCycleTargets(cycle.id)">
+                  {{ cycle.name }} — tout sélectionner
+                </button>
+                <div class="cycle__levels">
+                  @for (level of cycle.levels; track level.levelId) {
+                    <label class="chip-check" [class.chip-check--on]="isTargeted(level.levelId)">
+                      <input type="checkbox" [checked]="isTargeted(level.levelId)"
+                             (change)="toggleTarget(level.levelId)" />
+                      <span>{{ level.levelName }}</span>
+                      @if (!level.ready) {
+                        <span class="chip-check__flag">vide</span>
+                      }
+                    </label>
+                  }
+                </div>
+              </div>
+            }
+          </section>
+
+          <label class="switch">
+            <input type="checkbox" [(ngModel)]="applyReplace" name="applyReplace" />
+            <span>Remplacer le programme existant de ces niveaux</span>
+          </label>
+          <p class="hint-block">
+            @if (applyReplace) {
+              Les matières absentes de cette liste seront retirées — sauf celles qui
+              portent déjà des évaluations, qui sont conservées.
+            } @else {
+              Seules les matières absentes seront ajoutées. Les coefficients déjà
+              réglés sur un niveau ne sont pas écrasés.
+            }
+          </p>
+        </div>
+        <footer class="drawer__foot">
+          <button type="button" class="btn btn--secondary" (click)="closePanel()">
+            Annuler
+          </button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="!canApply()" (click)="submitApply()">
+            {{ saving()
+               ? 'Application...'
+               : 'Appliquer à ' + applyTargets().length + ' niveau(x)' }}
+          </button>
+        </footer>
+      }
+    </aside>
+  }
+</div>

@@ -71,7 +71,7 @@ export const routes: Routes = [
       {
         path: 'students',
         canActivate: [permissionGuard],
-        data: { permissions: [PERMISSIONS.STUDENT_VIEW], title: 'Eleves' },
+        data: { permissions: [PERMISSIONS.STUDENT_VIEW], title: 'Élèves' },
         loadChildren: () => import('./features/students/students.routes')
           .then((m) => m.STUDENT_ROUTES)
       },
@@ -119,27 +119,27 @@ export const routes: Routes = [
       },
       {
         path: 'subjects',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Matieres', endpoint: 'GET /api/v1/subjects' }
+        loadComponent: () => import('./features/subjects/subjects.component')
+          .then((m) => m.SubjectsComponent),
+        data: { title: 'Matières et programme' }
       },
       {
         path: 'timetable',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Emploi du temps', endpoint: 'GET /api/v1/timetables' }
+        loadComponent: () => import('./features/timetable/timetable.component')
+          .then((m) => m.TimetableComponent),
+        data: { title: 'Emploi du temps' }
       },
       {
         path: 'attendance',
         loadComponent: () => import('./features/placeholder/placeholder.component')
           .then((m) => m.PlaceholderComponent),
-        data: { title: 'Presences', endpoint: 'GET /api/v1/attendance' }
+        data: { title: 'Présences', endpoint: 'GET /api/v1/attendance' }
       },
       {
         path: 'assessments',
         loadComponent: () => import('./features/placeholder/placeholder.component')
           .then((m) => m.PlaceholderComponent),
-        data: { title: 'Evaluations', endpoint: 'GET /api/v1/assessments' }
+        data: { title: 'Évaluations', endpoint: 'GET /api/v1/assessments' }
       },
       {
         path: 'grades',
@@ -161,9 +161,9 @@ export const routes: Routes = [
       },
       {
         path: 'finance',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Frais scolaires', endpoint: 'GET /api/v1/fees' }
+        loadComponent: () => import('./features/finance/finance.component')
+          .then((m) => m.FinanceComponent),
+        data: { title: 'Frais de scolarité' }
       },
       {
         path: 'reports',
@@ -175,7 +175,7 @@ export const routes: Routes = [
         path: 'administration',
         loadComponent: () => import('./features/placeholder/placeholder.component')
           .then((m) => m.PlaceholderComponent),
-        data: { title: 'Parametres', endpoint: 'GET /api/v1/school' }
+        data: { title: 'Paramètres', endpoint: 'GET /api/v1/school' }
       }
     ]
   },

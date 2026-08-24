@@ -104,8 +104,8 @@ export class DataTableComponent<T extends object> {
   @Input() page: PageResponse<T> | null = null;
   @Input() loading = false;
   @Input() rowClickable = false;
-  @Input() caption = 'Tableau de donnees';
-  @Input() emptyTitle = 'Aucun resultat';
+  @Input() caption = 'Tableau de données';
+  @Input() emptyTitle = 'Aucun résultat';
   @Input() emptyMessage = 'Modifiez vos filtres pour elargir la recherche.';
   @Input() trackBy: string = 'id';
   @Input() sortKey?: string;

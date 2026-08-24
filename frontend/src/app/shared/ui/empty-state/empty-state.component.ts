@@ -27,7 +27,7 @@ import { CommonModule } from '@angular/common';
   `]
 })
 export class EmptyStateComponent {
-  @Input() title = 'Aucun resultat';
+  @Input() title = 'Aucun résultat';
   @Input() message?: string;
   @Input() icon = '—';
 }

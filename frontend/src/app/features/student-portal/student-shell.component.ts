@@ -7,7 +7,7 @@ import { MobileLayoutComponent, TabItem } from '@layouts/mobile-layout/mobile-la
   imports: [MobileLayoutComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <eduops-mobile-layout title="Espace eleve" subtitle="EduOps" [tabs]="tabs" />
+    <eduops-mobile-layout title="Espace élève" subtitle="EduOps" [tabs]="tabs" />
   `
 })
 export class StudentShellComponent {

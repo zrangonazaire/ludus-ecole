@@ -23,7 +23,7 @@ import { PERMISSIONS } from '@core/models/auth.models';
         <div>
           <h1 class="page__title">Inscriptions</h1>
           @if (page(); as result) {
-            <p class="page__meta numeric">{{ result.totalElements }} inscription(s) pour l'annee active</p>
+            <p class="page__meta numeric">{{ result.totalElements }} inscription(s) pour l'année active</p>
           }
         </div>
         <div class="page__actions">
@@ -39,7 +39,7 @@ import { PERMISSIONS } from '@core/models/auth.models';
         <div class="card__header">
           <label class="visually-hidden" for="enrollment-search">Rechercher</label>
           <input id="enrollment-search" class="input" type="search" style="max-width: 380px"
-                 placeholder="Eleve, matricule ou numero d'inscription"
+                 placeholder="Élève, matricule ou numéro d'inscription"
                  (input)="onSearch($any($event.target).value)" />
         </div>
         <eduops-data-table
@@ -89,7 +89,7 @@ export class EnrollmentListComponent implements OnInit {
   ngOnInit(): void {
     this.columns = [
       { key: 'enrollmentNumber', label: 'N° inscription', numeric: true, width: '16%' },
-      { key: 'studentName', label: 'Eleve', width: '22%' },
+      { key: 'studentName', label: 'Élève', width: '22%' },
       { key: 'studentNumber', label: 'Matricule', numeric: true, width: '16%' },
       { key: 'classroomName', label: 'Classe', width: '12%' },
       { key: 'enrollmentDate', label: 'Date', width: '10%' },

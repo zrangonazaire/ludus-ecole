@@ -26,28 +26,8 @@
     </div>
   </header>
 
-  <!-- Rappel tant que la configuration n'est pas terminee -->
-  @if (setupIncomplete()) {
-    @if (setup(); as progress) {
-      <aside class="setup-banner" role="status">
-        <div class="setup-banner__bar" aria-hidden="true">
-          <span class="setup-banner__fill" [style.width.%]="progress.percentComplete"></span>
-        </div>
-        <div class="setup-banner__text">
-          <p class="setup-banner__title">
-            Configuration incomplete —
-            <span class="numeric">{{ progress.completedSteps }}/{{ progress.totalSteps }}</span>
-            etapes
-          </p>
-          <p class="setup-banner__lead">
-            Certains chiffres resteront vides tant que les classes, les frais ou les
-            inscriptions ne sont pas renseignes.
-          </p>
-        </div>
-        <a class="btn btn--primary btn--sm" routerLink="/setup">Terminer la configuration</a>
-      </aside>
-    }
-  }
+  <!-- Bien demarrer : reste affiche tant que la configuration n'est pas finie -->
+  <eduops-setup-progress />
 
   @if (loading()) {
     <eduops-loading-state message="Chargement du tableau de bord..." />
@@ -66,15 +46,15 @@
     <!-- ============ Charts (section 58) ============ -->
     <section class="grid grid--2 section-gap">
       <eduops-chart-card title="Effectifs par niveau"
-                         subtitle="Repartition des eleves inscrits"
+                         subtitle="Répartition des élèves inscrits"
                          [data]="dashboard.enrollmentByLevel" type="bar" />
 
-      <eduops-chart-card title="Presence / absence"
-                         subtitle="Evolution sur les 8 dernieres semaines"
+      <eduops-chart-card title="Présence / absence"
+                         subtitle="Évolution sur les 8 dernières semaines"
                          [data]="dashboard.attendanceTrend" type="line" />
 
       <eduops-chart-card title="Performance academique"
-                         subtitle="Evolution de la moyenne generale"
+                         subtitle="Évolution de la moyenne générale"
                          [data]="dashboard.academicPerformance" type="area" />
 
       <eduops-chart-card title="Encaissements"
@@ -88,7 +68,7 @@
       <!-- Dernieres inscriptions -->
       <article class="card">
         <header class="card__header">
-          <h3 class="card__title">Dernieres inscriptions</h3>
+          <h3 class="card__title">Dernières inscriptions</h3>
           <a class="link-sm" routerLink="/enrollments">Tout voir</a>
         </header>
         <ul class="list">
@@ -145,7 +125,7 @@
               <span class="list__amount money">{{ payment.amount | money }}</span>
             </li>
           } @empty {
-            <li class="list__empty">Aucun paiement enregistre.</li>
+            <li class="list__empty">Aucun paiement enregistré.</li>
           }
         </ul>
       </article>
@@ -175,7 +155,7 @@
       <!-- Evaluations a venir -->
       <article class="card">
         <header class="card__header">
-          <h3 class="card__title">Evaluations a venir</h3>
+          <h3 class="card__title">Évaluations a venir</h3>
           <a class="link-sm" routerLink="/assessments">Tout voir</a>
         </header>
         <ul class="list">
@@ -191,7 +171,7 @@
               <eduops-status-badge [status]="assessment.status" />
             </li>
           } @empty {
-            <li class="list__empty">Aucune evaluation programmee.</li>
+            <li class="list__empty">Aucune évaluation programmee.</li>
           }
         </ul>
       </article>
@@ -208,7 +188,7 @@
               <div class="list__body">
                 <p class="list__title">{{ classroom.name }}</p>
                 <p class="list__meta numeric">
-                  {{ classroom.activeEnrollments }}/{{ classroom.capacityMaximum }} eleves
+                  {{ classroom.activeEnrollments }}/{{ classroom.capacityMaximum }} élèves
                   <span class="dot">•</span>{{ classroom.occupancyRate }} %
                 </p>
               </div>
@@ -222,7 +202,7 @@
     </section>
 
       @if (lastRefresh(); as refreshed) {
-        <p class="refresh-note">Derniere actualisation : {{ refreshed | date:'HH:mm:ss' }}</p>
+        <p class="refresh-note">Dernière actualisation : {{ refreshed | date:'HH:mm:ss' }}</p>
       }
     }
   }

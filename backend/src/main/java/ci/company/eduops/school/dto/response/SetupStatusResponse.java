@@ -14,7 +14,7 @@ import java.util.UUID;
  * tick itself off — the checklist reflects reality rather than a remembered
  * position in a form.</p>
  */
-@Schema(name = "SetupStatus", description = "Avancement de la configuration de l'etablissement")
+@Schema(name = "SetupStatus", description = "Avancement de la configuration de l'établissement")
 public class SetupStatusResponse {
 
     private UUID schoolId;
@@ -30,10 +30,10 @@ public class SetupStatusResponse {
     @Schema(example = "67")
     private int percentComplete;
 
-    @Schema(description = "Vrai quand toutes les etapes obligatoires sont faites")
+    @Schema(description = "Vrai quand toutes les étapes obligatoires sont faites")
     private boolean complete;
 
-    @Schema(description = "Cle de la prochaine etape a traiter, nulle si termine")
+    @Schema(description = "Clé de la prochaine étape à traiter, nulle si terminé")
     private String nextStepKey;
 
     private List<SetupStepResponse> steps = new ArrayList<>();

@@ -64,7 +64,7 @@
 
   @if (submitted()) {
     <p class="submitted" role="status">
-      Feuille validee et enregistree par le serveur. Toute correction sera tracee.
+      Feuille validee et enregistrée par le serveur. Toute correction sera tracee.
     </p>
   } @else {
     <div class="submit-bar">
@@ -73,24 +73,24 @@
         {{ submitting() ? 'Enregistrement...' : "Valider l'appel" }}
       </button>
       <p class="submit-bar__note">
-        L'appel n'est definitif qu'apres confirmation du serveur.
+        L'appel n'est definitif qu'après confirmation du serveur.
       </p>
     </div>
   }
 
 } @else {
   <h1 class="title">Faire l'appel</h1>
-  <p class="subtitle">Selectionnez la classe concernee.</p>
+  <p class="subtitle">Selectionnez la classe concernée.</p>
   <ul class="classes">
     @for (classroom of classes(); track classroom.id) {
       <li>
         <button type="button" class="class-row card" (click)="openSheet(classroom)">
           <span class="class-row__name">{{ classroom.name }}</span>
-          <span class="class-row__meta numeric">{{ classroom.activeEnrollments }} eleves</span>
+          <span class="class-row__meta numeric">{{ classroom.activeEnrollments }} élèves</span>
         </button>
       </li>
     } @empty {
-      <li class="empty">Aucune classe ne vous est affectee.</li>
+      <li class="empty">Aucune classe ne vous est affectée.</li>
     }
   </ul>
 }

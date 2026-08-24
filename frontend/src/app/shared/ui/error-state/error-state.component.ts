@@ -36,7 +36,7 @@ import { CommonModule } from '@angular/common';
 })
 export class ErrorStateComponent {
   @Input() title = 'Une erreur est survenue';
-  @Input() message = 'Impossible de charger les donnees pour le moment.';
+  @Input() message = 'Impossible de charger les données pour le moment.';
   @Input() showRetry = true;
   @Input() correlationId?: string;
   @Output() retry = new EventEmitter<void>();

@@ -1,0 +1,225 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Emploi du temps</h1>
+      <p class="page__meta numeric">
+        @if (grid(); as g) {
+          {{ g.scopeLabel }} — {{ totalHours() }} h par semaine
+          @if (g.status === 'DRAFT') { <span class="tag tag--draft">Brouillon</span> }
+          @if (g.status === 'PUBLISHED') { <span class="tag tag--live">Publié</span> }
+        }
+      </p>
+    </div>
+    <div class="page__actions">
+      @if (grid()?.editable) {
+        <button type="button" class="btn btn--primary"
+                [disabled]="saving() || (grid()?.slots?.length ?? 0) === 0"
+                (click)="publish()">
+          {{ saving() ? 'Publication...' : 'Publier' }}
+        </button>
+      }
+    </div>
+  </header>
+
+  <!-- ═══ Choix de la vue ═══ -->
+  <section class="controls">
+    <div class="tabs" role="tablist">
+      <button type="button" class="tabs__item" role="tab"
+              [class.tabs__item--on]="scope() === 'CLASSROOM'"
+              [attr.aria-selected]="scope() === 'CLASSROOM'"
+              (click)="changeScope('CLASSROOM')">Par classe</button>
+      <button type="button" class="tabs__item" role="tab"
+              [class.tabs__item--on]="scope() === 'TEACHER'"
+              [attr.aria-selected]="scope() === 'TEACHER'"
+              (click)="changeScope('TEACHER')">Par professeur</button>
+      <button type="button" class="tabs__item" role="tab"
+              [class.tabs__item--on]="scope() === 'ROOM'"
+              [attr.aria-selected]="scope() === 'ROOM'"
+              (click)="changeScope('ROOM')">Par salle</button>
+    </div>
+
+    <div class="field field--inline">
+      <label class="field__label" for="scopeId">
+        @switch (scope()) {
+          @case ('CLASSROOM') { Classe }
+          @case ('TEACHER') { Professeur }
+          @case ('ROOM') { Salle }
+        }
+      </label>
+      <select id="scopeId" class="select" [ngModel]="scopeId()" name="scopeId"
+              (ngModelChange)="changeScopeId($event)">
+        @if (scope() === 'CLASSROOM') {
+          @for (classroom of classList(); track classroom.id) {
+            <option [value]="classroom.id">{{ classroom.name }} — {{ classroom.levelName }}</option>
+          }
+        }
+        @if (scope() === 'TEACHER') {
+          @for (teacher of teacherList(); track teacher.id) {
+            <option [value]="teacher.id">{{ teacher.fullName }}</option>
+          }
+        }
+        @if (scope() === 'ROOM') {
+          <option value="">Aucune salle enregistrée</option>
+        }
+      </select>
+    </div>
+  </section>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement de l'emploi du temps..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    @if (grid(); as g) {
+
+    <div class="layout" [class.layout--with-palette]="g.editable">
+
+      <!-- ═══ Palette des matières ═══ -->
+      @if (g.editable) {
+        <aside class="palette">
+          <h2 class="palette__title">Matières à poser</h2>
+          <p class="palette__hint">
+            Faites glisser une matière sur la grille. Une case qui ne peut pas
+            l'accueillir devient rouge avant que vous ne lâchiez.
+          </p>
+
+          <ul class="palette__list">
+            @for (entry of palette(); track entry.subjectId + entry.teacherId) {
+              <li>
+                <div class="chip" draggable="true"
+                     [class.chip--done]="entry.complete"
+                     [style.--chip-color]="entry.subjectColor || 'var(--brand)'"
+                     (dragstart)="startPaletteDrag(entry, $event)"
+                     (dragend)="endDrag()">
+                  <span class="chip__name">{{ entry.subjectName }}</span>
+                  <span class="chip__teacher">{{ entry.teacherName }}</span>
+                  <span class="chip__bar" aria-hidden="true">
+                    <span class="chip__fill" [style.width.%]="paletteProgress(entry)"></span>
+                  </span>
+                  <span class="chip__quota numeric">
+                    {{ entry.placedMinutes / 60 }} h posées
+                    @if (entry.weeklyHours) { / {{ entry.weeklyHours }} h }
+                  </span>
+                </div>
+              </li>
+            } @empty {
+              <li class="palette__empty">
+                Aucune affectation d'enseignant sur cette classe.
+                <a routerLink="/teachers">Affectez d'abord les enseignants</a> :
+                la palette n'offre que des combinaisons déjà valides.
+              </li>
+            }
+          </ul>
+        </aside>
+      }
+
+      <!-- ═══ La grille ═══ -->
+      <div class="board">
+        <div class="board__scroll">
+          <table class="grid" [style.--day-count]="days().length">
+            <caption class="visually-hidden">
+              Emploi du temps de {{ g.scopeLabel }}
+            </caption>
+            <thead>
+              <tr>
+                <th class="grid__corner" scope="col">Heure</th>
+                @for (day of days(); track day) {
+                  <th scope="col">{{ dayLabel(day) }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (hour of hours(); track hour) {
+                <tr>
+                  <th class="grid__hour numeric" scope="row">{{ hour }}</th>
+                  @for (day of days(); track day) {
+                    <td class="cell"
+                        [class.cell--blocked]="isBlocked(day, hour)"
+                        [class.cell--allowed]="isAllowed(day, hour)"
+                        [class.cell--drop]="g.editable"
+                        (dragover)="onDragOver(day, hour, $event)"
+                        (drop)="onDrop(day, hour, $event)">
+
+                      @for (slot of slotsAt(day, hour); track slot.id) {
+                        <article class="course"
+                                 [class.course--selected]="selectedSlot()?.id === slot.id"
+                                 [style.--course-color]="slot.subjectColor || 'var(--brand)'"
+                                 [style.--span]="spanOf(slot)"
+                                 [draggable]="g.editable"
+                                 (dragstart)="startSlotDrag(slot, $event)"
+                                 (dragend)="endDrag()"
+                                 (click)="select(slot)">
+                          <span class="course__subject">
+                            {{ slot.subjectShortName || slot.subjectName }}
+                          </span>
+                          <span class="course__teacher">{{ slot.teacherName }}</span>
+                          <span class="course__time numeric">
+                            {{ hhmm(slot.startTime) }} – {{ hhmm(slot.endTime) }}
+                          </span>
+                          @if (g.scope !== 'CLASSROOM') {
+                            <span class="course__where">{{ slot.classroomName }}</span>
+                          }
+                          @if (slot.roomName) {
+                            <span class="course__where">{{ slot.roomName }}</span>
+                          }
+                        </article>
+                      }
+
+                      @if (isBlocked(day, hour)) {
+                        <div class="veto" role="alert">
+                          @for (conflict of hoverConflicts(); track conflict.message) {
+                            <span class="veto__line">{{ conflictLabel(conflict) }}</span>
+                          }
+                        </div>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (hoverConflicts().length > 0) {
+          <div class="conflicts" role="alert">
+            <p class="conflicts__title">Ce créneau est refusé :</p>
+            <ul>
+              @for (conflict of hoverConflicts(); track conflict.message) {
+                <li>{{ conflict.message }}</li>
+              }
+            </ul>
+          </div>
+        }
+
+        @if (selectedSlot(); as slot) {
+          <div class="detail">
+            <div class="detail__body">
+              <p class="detail__title">{{ slot.subjectName }}</p>
+              <p class="detail__meta numeric">
+                {{ dayLabel(slot.dayOfWeek) }} {{ hhmm(slot.startTime) }} –
+                {{ hhmm(slot.endTime) }} · {{ slot.teacherName }}
+                @if (slot.roomName) { · {{ slot.roomName }} }
+              </p>
+            </div>
+            @if (g.editable) {
+              <button type="button" class="btn btn--ghost btn--sm" (click)="removeSlot(slot)">
+                Retirer de la grille
+              </button>
+            }
+          </div>
+        }
+
+        @if (g.slots.length === 0) {
+          <p class="board__empty">
+            @if (g.editable) {
+              La grille est vide. Faites glisser une matière depuis la colonne de gauche.
+            } @else {
+              Aucun cours sur cette semaine.
+            }
+          </p>
+        }
+      </div>
+    </div>
+    }
+  }
+</div>

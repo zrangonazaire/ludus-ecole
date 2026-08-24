@@ -1,0 +1,73 @@
+@if (visible()) {
+  @if (status(); as setup) {
+    <section class="setup" [class.setup--compact]="compact"
+             aria-labelledby="setup-heading">
+
+      <!-- Ligne principale -->
+      <div class="setup__main">
+        <span class="setup__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.5.55.87 1.06.99H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </span>
+
+        <div class="setup__text">
+          <h2 class="setup__title" id="setup-heading">Bien démarrer avec EduOps</h2>
+          <p class="setup__count numeric">
+            {{ setup.completedSteps }} étape{{ setup.completedSteps > 1 ? 's' : '' }}
+            sur {{ setup.totalSteps }} terminée{{ setup.completedSteps > 1 ? 's' : '' }}
+          </p>
+          <div class="setup__bar" role="progressbar"
+               [attr.aria-valuenow]="setup.percentComplete"
+               aria-valuemin="0" aria-valuemax="100">
+            <span class="setup__fill" [style.width.%]="setup.percentComplete"></span>
+          </div>
+        </div>
+
+        <span class="setup__percent numeric">{{ setup.percentComplete }}%</span>
+
+        @if (nextStep(); as step) {
+          <a class="btn btn--primary setup__cta" [routerLink]="step.actionRoute">
+            Continuer <span aria-hidden="true">→</span>
+          </a>
+        }
+      </div>
+
+      <!-- Prochaine etape + bascule de la liste -->
+      <div class="setup__footer">
+        @if (nextStep(); as step) {
+          <p class="setup__next">
+            <strong>Prochaine étape :</strong>
+            {{ step.label }} — {{ step.description }}
+          </p>
+        }
+        <button type="button" class="setup__toggle" (click)="toggle()"
+                [attr.aria-expanded]="expanded()">
+          Voir les {{ setup.totalSteps }} étapes
+          <span aria-hidden="true">{{ expanded() ? '⌃' : '⌄' }}</span>
+        </button>
+      </div>
+
+      <!-- Liste complete -->
+      @if (expanded()) {
+        <ol class="setup__steps">
+          @for (step of setup.steps; track step.key; let i = $index) {
+            <li class="mini" [class.mini--done]="step.done"
+                [class.mini--next]="!step.done && setup.nextStepKey === step.key">
+              <span class="mini__marker" aria-hidden="true">{{ step.done ? '✓' : i + 1 }}</span>
+              <div class="mini__body">
+                <p class="mini__label">{{ step.label }}</p>
+                <p class="mini__count numeric">{{ countLabel(step) }}</p>
+              </div>
+              <a class="mini__link" [routerLink]="step.actionRoute">
+                {{ step.done ? 'Modifier' : step.actionLabel }}
+              </a>
+            </li>
+          }
+        </ol>
+      }
+    </section>
+  }
+}

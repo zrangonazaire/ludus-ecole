@@ -1,170 +1,586 @@
 <div class="page">
-  <header class="page__header">
-    <div>
-      <h1 class="page__title">Nouvelle inscription</h1>
-      <p class="page__meta">Selection de l'eleve, affectation de classe, controles serveur.</p>
+
+  <!-- ═══════ Choix du mode ═══════ -->
+  @if (mode() === null) {
+    <header class="page__header">
+      <div>
+        <h1 class="page__title">Nouvelle inscription</h1>
+        <p class="page__meta">Comment souhaitez-vous procéder ?</p>
+      </div>
+      <a class="btn btn--secondary" routerLink="/enrollments">Retour à la liste</a>
+    </header>
+
+    <div class="modes">
+      <button type="button" class="mode mode--new" (click)="chooseMode('NEW')">
+        <span class="mode__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>
+          </svg>
+        </span>
+        <span class="mode__title">Nouvel élève</span>
+        <span class="mode__text">
+          L'élève n'existe pas encore. Vous saisissez son identité, son responsable
+          légal, puis vous l'affectez à une classe.
+        </span>
+        <span class="mode__hint">Le cas le plus courant à la rentrée</span>
+      </button>
+
+      <button type="button" class="mode mode--returning" (click)="chooseMode('RETURNING')">
+        <span class="mode__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>
+          </svg>
+        </span>
+        <span class="mode__title">Réinscription</span>
+        <span class="mode__text">
+          L'élève est déjà connu de l'établissement. Vous le retrouvez, puis vous
+          l'inscrivez dans sa nouvelle classe.
+        </span>
+        <span class="mode__hint">Son historique est conservé</span>
+      </button>
+
+      <button type="button" class="mode mode--import" (click)="chooseMode('IMPORT')">
+        <span class="mode__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <path d="M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+        </span>
+        <span class="mode__title">Import Excel</span>
+        <span class="mode__text">
+          Vous avez déjà une liste. Téléchargez le modèle, remplissez-le, déposez-le :
+          les doublons et les erreurs sont signalés avant tout enregistrement.
+        </span>
+        <span class="mode__hint">Plusieurs dizaines d'élèves d'un coup</span>
+      </button>
     </div>
-  </header>
-
-  <!-- Steps -->
-  <ol class="steps" aria-label="Etapes de l'inscription">
-    <li class="steps__item" [class.steps__item--active]="step() >= 1">
-      <span class="steps__index">1</span> Eleve
-    </li>
-    <li class="steps__item" [class.steps__item--active]="step() >= 2">
-      <span class="steps__index">2</span> Classe
-    </li>
-    <li class="steps__item" [class.steps__item--active]="step() >= 3">
-      <span class="steps__index">3</span> Controles &amp; validation
-    </li>
-  </ol>
-
-  <!-- Step 1: student -->
-  @if (step() === 1) {
-    <section class="card">
-      <header class="card__header"><h2 class="card__title">Rechercher l'eleve</h2></header>
-      <div class="card__body">
-        <div class="field">
-          <label class="field__label" for="wizard-student">Nom, prenom ou matricule</label>
-          <input id="wizard-student" class="input" type="search"
-                 placeholder="Au moins 2 caracteres"
-                 (input)="searchStudents($any($event.target).value)" />
-          <span class="field__hint">
-            L'eleve doit etre au statut Admis ou Actif pour pouvoir etre inscrit.
-          </span>
-        </div>
-
-        <ul class="picker">
-          @for (candidate of candidates(); track candidate.id) {
-            <li>
-              <button type="button" class="picker__row" (click)="chooseStudent(candidate)">
-                <eduops-avatar [name]="candidate.fullName" size="sm" />
-                <span class="picker__body">
-                  <span class="picker__title">{{ candidate.fullName }}</span>
-                  <span class="picker__meta numeric">
-                    {{ candidate.studentNumber }} — {{ candidate.classroomName ?? 'Sans classe' }}
-                  </span>
-                </span>
-                <eduops-status-badge [status]="candidate.status" />
-              </button>
-            </li>
-          }
-        </ul>
-      </div>
-    </section>
   }
 
-  <!-- Step 2: classroom -->
-  @if (step() === 2) {
-    <section class="card">
-      <header class="card__header">
-        <h2 class="card__title">Choisir la classe</h2>
-        <button type="button" class="btn btn--ghost btn--sm" (click)="back()">Retour</button>
-      </header>
-      <div class="card__body">
-        <p class="selected">
-          Eleve selectionne :
-          <strong>{{ selectedStudent()?.fullName }}</strong>
-          <span class="numeric">({{ selectedStudent()?.studentNumber }})</span>
-        </p>
-
-        <ul class="picker">
-          @for (classroom of availableClasses(); track classroom.id) {
-            <li>
-              <button type="button" class="picker__row" (click)="chooseClassroom(classroom)"
-                      [disabled]="checking()">
-                <span class="picker__body">
-                  <span class="picker__title">{{ classroom.name }}</span>
-                  <span class="picker__meta numeric">
-                    {{ classroom.activeEnrollments }}/{{ classroom.capacityMaximum }} eleves
-                    — {{ classroom.availableSeats }} place(s) restante(s)
-                  </span>
-                </span>
-                <eduops-status-badge [status]="classroom.capacityStatus" />
-              </button>
-            </li>
+  <!-- ═══════ Parcours ═══════ -->
+  @if (mode(); as currentMode) {
+    <header class="page__header">
+      <div>
+        <h1 class="page__title">
+          @switch (currentMode) {
+            @case ('NEW') { Inscrire un nouvel élève }
+            @case ('RETURNING') { Réinscrire un élève }
+            @case ('IMPORT') { Importer une liste d'élèves }
           }
-        </ul>
+        </h1>
+        <p class="page__meta">Étape {{ step() }} sur {{ stepLabels().length }}</p>
       </div>
-    </section>
-  }
+      <button type="button" class="btn btn--secondary" (click)="backToModes()">
+        Changer de méthode
+      </button>
+    </header>
 
-  <!-- Step 3: server checks -->
-  @if (step() === 3) {
-    <section class="card">
-      <header class="card__header">
-        <h2 class="card__title">Controles serveur</h2>
-        <button type="button" class="btn btn--ghost btn--sm" (click)="back()">Retour</button>
-      </header>
+    <ol class="steps">
+      @for (label of stepLabels(); track label; let i = $index) {
+        <li class="steps__item" [class.steps__item--active]="step() >= i + 1"
+            [class.steps__item--current]="step() === i + 1">
+          <span class="steps__index">{{ i + 1 }}</span> {{ label }}
+        </li>
+      }
+    </ol>
 
-      <div class="card__body">
-        <dl class="summary">
-          <div><dt>Eleve</dt><dd>{{ selectedStudent()?.fullName }}</dd></div>
-          <div><dt>Matricule</dt><dd class="numeric">{{ selectedStudent()?.studentNumber }}</dd></div>
-          <div><dt>Classe</dt><dd>{{ selectedClassroom()?.name }}</dd></div>
-        </dl>
+    <div class="layout" [class.layout--wide]="currentMode === 'IMPORT'">
+      <div class="layout__main">
 
-        @if (checkResult(); as result) {
-          <div class="capacity">
-            <p class="capacity__line numeric">
-              Capacite : <strong>{{ result.occupiedSeats }}/{{ result.capacityMaximum }}</strong>
-              — places disponibles : <strong>{{ result.availableSeats }}</strong>
-              — projetees : <strong>{{ result.projectedAvailableSeats }}</strong>
-            </p>
-          </div>
+        <!-- ─────── NOUVEL ÉLÈVE : identité ─────── -->
+        @if (currentMode === 'NEW' && step() === 1) {
+          <section class="card">
+            <header class="card__header"><h2 class="card__title">Identité de l'élève</h2></header>
+            <form class="card__body" [formGroup]="identity">
+              <div class="grid2">
+                <div class="field">
+                  <label class="field__label field__label--required" for="lastName">Nom</label>
+                  <input id="lastName" class="input" formControlName="lastName"
+                         placeholder="KONE" autocomplete="family-name" />
+                </div>
+                <div class="field">
+                  <label class="field__label field__label--required" for="firstName">Prénoms</label>
+                  <input id="firstName" class="input" formControlName="firstName"
+                         placeholder="Aya Marie" autocomplete="given-name" />
+                </div>
+              </div>
 
-          @if (result.allowed) {
-            <p class="verdict verdict--ok" role="status">
-              Tous les controles sont passes. L'inscription peut etre validee.
-            </p>
-          } @else {
-            <div class="verdict verdict--ko" role="alert">
-              <p class="verdict__title">L'inscription est refusee par le serveur :</p>
-              <ul>
-                @for (blocker of result.blockers; track blocker) {
-                  <li>{{ blockerMessage(blocker) }}</li>
+              <div class="grid2">
+                <div class="field">
+                  <label class="field__label field__label--required" for="gender">Sexe</label>
+                  <select id="gender" class="select" formControlName="gender">
+                    <option value="FEMALE">Féminin</option>
+                    <option value="MALE">Masculin</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="field__label field__label--required" for="birthDate">
+                    Date de naissance
+                  </label>
+                  <input id="birthDate" class="input" type="date" formControlName="birthDate" />
+                </div>
+              </div>
+
+              <div class="grid2">
+                <div class="field">
+                  <label class="field__label" for="birthPlace">Lieu de naissance</label>
+                  <input id="birthPlace" class="input" formControlName="birthPlace"
+                         placeholder="Abidjan" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="nationality">Nationalité</label>
+                  <input id="nationality" class="input" formControlName="nationality" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="previousSchool">École précédente</label>
+                <input id="previousSchool" class="input" formControlName="previousSchool"
+                       placeholder="EPP Cocody" />
+                <span class="field__hint">
+                  Le matricule sera attribué automatiquement selon le format de l'établissement.
+                </span>
+              </div>
+            </form>
+            <footer class="card__footer row row--between">
+              <span class="footer-note">Les champs marqués d'une étoile sont obligatoires.</span>
+              <button type="button" class="btn btn--primary"
+                      [disabled]="identity.invalid" (click)="next()">Continuer</button>
+            </footer>
+          </section>
+        }
+
+        <!-- ─────── NOUVEL ÉLÈVE : responsable ─────── -->
+        @if (currentMode === 'NEW' && step() === 2) {
+          <section class="card">
+            <header class="card__header">
+              <h2 class="card__title">Responsable légal</h2>
+            </header>
+            <form class="card__body" [formGroup]="guardian">
+              <p class="hint-block">
+                Ce responsable recevra les notifications d'absence, les bulletins et,
+                s'il est désigné responsable financier, les avis d'échéance.
+              </p>
+
+              <div class="grid2">
+                <div class="field">
+                  <label class="field__label field__label--required" for="gLastName">Nom</label>
+                  <input id="gLastName" class="input" formControlName="lastName" />
+                </div>
+                <div class="field">
+                  <label class="field__label field__label--required" for="gFirstName">Prénoms</label>
+                  <input id="gFirstName" class="input" formControlName="firstName" />
+                </div>
+              </div>
+
+              <div class="grid2">
+                <div class="field">
+                  <label class="field__label field__label--required" for="gPhone">Téléphone</label>
+                  <input id="gPhone" class="input" type="tel" formControlName="phone"
+                         placeholder="+225 07 11 22 33" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="gEmail">Email</label>
+                  <input id="gEmail" class="input" type="email" formControlName="email" />
+                  <span class="field__hint">Nécessaire pour ouvrir le portail parent.</span>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label field__label--required" for="gRel">Lien de parenté</label>
+                <select id="gRel" class="select" formControlName="relationship">
+                  <option value="MOTHER">Mère</option>
+                  <option value="FATHER">Père</option>
+                  <option value="TUTOR">Tuteur</option>
+                  <option value="LEGAL_REPRESENTATIVE">Représentant légal</option>
+                </select>
+              </div>
+
+              <label class="switch">
+                <input type="checkbox" formControlName="financialResponsibility" />
+                <span>Responsable financier : reçoit les factures et les relances d'impayé</span>
+              </label>
+            </form>
+            <footer class="card__footer row row--between">
+              <button type="button" class="btn btn--secondary" (click)="back()">Retour</button>
+              <button type="button" class="btn btn--primary"
+                      [disabled]="guardian.invalid" (click)="next()">Continuer</button>
+            </footer>
+          </section>
+        }
+
+        <!-- ─────── RÉINSCRIPTION : recherche ─────── -->
+        @if (currentMode === 'RETURNING' && step() === 1) {
+          <section class="card">
+            <header class="card__header"><h2 class="card__title">Retrouver l'élève</h2></header>
+            <div class="card__body">
+              <div class="field">
+                <label class="field__label" for="search">Nom, prénom ou matricule</label>
+                <input id="search" class="input" type="search" placeholder="Au moins 2 caractères"
+                       (input)="searchStudents($any($event.target).value)" />
+              </div>
+              <ul class="picker">
+                @for (candidate of candidates(); track candidate.id) {
+                  <li>
+                    <button type="button" class="picker__row" (click)="chooseStudent(candidate)">
+                      <eduops-avatar [name]="candidate.fullName" size="sm" />
+                      <span class="picker__body">
+                        <span class="picker__title">{{ candidate.fullName }}</span>
+                        <span class="picker__meta numeric">
+                          {{ candidate.studentNumber }} — {{ candidate.classroomName ?? 'Sans classe' }}
+                        </span>
+                      </span>
+                      <eduops-status-badge [status]="candidate.status" />
+                    </button>
+                  </li>
+                } @empty {
+                  <li class="picker__empty">
+                    Saisissez un nom ou un matricule pour retrouver un élève déjà enregistré.
+                  </li>
                 }
               </ul>
             </div>
-          }
+          </section>
+        }
 
-          @for (warning of result.warnings; track warning) {
-            <p class="verdict verdict--warn">Attention : la classe est presque pleine.</p>
-          }
+        <!-- ─────── Choix de la classe (nouveau + réinscription) ─────── -->
+        @if ((currentMode === 'NEW' && step() === 3)
+          || (currentMode === 'RETURNING' && step() === 2)) {
+          <section class="card">
+            <header class="card__header">
+              <h2 class="card__title">Affecter à une classe</h2>
+            </header>
+            <div class="card__body">
+              <ul class="classes">
+                @for (classroom of availableClasses(); track classroom.id) {
+                  <li>
+                    <button type="button" class="class-row"
+                            [class.class-row--on]="selectedClassroom()?.id === classroom.id"
+                            [disabled]="checking()"
+                            (click)="chooseClassroom(classroom)">
+                      <span class="class-row__body">
+                        <span class="class-row__name">{{ classroom.name }}</span>
+                        <span class="class-row__meta numeric">
+                          {{ classroom.activeEnrollments }}/{{ classroom.capacityMaximum }} —
+                          {{ classroom.availableSeats }} place(s) restante(s)
+                        </span>
+                      </span>
+                      <span class="gauge-mini" aria-hidden="true">
+                        <span class="gauge-mini__fill"
+                              [style.width.%]="classroom.occupancyRate > 100 ? 100 : classroom.occupancyRate"
+                              [class]="'gauge-mini__fill--' + classroom.capacityStatus"></span>
+                      </span>
+                      <eduops-status-badge [status]="classroom.capacityStatus" />
+                    </button>
+                  </li>
+                } @empty {
+                  <li class="picker__empty">
+                    Aucune classe active. <a routerLink="/classes">Créez-en une</a> avant d'inscrire.
+                  </li>
+                }
+              </ul>
+            </div>
+            <footer class="card__footer row row--between">
+              <button type="button" class="btn btn--secondary" (click)="back()">Retour</button>
+              <button type="button" class="btn btn--primary"
+                      [disabled]="!selectedClassroom()" (click)="next()">Continuer</button>
+            </footer>
+          </section>
+        }
 
-          <!-- Capacity override: permission + justification, both audited -->
-          @if (!result.allowed && canOverride()) {
-            <div class="override">
-              <label class="override__toggle">
-                <input type="checkbox" [(ngModel)]="overrideRequested" name="override" />
-                Demander une derogation de capacite
-              </label>
-              @if (overrideRequested) {
-                <div class="field">
-                  <label class="field__label field__label--required" for="override-reason">
-                    Justification de la derogation
-                  </label>
-                  <textarea id="override-reason" class="textarea" rows="3"
-                            [(ngModel)]="overrideReason" name="overrideReason"
-                            placeholder="Motif detaille (minimum 10 caracteres)"></textarea>
-                  <span class="field__hint">
-                    Cette derogation exige la permission ENROLLMENT_OVERRIDE_CAPACITY et sera
-                    conservee dans le journal d'audit.
-                  </span>
+        <!-- ─────── Confirmation ─────── -->
+        @if ((currentMode === 'NEW' && step() === 4)
+          || (currentMode === 'RETURNING' && step() === 3)) {
+          <section class="card">
+            <header class="card__header">
+              <h2 class="card__title">Contrôles serveur et validation</h2>
+            </header>
+            <div class="card__body">
+              @if (checkResult(); as result) {
+                <div class="capacity">
+                  <p class="capacity__line numeric">
+                    Capacité : <strong>{{ result.occupiedSeats }}/{{ result.capacityMaximum }}</strong>
+                    — disponibles : <strong>{{ result.availableSeats }}</strong>
+                    — projetées : <strong>{{ result.projectedAvailableSeats }}</strong>
+                  </p>
                 </div>
+
+                @if (result.allowed) {
+                  <p class="verdict verdict--ok" role="status">
+                    Tous les contrôles sont passés. L'inscription peut être validée.
+                  </p>
+                } @else {
+                  <div class="verdict verdict--ko" role="alert">
+                    <p class="verdict__title">Le serveur refuse cette inscription :</p>
+                    <ul>
+                      @for (blocker of result.blockers; track blocker) {
+                        <li>{{ blockerMessage(blocker) }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+
+                @for (warning of result.warnings; track warning) {
+                  <p class="verdict verdict--warn">Attention : la classe est presque pleine.</p>
+                }
+
+                @if (!result.allowed && canOverride()) {
+                  <div class="override">
+                    <label class="switch">
+                      <input type="checkbox" [(ngModel)]="overrideRequested" name="override" />
+                      <span>Demander une dérogation de capacité</span>
+                    </label>
+                    @if (overrideRequested) {
+                      <div class="field">
+                        <label class="field__label field__label--required" for="reason">
+                          Justification
+                        </label>
+                        <textarea id="reason" class="textarea" rows="3"
+                                  [(ngModel)]="overrideReason" name="reason"
+                                  placeholder="Motif détaillé (10 caractères minimum)"></textarea>
+                        <span class="field__hint">
+                          Exige la permission correspondante et sera conservée au journal d'audit.
+                        </span>
+                      </div>
+                    }
+                  </div>
+                }
               }
             </div>
+            <footer class="card__footer row row--between">
+              <button type="button" class="btn btn--secondary" (click)="back()">Retour</button>
+              <button type="button" class="btn btn--primary btn--lg"
+                      [disabled]="!canSubmit() || submitting()" (click)="submit()">
+                {{ submitting() ? 'Enregistrement...' : "Valider l'inscription" }}
+              </button>
+            </footer>
+          </section>
+        }
+
+        <!-- ─────── IMPORT : modèle ─────── -->
+        @if (currentMode === 'IMPORT' && step() === 1) {
+          <section class="card">
+            <header class="card__header">
+              <h2 class="card__title">Télécharger le modèle</h2>
+            </header>
+            <div class="card__body">
+              <p class="hint-block">
+                Le modèle est généré pour votre établissement : vos classes réelles y sont
+                proposées en liste déroulante, ce qui évite les fautes de frappe.
+              </p>
+
+              <div class="columns-preview">
+                <p class="columns-preview__title">Colonnes attendues</p>
+                <div class="columns-preview__chips">
+                  @for (col of ['Nom','Prénoms','Sexe','Date de naissance','Lieu de naissance',
+                                'Nationalité','Classe','Nom du responsable',
+                                'Téléphone du responsable','Email du responsable',
+                                'Lien de parenté','École précédente']; track col) {
+                    <span class="col-chip">{{ col }}</span>
+                  }
+                </div>
+                <p class="columns-preview__note">
+                  Ne saisissez pas le matricule : il est attribué automatiquement.
+                </p>
+              </div>
+            </div>
+            <footer class="card__footer row row--between">
+              <button type="button" class="btn btn--ghost" (click)="next()">
+                J'ai déjà le modèle
+              </button>
+              <button type="button" class="btn btn--primary" (click)="downloadTemplate()">
+                Télécharger le modèle Excel
+              </button>
+            </footer>
+          </section>
+        }
+
+        <!-- ─────── IMPORT : dépôt ─────── -->
+        @if (currentMode === 'IMPORT' && step() === 2) {
+          <section class="card">
+            <header class="card__header"><h2 class="card__title">Déposer le fichier rempli</h2></header>
+            <div class="card__body">
+              <div class="dropzone" [class.dropzone--over]="dragging()"
+                   (dragover)="onDragOver($event)" (dragleave)="onDragLeave()"
+                   (drop)="onDrop($event)">
+                @if (analysing()) {
+                  <div class="spinner" aria-hidden="true"></div>
+                  <p class="dropzone__title">Analyse du fichier...</p>
+                  <p class="dropzone__text">Aucune donnée n'est enregistrée à ce stade.</p>
+                } @else {
+                  <span class="dropzone__icon" aria-hidden="true">⇪</span>
+                  <p class="dropzone__title">Glissez votre fichier ici</p>
+                  <p class="dropzone__text">Formats acceptés : .xlsx, .xls, .csv</p>
+                  <label class="btn btn--primary dropzone__button">
+                    Choisir un fichier
+                    <input type="file" accept=".xlsx,.xls,.csv" hidden
+                           (change)="onFileSelected($event)" />
+                  </label>
+                }
+              </div>
+            </div>
+            <footer class="card__footer row row--between">
+              <button type="button" class="btn btn--secondary" (click)="back()">Retour</button>
+              <span class="footer-note">Le fichier est analysé avant tout enregistrement.</span>
+            </footer>
+          </section>
+        }
+
+        <!-- ─────── IMPORT : vérification ─────── -->
+        @if (currentMode === 'IMPORT' && step() === 3) {
+          @if (preview(); as result) {
+            <section class="card">
+              <header class="card__header">
+                <div>
+                  <h2 class="card__title">Vérification avant import</h2>
+                  <p class="card__subtitle">{{ result.fileName }}</p>
+                </div>
+              </header>
+
+              <div class="tally">
+                <div class="tally__item tally__item--ok">
+                  <span class="tally__value numeric">{{ result.validRows }}</span>
+                  <span class="tally__label">prêtes</span>
+                </div>
+                <div class="tally__item tally__item--warn">
+                  <span class="tally__value numeric">{{ result.warningRows }}</span>
+                  <span class="tally__label">à vérifier</span>
+                </div>
+                <div class="tally__item tally__item--dup">
+                  <span class="tally__value numeric">{{ result.duplicateRows }}</span>
+                  <span class="tally__label">doublons</span>
+                </div>
+                <div class="tally__item tally__item--err">
+                  <span class="tally__value numeric">{{ result.invalidRows }}</span>
+                  <span class="tally__label">erreurs</span>
+                </div>
+              </div>
+
+              <div class="table-wrapper">
+                <table class="table">
+                  <caption class="visually-hidden">Lignes du fichier</caption>
+                  <thead>
+                    <tr>
+                      <th class="numeric">Ligne</th>
+                      @for (col of previewColumns(); track col) { <th>{{ col }}</th> }
+                      <th>État</th>
+                      <th>Détail</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of result.rows; track row.rowNumber) {
+                      <tr [class]="'row--' + row.status.toLowerCase()">
+                        <td class="numeric">{{ row.rowNumber }}</td>
+                        @for (col of previewColumns(); track col) {
+                          <td>{{ row.values[col] || '—' }}</td>
+                        }
+                        <td>
+                          <span class="badge" [class]="'badge--' + rowTone(row.status)">
+                            {{ rowLabel(row.status) }}
+                          </span>
+                        </td>
+                        <td class="cell-detail">
+                          @for (e of row.errors; track e) { <span class="msg msg--err">{{ e }}</span> }
+                          @for (w of row.warnings; track w) { <span class="msg msg--warn">{{ w }}</span> }
+                          @if (row.previewStudentNumber) {
+                            <span class="msg msg--ok numeric">{{ row.previewStudentNumber }}</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <footer class="card__footer row row--between">
+                <button type="button" class="btn btn--secondary" (click)="back()">
+                  Déposer un autre fichier
+                </button>
+                <button type="button" class="btn btn--primary btn--lg"
+                        [disabled]="!result.importable || submitting()"
+                        (click)="confirmImport()">
+                  {{ submitting()
+                     ? 'Import en cours...'
+                     : 'Importer ' + (result.validRows + result.warningRows) + ' élève(s)' }}
+                </button>
+              </footer>
+            </section>
+          }
+        }
+
+        <!-- ─────── IMPORT : rapport ─────── -->
+        @if (currentMode === 'IMPORT' && step() === 4) {
+          @if (importReport(); as report) {
+            <section class="card">
+              <div class="card__body done">
+                <span class="done__icon" aria-hidden="true">✓</span>
+                <h2 class="done__title">Import terminé</h2>
+                <p class="done__text numeric">
+                  {{ report.validRows }} élève(s) créé(s) et inscrit(s).
+                </p>
+                @if (report.invalidRows > 0) {
+                  <p class="done__warn numeric">
+                    {{ report.invalidRows }} ligne(s) refusée(s) par une règle métier.
+                  </p>
+                }
+                <div class="done__actions">
+                  <a class="btn btn--secondary" routerLink="/students">Voir les élèves</a>
+                  <a class="btn btn--primary" routerLink="/enrollments">Voir les inscriptions</a>
+                </div>
+              </div>
+            </section>
           }
         }
       </div>
 
-      <footer class="card__footer row row--between">
-        <span class="footer-note">Les controles sont rejoues cote serveur au moment de la validation.</span>
-        <button type="button" class="btn btn--primary"
-                [disabled]="!canSubmit() || submitting()" (click)="submit()">
-          {{ submitting() ? 'Enregistrement...' : "Valider l'inscription" }}
-        </button>
-      </footer>
-    </section>
+      <!-- ═══════ Panneau latéral : la fiche en construction ═══════ -->
+      @if (mode() !== 'IMPORT') {
+        <aside class="layout__side">
+          <div class="draft card">
+            <header class="draft__head">
+              <eduops-avatar [name]="draftName() || '?'" size="lg" />
+              <div>
+                <p class="draft__name">{{ draftName() || 'Nouvel élève' }}</p>
+                <p class="draft__meta">
+                  {{ selectedStudent()?.studentNumber ?? 'Matricule attribué à la validation' }}
+                </p>
+              </div>
+            </header>
+
+            <dl class="draft__list">
+              <div>
+                <dt>Classe</dt>
+                <dd>{{ selectedClassroom()?.name ?? '—' }}</dd>
+              </div>
+              <div>
+                <dt>Niveau</dt>
+                <dd>{{ selectedClassroom()?.levelName ?? '—' }}</dd>
+              </div>
+              @if (mode() === 'NEW') {
+                <div>
+                  <dt>Responsable</dt>
+                  <dd>
+                    {{ guardian.controls.firstName.value }}
+                    {{ guardian.controls.lastName.value }}
+                  </dd>
+                </div>
+              }
+              <div>
+                <dt>Type</dt>
+                <dd>{{ mode() === 'RETURNING' ? 'Réinscription' : 'Nouvelle inscription' }}</dd>
+              </div>
+            </dl>
+
+            <p class="draft__note">
+              Les frais de scolarité du niveau choisi seront générés automatiquement
+              à la validation, avec leur échéancier.
+            </p>
+          </div>
+        </aside>
+      }
+    </div>
   }
 </div>

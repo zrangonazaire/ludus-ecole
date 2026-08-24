@@ -80,7 +80,7 @@ import { GradePipe } from '@shared/pipes/grade.pipe';
         </article>
       } @empty {
         <p class="empty">
-          Aucun eleve n'est associe a votre compte. Contactez le secretariat de l'etablissement.
+          Aucun eleve n'est associé a votre compte. Contactez le secretariat de l'etablissement.
         </p>
       }
     }

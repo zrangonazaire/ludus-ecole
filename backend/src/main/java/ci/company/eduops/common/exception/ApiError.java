@@ -14,7 +14,7 @@ import java.util.Map;
  *   "timestamp": "2026-09-14T08:31:22.114Z",
  *   "status": 409,
  *   "code": "CLASS_CAPACITY_EXCEEDED",
- *   "message": "La capacite maximale de la classe est atteinte.",
+ *   "message": "La capacité maximale de la classe est atteinte.",
  *   "path": "/api/v1/enrollments",
  *   "details": { "capacityMaximum": 40, "activeEnrollments": 40 }
  * }
@@ -32,7 +32,7 @@ public class ApiError {
     @Schema(example = "CLASS_CAPACITY_EXCEEDED")
     private String code;
 
-    @Schema(example = "La capacite maximale de la classe est atteinte.")
+    @Schema(example = "La capacité maximale de la classe est atteinte.")
     private String message;
 
     @Schema(example = "/api/v1/enrollments")
