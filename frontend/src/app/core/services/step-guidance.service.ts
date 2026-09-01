@@ -3,7 +3,7 @@ import { Injectable, signal } from '@angular/core';
 const STORAGE_KEY = 'eduops.step-guidance.v1';
 
 /**
- * Remembers which configuration coachmarks were acknowledged on this device.
+ * Remembers which contextual coachmarks were acknowledged on this device.
  * No school or account data is stored here: only opaque flow/step identifiers.
  */
 @Injectable({ providedIn: 'root' })

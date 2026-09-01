@@ -1,0 +1,152 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Rapports</h1>
+      <p class="page__meta">
+        Consultez les chiffres de l'établissement et exportez la vue dont vous avez besoin.
+      </p>
+    </div>
+    <div class="page__actions">
+      <button type="button" class="btn btn--secondary" [disabled]="loading()"
+              (click)="load()">
+        <span aria-hidden="true">↻</span> Actualiser
+      </button>
+      @if (canExport()) {
+        <button type="button" class="btn btn--primary"
+                [disabled]="loading() || preview().rows.length === 0"
+                (click)="exportSelected()">
+          <span aria-hidden="true">⇩</span> Exporter en Excel
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (loading()) {
+    <eduops-loading-state message="Préparation des rapports…" />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    @if (data(); as dashboard) {
+    <section class="context-bar" aria-label="Contexte du rapport">
+      <div class="context-bar__main">
+        <span class="context-bar__mark" aria-hidden="true">R</span>
+        <div>
+          <strong>{{ dashboard.campusName }}</strong>
+          <span>Année scolaire {{ dashboard.academicYear.code }}</span>
+        </div>
+      </div>
+      <div class="context-bar__meta">
+        @if (dashboard.currentTerm) {
+          <span><strong>Période</strong> {{ dashboard.currentTerm.name }}</span>
+        }
+        <span>
+          <strong>Données arrêtées au</strong>
+          {{ dashboard.generatedAt | date:'dd/MM/yyyy à HH:mm' }}
+        </span>
+      </div>
+    </section>
+
+    <div class="reports-layout">
+      <aside class="catalog" aria-label="Catalogue des rapports">
+        <div class="catalog__head">
+          <h2>Rapports disponibles</h2>
+          <span class="numeric">{{ reports.length }}</span>
+        </div>
+
+        <nav class="catalog__list">
+          @for (report of reports; track report.key) {
+            <button type="button" class="report-choice"
+                    [class.report-choice--selected]="selectedKey() === report.key"
+                    [attr.aria-current]="selectedKey() === report.key ? 'page' : null"
+                    (click)="selectReport(report.key)">
+              <span class="report-choice__icon" aria-hidden="true">{{ report.icon }}</span>
+              <span class="report-choice__copy">
+                <span class="report-choice__category">{{ report.category }}</span>
+                <strong>{{ report.title }}</strong>
+                <small>{{ report.description }}</small>
+              </span>
+              <span class="report-choice__arrow" aria-hidden="true">›</span>
+            </button>
+          }
+        </nav>
+
+        @if (!canExport()) {
+          <div class="catalog__permission">
+            <span aria-hidden="true">i</span>
+            <p>Votre accès permet la consultation. L'export nécessite la permission dédiée.</p>
+          </div>
+        }
+      </aside>
+
+      <main class="preview" aria-live="polite">
+        <header class="preview__head">
+          <div>
+            <span class="preview__eyebrow">Aperçu du rapport</span>
+            <h2>{{ selectedReport().title }}</h2>
+            <p>{{ selectedReport().description }}</p>
+          </div>
+          <div class="preview__count">
+            <strong class="numeric">{{ preview().rows.length }}</strong>
+            <span>ligne(s)</span>
+          </div>
+        </header>
+
+        @if (preview().chart; as chart) {
+          <div class="preview__chart">
+            <eduops-chart-card
+              [title]="selectedReport().title"
+              [subtitle]="'Année scolaire ' + dashboard.academicYear.code"
+              [data]="chart"
+              [type]="preview().chartType ?? 'bar'"
+              [height]="280" />
+          </div>
+        }
+
+        <section class="report-table" aria-label="Données du rapport">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  @for (column of preview().columns; track column.key) {
+                    <th [class.numeric]="column.kind === 'number'">{{ column.label }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of preview().rows; track $index) {
+                  <tr>
+                    @for (column of preview().columns; track column.key) {
+                      <td [class.numeric]="column.kind === 'number'">
+                        {{ cell(row, column.key) }}
+                      </td>
+                    }
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="table-empty" [attr.colspan]="preview().columns.length">
+                      Aucune donnée disponible pour ce rapport.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <footer class="preview__foot">
+          <span>
+            Source : tableau de bord EduOps · {{ dashboard.academicYear.code }}
+          </span>
+          @if (canExport()) {
+            <button type="button" class="btn btn--secondary btn--sm"
+                    [disabled]="preview().rows.length === 0"
+                    (click)="exportSelected()">
+              Télécharger ce rapport
+            </button>
+          }
+        </footer>
+      </main>
+    </div>
+    }
+  }
+</div>

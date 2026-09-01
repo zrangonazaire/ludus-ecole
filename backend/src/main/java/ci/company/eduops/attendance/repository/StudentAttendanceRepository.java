@@ -61,6 +61,26 @@ public interface StudentAttendanceRepository extends JpaRepository<StudentAttend
     List<StudentAttendance> findAbsencesOn(@Param("academicYearId") UUID academicYearId,
                                            @Param("date") LocalDate date);
 
+    /**
+     * Absences and latenesses over a window, for the follow-up screen.
+     *
+     * <p>Latenesses travel with the absences on purpose: three quarters of an
+     * hour lost every morning is a schooling problem, and a screen that only
+     * listed full absences would never show it.</p>
+     */
+    @Query("""
+           SELECT a FROM StudentAttendance a
+           WHERE a.academicYear.id = :academicYearId
+             AND a.attendanceDate BETWEEN :from AND :to
+             AND a.status IN ('ABSENT','EXCUSED_ABSENCE','LATE','EXCUSED_LATE')
+             AND (:classroomId IS NULL OR a.classroom.id = :classroomId)
+           ORDER BY a.attendanceDate DESC, a.classroom.name ASC, a.student.lastName ASC
+           """)
+    List<StudentAttendance> findIncidents(@Param("academicYearId") UUID academicYearId,
+                                          @Param("from") LocalDate from,
+                                          @Param("to") LocalDate to,
+                                          @Param("classroomId") UUID classroomId);
+
     /** Students whose absence count over a window exceeds a threshold. */
     @Query("""
            SELECT a.student.id, COUNT(a) FROM StudentAttendance a

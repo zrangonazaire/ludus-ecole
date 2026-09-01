@@ -46,18 +46,32 @@
   <aside class="sidebar" [attr.aria-hidden]="!drawerOpen() && null">
     <nav class="sidebar__nav" aria-label="Navigation principale">
       @for (group of navigation(); track group.section) {
-        <div class="sidebar__group">
-          <p class="sidebar__section">{{ group.section }}</p>
-          @for (item of group.items; track item.route) {
-            <a class="sidebar__link" [routerLink]="item.route"
-               routerLinkActive="sidebar__link--active" (click)="closeDrawer()">
-              <span class="sidebar__icon" aria-hidden="true">{{ item.icon }}</span>
-              <span>{{ item.label }}</span>
-              @if (item.badge && item.badge(); as badge) {
-                <span class="sidebar__badge numeric"
-                      [attr.aria-label]="'Configuration : ' + badge + ' etapes'">{{ badge }}</span>
-              }
-            </a>
+        <div class="sidebar__group" [class.sidebar__group--collapsed]="isCollapsed(group.section)">
+          <button type="button" class="sidebar__section"
+                  [attr.aria-expanded]="!isCollapsed(group.section)"
+                  (click)="toggleSection(group.section)">
+            <span>{{ group.section }}</span>
+            <span class="sidebar__chevron" aria-hidden="true">
+              {{ isCollapsed(group.section) ? '+' : '−' }}
+            </span>
+          </button>
+
+          @if (!isCollapsed(group.section)) {
+            @for (item of group.items; track item.route) {
+              <a class="sidebar__link" [routerLink]="item.route"
+                 [class.sidebar__link--soon]="!item.ready"
+                 routerLinkActive="sidebar__link--active" (click)="closeDrawer()">
+                <span class="sidebar__icon" aria-hidden="true">{{ item.icon }}</span>
+                <span class="sidebar__label">{{ item.label }}</span>
+                @if (item.badge && item.badge(); as badge) {
+                  <span class="sidebar__badge numeric"
+                        [attr.aria-label]="'Configuration : ' + badge + ' étapes'">{{ badge }}</span>
+                } @else if (!item.ready) {
+                  <span class="sidebar__soon" title="Écran à venir" aria-hidden="true"></span>
+                  <span class="visually-hidden">Écran à venir</span>
+                }
+              </a>
+            }
           }
         </div>
       }

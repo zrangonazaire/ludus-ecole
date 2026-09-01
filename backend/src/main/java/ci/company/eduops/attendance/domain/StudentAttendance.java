@@ -80,6 +80,16 @@ public class StudentAttendance extends BaseEntity {
     @Column(name = "justified_at")
     private OffsetDateTime justifiedAt;
 
+    /**
+     * When the family was chased about this absence.
+     *
+     * <p>Null means nobody has been contacted yet. It is the difference between
+     * a list of who should be called and a list of who still has to be, which
+     * matters as soon as two people share the work.</p>
+     */
+    @Column(name = "guardian_notified_at")
+    private OffsetDateTime guardianNotifiedAt;
+
     @Column(name = "recorded_by")
     private UUID recordedBy;
 

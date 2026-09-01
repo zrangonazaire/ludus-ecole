@@ -1,0 +1,186 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Centre d'alertes</h1>
+      <p class="page__meta">
+        Les situations qui demandent l'attention de l'équipe, classées par priorité.
+        @if (lastRefresh(); as refreshed) {
+          <span class="refresh-time">Actualisé à {{ refreshed | date:'HH:mm:ss' }}</span>
+        }
+      </p>
+    </div>
+    <div class="page__actions">
+      <button type="button" class="btn btn--secondary" [disabled]="loading()"
+              (click)="load()">
+        <span aria-hidden="true">↻</span>
+        Actualiser
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des alertes…" />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    <section class="summary" aria-label="Résumé des alertes">
+      <button type="button" class="summary-card summary-card--all"
+              [class.summary-card--selected]="severity() === 'ALL'"
+              [attr.aria-pressed]="severity() === 'ALL'"
+              (click)="filterBy('ALL')">
+        <span class="summary-card__icon" aria-hidden="true">⚡</span>
+        <span>
+          <strong class="summary-card__value numeric">{{ alerts().length }}</strong>
+          <span class="summary-card__label">alertes actives</span>
+        </span>
+      </button>
+
+      <button type="button" class="summary-card summary-card--critical"
+              [class.summary-card--selected]="severity() === 'CRITICAL'"
+              [attr.aria-pressed]="severity() === 'CRITICAL'"
+              (click)="filterBy('CRITICAL')">
+        <span class="summary-card__icon" aria-hidden="true">!</span>
+        <span>
+          <strong class="summary-card__value numeric">{{ criticalCount() }}</strong>
+          <span class="summary-card__label">critiques</span>
+        </span>
+      </button>
+
+      <button type="button" class="summary-card summary-card--warning"
+              [class.summary-card--selected]="severity() === 'WARNING'"
+              [attr.aria-pressed]="severity() === 'WARNING'"
+              (click)="filterBy('WARNING')">
+        <span class="summary-card__icon" aria-hidden="true">△</span>
+        <span>
+          <strong class="summary-card__value numeric">{{ warningCount() }}</strong>
+          <span class="summary-card__label">à surveiller</span>
+        </span>
+      </button>
+
+      <button type="button" class="summary-card summary-card--info"
+              [class.summary-card--selected]="severity() === 'INFO'"
+              [attr.aria-pressed]="severity() === 'INFO'"
+              (click)="filterBy('INFO')">
+        <span class="summary-card__icon" aria-hidden="true">i</span>
+        <span>
+          <strong class="summary-card__value numeric">{{ infoCount() }}</strong>
+          <span class="summary-card__label">informatives</span>
+        </span>
+      </button>
+    </section>
+
+    <section class="notice" aria-label="Fonctionnement des alertes">
+      <span class="notice__icon" aria-hidden="true">i</span>
+      <div>
+        <p class="notice__title">Une vue de travail, pas une boîte de réception</p>
+        <p class="notice__text">
+          Les alertes sont générées à partir des données de l'établissement.
+          Ouvrez le module concerné pour traiter la situation à sa source.
+        </p>
+      </div>
+    </section>
+
+    <section class="toolbar" aria-label="Filtres des alertes">
+      <label class="search-field">
+        <span class="search-field__icon" aria-hidden="true">⌕</span>
+        <span class="visually-hidden">Rechercher une alerte</span>
+        <input class="input" type="search" [value]="search()"
+               placeholder="Rechercher un élève, une classe ou un sujet…"
+               (input)="setSearch($any($event.target).value)">
+      </label>
+
+      <div class="severity-filter" role="group" aria-label="Filtrer par priorité">
+        <button type="button" class="chip" [class.chip--on]="severity() === 'ALL'"
+                (click)="filterBy('ALL')">Toutes</button>
+        <button type="button" class="chip chip--critical"
+                [class.chip--on]="severity() === 'CRITICAL'"
+                (click)="filterBy('CRITICAL')">Critiques</button>
+        <button type="button" class="chip chip--warning"
+                [class.chip--on]="severity() === 'WARNING'"
+                (click)="filterBy('WARNING')">Attention</button>
+        <button type="button" class="chip chip--info"
+                [class.chip--on]="severity() === 'INFO'"
+                (click)="filterBy('INFO')">Informations</button>
+      </div>
+    </section>
+
+    <section class="alerts-section" aria-labelledby="alerts-heading">
+      <header class="alerts-section__head">
+        <div>
+          <h2 id="alerts-heading">Priorités actives</h2>
+          <p>
+            {{ filteredAlerts().length }} résultat(s)
+            @if (hasFilters()) { sur {{ alerts().length }} }
+          </p>
+        </div>
+        @if (hasFilters()) {
+          <button type="button" class="btn btn--ghost btn--sm" (click)="resetFilters()">
+            Effacer les filtres
+          </button>
+        }
+      </header>
+
+      <div class="alert-list">
+        @for (alert of filteredAlerts(); track alert.id) {
+          <article class="alert-row" [attr.data-tone]="alert.severity.toLowerCase()">
+            <div class="alert-row__symbol" aria-hidden="true">{{ iconFor(alert.type) }}</div>
+
+            <div class="alert-row__content">
+              <div class="alert-row__eyebrow">
+                <span class="severity" [attr.data-tone]="alert.severity.toLowerCase()">
+                  {{ severityLabel(alert.severity) }}
+                </span>
+                <span class="alert-row__domain">{{ typeLabel(alert.type) }}</span>
+              </div>
+
+              <h3 class="alert-row__title">{{ alert.title }}</h3>
+              <p class="alert-row__message">{{ alert.message }}</p>
+
+              @if (alert.studentName || alert.classroomName) {
+                <div class="alert-row__context">
+                  @if (alert.studentName) {
+                    <span><strong>Élève</strong> {{ alert.studentName }}</span>
+                  }
+                  @if (alert.classroomName) {
+                    <span><strong>Classe</strong> {{ alert.classroomName }}</span>
+                  }
+                </div>
+              }
+
+              <p class="alert-row__date">
+                Détectée le {{ alert.createdAt | date:'dd/MM/yyyy à HH:mm' }}
+              </p>
+            </div>
+
+            <div class="alert-row__action">
+              @if (alert.severity === 'CRITICAL') {
+                <span class="priority-note">À traiter en priorité</span>
+              }
+              <a class="btn btn--secondary btn--sm" [routerLink]="actionFor(alert.type).route">
+                {{ actionFor(alert.type).label }}
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <span class="empty-state__icon" aria-hidden="true">
+              {{ hasFilters() ? '⌕' : '✓' }}
+            </span>
+            <h3>{{ hasFilters() ? 'Aucune alerte ne correspond' : 'Aucune alerte active' }}</h3>
+            <p>
+              {{ hasFilters()
+                ? 'Modifiez la recherche ou effacez les filtres pour retrouver les autres alertes.'
+                : "Les indicateurs de l'établissement ne signalent aucune situation à traiter." }}
+            </p>
+            @if (hasFilters()) {
+              <button type="button" class="btn btn--secondary" (click)="resetFilters()">
+                Afficher toutes les alertes
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  }
+</div>

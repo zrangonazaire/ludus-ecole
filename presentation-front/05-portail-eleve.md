@@ -14,11 +14,11 @@ Accessible aux rôles `STUDENT`, `SUPER_ADMIN`, `SCHOOL_ADMIN` (guard de rôle).
 ## 1. Accueil élève
 
 - **Route** : `/student/home`
-- **Composant** : `features/placeholder/placeholder.component.ts`
-- **État** : ⛔ Placeholder
+- **Composant** : `features/student-portal/student-home.component.ts`
+- **État** : ✅ Implémenté
 
-**Description** : Écran à construire ; consommera `GET /api/v1/student/dashboard`
-(synthèse de la scolarité : classe, prochains cours, dernières notes, annonces).
+**Description** : Consomme `GET /api/v1/student/dashboard` et présente la synthèse
+de la scolarité : classe, prochains cours, dernières notes et annonces.
 
 ---
 

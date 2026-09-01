@@ -1,0 +1,591 @@
+<div class="page">
+
+  <!-- L'aide de la configuration, appliquée telle quelle : une carte au premier
+       passage sur l'onglet, un bouton « ? Aide » pour la revoir ensuite. -->
+  <eduops-step-coachmark
+    flow="transfers"
+    [stepKey]="tab()"
+    [stepNumber]="helpCopy().step"
+    [totalSteps]="totalSteps"
+    eyebrow="Conseil pour cet onglet"
+    [title]="helpCopy().title"
+    [description]="helpCopy().description"
+    [points]="helpCopy().points"
+    [ctaLabel]="helpCopy().ctaLabel" />
+
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Transferts et départs</h1>
+      <p class="page__meta numeric">
+        @if (board(); as b) {
+          {{ b.classChangeCount }} changement(s) de classe ·
+          {{ b.pendingDepartureCount }} sortie(s) à traiter ·
+          {{ b.clearedDepartureCount }} dossier(s) soldé(s)
+          @if (b.upcomingDepartureCount > 0) {
+            · {{ b.upcomingDepartureCount }} départ(s) annoncé(s)
+          }
+        }
+      </p>
+    </div>
+    <div class="page__actions">
+      @if (tab() === 'CHANGEMENTS') {
+        <button type="button" class="btn btn--primary" (click)="openChange()">
+          <span aria-hidden="true">⇄</span> Changer un élève de classe
+        </button>
+      } @else {
+        <button type="button" class="btn btn--primary" (click)="openDeparture()">
+          <span aria-hidden="true">→</span> Enregistrer un départ
+        </button>
+      }
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'CHANGEMENTS'"
+            [attr.aria-selected]="tab() === 'CHANGEMENTS'"
+            (click)="changeTab('CHANGEMENTS')">
+      Changements de classe
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'DEPARTS'"
+            [attr.aria-selected]="tab() === 'DEPARTS'"
+            (click)="changeTab('DEPARTS')">
+      Départs et radiations
+      @if (pendingDepartures().length > 0) {
+        <span class="tabs__badge numeric">{{ pendingDepartures().length }}</span>
+      }
+    </button>
+  </nav>
+
+  <section class="filters">
+    <label class="filters__search">
+      <span class="visually-hidden">Rechercher un élève</span>
+      <input type="search" class="input" placeholder="Nom ou matricule"
+             [value]="search()"
+             (change)="changeSearch($any($event.target).value)" />
+    </label>
+  </section>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des mouvements..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+
+    <!-- ═══════════════ Changements de classe ═══════════════ -->
+    @if (tab() === 'CHANGEMENTS') {
+      <p class="lead">
+        L'élève change de groupe, sa scolarité continue. Le motif reste au dossier :
+        au conseil de classe, personne ne se souvient plus de la raison.
+      </p>
+
+      <div class="table-wrapper card">
+        <table class="table">
+          <caption class="visually-hidden">Changements de classe de l'année</caption>
+          <thead>
+            <tr>
+              <th scope="col">Élève</th>
+              <th scope="col">Mouvement</th>
+              <th scope="col">Motif</th>
+              <th scope="col">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (change of classChanges(); track change.id) {
+              <tr [class.row--attention]="change.crossesLevel">
+                <td>
+                  <span class="entry__name">{{ change.studentName }}</span>
+                  <span class="entry__number numeric">{{ change.studentNumber }}</span>
+                </td>
+                <td class="move">
+                  <span class="move__from">{{ change.fromClassroomName }}</span>
+                  <span class="move__arrow" aria-hidden="true">→</span>
+                  <span class="move__to">{{ change.toClassroomName }}</span>
+                  @if (change.crossesLevel) {
+                    <span class="pill pill--warn">Change de niveau</span>
+                  }
+                </td>
+                <td class="entry__reason">{{ change.reason }}</td>
+                <td class="numeric">{{ formatDate(change.transferredAt) }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4">
+                  <div class="empty-state">
+                    <p class="empty-state__title">Aucun changement de classe cette année.</p>
+                    <p class="empty-state__text">
+                      Les mouvements internes apparaissent ici dès qu'un élève change
+                      de groupe.
+                    </p>
+                    <button type="button" class="btn btn--primary" (click)="openChange()">
+                      Changer un élève de classe
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- ═══════════════ Départs et radiations ═══════════════ -->
+    @if (tab() === 'DEPARTS') {
+
+      @if (board(); as b) {
+        @if (b.outstandingTotal > 0) {
+          <section class="alert-block alert-block--soft" role="status">
+            <div class="alert-block__head">
+              <span class="alert-block__icon" aria-hidden="true">₣</span>
+              <div>
+                <p class="alert-block__title">
+                  {{ formatAmount(b.outstandingTotal) }} {{ b.currency }} dus par les
+                  familles qui partent
+                </p>
+                <p class="alert-block__text">
+                  Le solde est noté au dossier de chaque sortie et n'empêche rien :
+                  retenir un dossier scolaire pour dette est illégal dans beaucoup de
+                  pays. Il est là pour qu'on le voie avant que la famille reparte.
+                </p>
+              </div>
+            </div>
+          </section>
+        }
+
+        @if (upcomingDepartures().length > 0) {
+          <section class="alert-block" role="status">
+            <div class="alert-block__head">
+              <span class="alert-block__icon" aria-hidden="true">!</span>
+              <div>
+                <p class="alert-block__title">
+                  {{ upcomingDepartures().length }} départ(s) annoncé(s) à venir
+                </p>
+                <p class="alert-block__text">
+                  Ces élèves sont encore en classe : la date de sortie n'est pas
+                  atteinte. Les pièces peuvent être préparées dès maintenant.
+                </p>
+              </div>
+            </div>
+            <ul class="pending">
+              @for (departure of upcomingDepartures(); track departure.id) {
+                <li class="pending__item">
+                  <span class="pending__name">{{ departure.studentName }}</span>
+                  <span class="pending__cycle numeric">
+                    {{ departure.classroomName }} · {{ formatDate(departure.departureDate) }}
+                    · {{ departure.reasonLabel }}
+                  </span>
+                  <button type="button" class="btn btn--secondary btn--sm"
+                          (click)="openReview(departure)">Préparer les pièces</button>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      }
+
+      <div class="table-wrapper card">
+        <table class="table">
+          <caption class="visually-hidden">Départs de l'année</caption>
+          <thead>
+            <tr>
+              <th scope="col">Élève</th>
+              <th scope="col">Motif</th>
+              <th scope="col">Date</th>
+              <th scope="col" class="numeric">Solde dû</th>
+              <th scope="col">Pièces</th>
+              <th scope="col">État</th>
+              <th scope="col" class="cell-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (departure of departures(); track departure.id) {
+              <tr [class.row--cancelled]="departure.status === 'CANCELLED'">
+                <td>
+                  <span class="entry__name">{{ departure.studentName }}</span>
+                  <span class="entry__number numeric">
+                    {{ departure.studentNumber }} · {{ departure.classroomName }}
+                  </span>
+                </td>
+                <td>
+                  {{ departure.reasonLabel }}
+                  @if (departure.destinationSchool) {
+                    <span class="entry__destination">
+                      {{ departure.destinationSchool }}
+                      @if (departure.destinationCity) { · {{ departure.destinationCity }} }
+                    </span>
+                  }
+                  @if (!departure.allowsReturn) {
+                    <span class="pill pill--danger">Réinscription interdite</span>
+                  }
+                </td>
+                <td class="numeric">
+                  {{ formatDate(departure.departureDate) }}
+                  @if (departure.upcoming) {
+                    <span class="entry__soon">à venir</span>
+                  }
+                </td>
+                <td class="numeric owed" [class.owed--due]="departure.outstandingAmount > 0">
+                  @if (departure.outstandingAmount > 0) {
+                    {{ formatAmount(departure.outstandingAmount) }}
+                  } @else {
+                    <span class="muted">à jour</span>
+                  }
+                </td>
+                <td class="numeric">
+                  <span class="docs" [class.docs--complete]="departure.documentsComplete">
+                    {{ departure.documentsIssued }}/4
+                  </span>
+                </td>
+                <td>
+                  <span class="state" [attr.data-tone]="stateOf(departure.status).tone">
+                    {{ departure.statusLabel }}
+                  </span>
+                </td>
+                <td class="cell-actions">
+                  <button type="button" class="btn btn--secondary btn--sm"
+                          (click)="openReview(departure)">
+                    {{ departure.editable ? 'Traiter' : 'Voir' }}
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7">
+                  <div class="empty-state">
+                    <p class="empty-state__title">Aucun départ enregistré cette année.</p>
+                    <p class="empty-state__text">
+                      Une sortie clôt l'inscription et ouvre la liste des pièces à
+                      remettre : exeat, certificat de radiation, dernier bulletin,
+                      dossier scolaire.
+                    </p>
+                    <button type="button" class="btn btn--primary" (click)="openDeparture()">
+                      Enregistrer un départ
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  <!-- ═══════════════ Changement de classe ═══════════════ -->
+  @if (changeOpen()) {
+    <div class="drawer-backdrop" (click)="closeChange()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="change-title">
+      <header class="drawer__head">
+        <h2 class="drawer__title" id="change-title">Changer un élève de classe</h2>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeChange()">×</button>
+      </header>
+
+      <form class="drawer__body" [formGroup]="changeForm" (ngSubmit)="submitChange()">
+        <div class="field">
+          <label class="field__label field__label--required" for="change-student">Élève</label>
+          <select id="change-student" class="input" formControlName="studentId">
+            <option value="">Choisir…</option>
+            @for (student of studentList(); track student.id) {
+              <option [value]="student.id">
+                {{ student.fullName }} — {{ student.classroomName }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="change-target">
+            Classe d'accueil
+          </label>
+          <select id="change-target" class="input" formControlName="toClassroomId">
+            <option value="">Choisir…</option>
+            @for (classroom of classroomList(); track classroom.id) {
+              <option [value]="classroom.id">
+                {{ classroom.name }} ({{ classroom.activeEnrollments }}/{{ classroom.capacityMaximum }})
+              </option>
+            }
+          </select>
+          @if (changeTarget(); as target) {
+            @if (target.availableSeats <= 0) {
+              <span class="field__hint field__hint--warn">
+                {{ target.name }} est complète. Une dérogation explicite est nécessaire.
+              </span>
+            } @else {
+              <span class="field__hint">
+                {{ target.availableSeats }} place(s) restante(s) sur {{ target.capacityMaximum }}.
+              </span>
+            }
+          }
+        </div>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="change-reason">Motif</label>
+          <textarea id="change-reason" class="textarea" rows="3" formControlName="reason"
+                    placeholder="Rééquilibrage des effectifs après trois arrivées en 6e A"></textarea>
+          <span class="field__hint">
+            Il reste au dossier et se relit au conseil de classe.
+          </span>
+        </div>
+
+        <label class="switch">
+          <input type="checkbox" formControlName="overrideCapacity" />
+          <span>
+            Passer outre la capacité de la classe d'accueil
+            <small>À réserver aux cas où la décision est déjà prise ailleurs. La
+              dérogation laisse une trace au dossier.</small>
+          </span>
+        </label>
+      </form>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeChange()">Annuler</button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="changeForm.invalid || saving()"
+                (click)="submitChange()">Enregistrer le changement</button>
+      </footer>
+    </aside>
+  }
+
+  <!-- ═══════════════ Enregistrer un départ ═══════════════ -->
+  @if (departureOpen()) {
+    <div class="drawer-backdrop" (click)="closeDeparture()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="departure-title">
+      <header class="drawer__head">
+        <h2 class="drawer__title" id="departure-title">Enregistrer un départ</h2>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeDeparture()">×</button>
+      </header>
+
+      <form class="drawer__body" [formGroup]="departureForm" (ngSubmit)="submitDeparture()">
+        <p class="hint-block">
+          L'inscription sera close et l'élève retiré des effectifs. Le solde dû est
+          relevé maintenant et figé sur le dossier : recalculé plus tard, il donnerait
+          un autre chiffre que celui annoncé à la famille.
+        </p>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="dep-student">Élève</label>
+          <select id="dep-student" class="input" formControlName="studentId">
+            <option value="">Choisir…</option>
+            @for (student of studentList(); track student.id) {
+              <option [value]="student.id">
+                {{ student.fullName }} — {{ student.classroomName }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="dep-reason">Motif</label>
+          <select id="dep-reason" class="input" formControlName="reason">
+            @for (reason of reasons; track reason.code) {
+              <option [value]="reason.code">{{ reason.label }}</option>
+            }
+          </select>
+          @if (reasonHint(departureForm.controls.reason.value); as hint) {
+            <span class="field__hint">{{ hint }}</span>
+          }
+        </div>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="dep-date">
+            Dernier jour de présence
+          </label>
+          <input id="dep-date" type="date" class="input" formControlName="departureDate" />
+          <span class="field__hint">
+            Peut être à venir : une famille annonce souvent son départ pour la fin
+            du mois.
+          </span>
+        </div>
+
+        @if (needsDestination()) {
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label field__label--required" for="dep-school">
+                Établissement d'accueil
+              </label>
+              <input id="dep-school" class="input" formControlName="destinationSchool"
+                     placeholder="Collège Moderne de Cocody" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="dep-city">Ville</label>
+              <input id="dep-city" class="input" formControlName="destinationCity"
+                     placeholder="Abidjan" />
+            </div>
+          </div>
+          <p class="hint-block hint-block--warn">
+            Sans le nom de l'établissement, l'exeat ne peut pas être rapproché par
+            l'école d'accueil.
+          </p>
+        }
+
+        <div class="field">
+          <label class="field__label" for="dep-notes">Observation</label>
+          <textarea id="dep-notes" class="textarea" rows="2" formControlName="notes"
+                    placeholder="Famille reçue au secrétariat, pièces annoncées."></textarea>
+        </div>
+      </form>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeDeparture()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="departureForm.invalid || saving()"
+                (click)="submitDeparture()">Enregistrer la sortie</button>
+      </footer>
+    </aside>
+  }
+
+  <!-- ═══════════════ Dossier de sortie ═══════════════ -->
+  @if (reviewing(); as departure) {
+    <div class="drawer-backdrop" (click)="closeReview()"></div>
+    <aside class="drawer drawer--wide" role="dialog" aria-modal="true"
+           aria-labelledby="review-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="review-title">{{ departure.studentName }}</h2>
+          <p class="drawer__meta numeric">
+            {{ departure.classroomName }} · {{ departure.reasonLabel }} ·
+            {{ formatDate(departure.departureDate) }}
+          </p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeReview()">×</button>
+      </header>
+
+      <div class="sheet-counters numeric">
+        <span class="sheet-counters__item">
+          <strong>{{ departure.documentsIssued }}</strong> / 4 pièces remises
+        </span>
+        <span class="sheet-counters__item"
+              [class.sheet-counters__item--due]="departure.outstandingAmount > 0">
+          solde <strong>{{ formatAmount(departure.outstandingAmount) }}
+          {{ departure.currency }}</strong>
+        </span>
+        <span class="state" [attr.data-tone]="stateOf(departure.status).tone">
+          {{ departure.statusLabel }}
+        </span>
+      </div>
+
+      @if (departure.outstandingAmount > 0) {
+        <p class="hint-block hint-block--inset">
+          Cette famille doit encore {{ formatAmount(departure.outstandingAmount) }}
+          {{ departure.currency }}. Le montant est noté au dossier et ne bloque pas la
+          remise des pièces : c'est une information pour le recouvrement, pas un
+          moyen de pression.
+        </p>
+      }
+
+      @if (departure.status === 'CANCELLED') {
+        <p class="hint-block hint-block--inset">
+          Sortie annulée : {{ departure.cancelledReason }}
+        </p>
+      }
+
+      <div class="drawer__body">
+        <ul class="docs-list">
+          @for (document of documents; track document.key) {
+            <li class="docs-list__item"
+                [class.docs-list__item--done]="documentGiven(departure, document.key)">
+              <label class="docs-list__check">
+                <input type="checkbox"
+                       [checked]="documentGiven(departure, document.key)"
+                       [disabled]="!departure.editable || saving()"
+                       (change)="toggleDocument(departure, document.key)" />
+                <span>
+                  <span class="docs-list__label">{{ document.label }}</span>
+                  <small>{{ document.hint }}</small>
+                </span>
+              </label>
+            </li>
+          }
+        </ul>
+
+        @if (departure.destinationSchool) {
+          <div class="destination">
+            <p class="destination__label">Établissement d'accueil</p>
+            <p class="destination__value">
+              {{ departure.destinationSchool }}
+              @if (departure.destinationCity) { — {{ departure.destinationCity }} }
+            </p>
+          </div>
+        }
+
+        @if (departure.notes) {
+          <div class="destination">
+            <p class="destination__label">Observation</p>
+            <p class="destination__value">{{ departure.notes }}</p>
+          </div>
+        }
+      </div>
+
+      <footer class="drawer__foot">
+        @if (departure.editable && !departure.documentsComplete) {
+          <p class="drawer__warning">
+            {{ 4 - departure.documentsIssued }} pièce(s) restent à remettre.
+          </p>
+        }
+        <button type="button" class="btn btn--secondary" (click)="closeReview()">
+          Fermer
+        </button>
+        @if (departure.editable) {
+          <button type="button" class="btn btn--ghost"
+                  [disabled]="saving()" (click)="openCancel(departure)">
+            Annuler la sortie
+          </button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="saving() || !departure.documentsComplete"
+                  (click)="clearDeparture(departure)">
+            Solder le dossier
+          </button>
+        }
+      </footer>
+    </aside>
+  }
+
+  <!-- ═══════════════ Annulation d'une sortie ═══════════════ -->
+  @if (cancelling(); as departure) {
+    <div class="drawer-backdrop" (click)="closeCancel()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="cancel-title">Annuler la sortie</h2>
+          <p class="drawer__meta">
+            {{ departure.studentName }} — {{ departure.classroomName }}
+          </p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeCancel()">×</button>
+      </header>
+
+      <form class="drawer__body" [formGroup]="cancelForm" (ngSubmit)="submitCancel()">
+        <p class="hint-block">
+          L'élève reprend sa place dans les effectifs et son inscription redevient
+          active. Le motif reste au dossier : un élève qui réapparaît dans une liste
+          de classe après avoir été radié demande une explication écrite, sans quoi
+          la personne suivante conclura à un défaut du logiciel.
+        </p>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="cancel-reason">
+            Pourquoi cette sortie est annulée
+          </label>
+          <textarea id="cancel-reason" class="textarea" rows="3" formControlName="reason"
+                    placeholder="La famille est revenue sur sa décision, l'élève reprend en 4e A"></textarea>
+        </div>
+      </form>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeCancel()">
+          Revenir
+        </button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="cancelForm.invalid || saving()"
+                (click)="submitCancel()">Annuler la sortie</button>
+      </footer>
+    </aside>
+  }
+</div>

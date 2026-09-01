@@ -5,3 +5,19 @@
 .identity { display: flex; align-items: center; gap: var(--space-3); }
 .identity__name { margin: 0; font-weight: 600; color: var(--text-strong); }
 .identity__meta { margin: 0; font-size: var(--text-xs); color: var(--text-muted); }
+
+/* Bandeau de portée : dit sur quoi la liste est restreinte, et comment en sortir. */
+.scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--brand-tint);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-button);
+
+  &__text { flex: 1; font-size: var(--text-sm); color: var(--text-normal); }
+  &__link { font-size: var(--text-sm); color: var(--brand); }
+}

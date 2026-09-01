@@ -8,3 +8,50 @@
 @import 'styles/tokens';
 @import 'styles/base';
 @import 'styles/components';
+
+/* =====================================================================
+   Impression.
+
+   Les styles d'impression d'un écran ne peuvent pas cacher le reste de
+   l'application : ils sont encapsulés par composant. La barre du haut, le
+   menu et les bulles d'aide appartiennent à la coquille, et se cachent
+   donc ici — sans quoi un bulletin sort avec le menu latéral imprimé
+   dessus.
+   ===================================================================== */
+
+@media print {
+  .topbar,
+  .sidebar,
+  .bottom-tabs,
+  eduops-toast-host,
+  eduops-guided-tour,
+  .coachmark-layer,
+  .coachmark-help,
+  .drawer,
+  .drawer-backdrop {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff;
+    margin: 0;
+    padding: 0;
+  }
+
+  .shell,
+  .content {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+
+  /* Une couleur de fond non imprimée transforme un tableau lisible en
+     colonnes flottantes : on demande au navigateur de les conserver. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

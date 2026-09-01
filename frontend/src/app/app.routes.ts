@@ -131,27 +131,35 @@ export const routes: Routes = [
       },
       {
         path: 'attendance',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Présences', endpoint: 'GET /api/v1/attendance' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.ATTENDANCE_VIEW], title: 'Présences' },
+        loadComponent: () => import('./features/attendance/attendance.component')
+          .then((m) => m.AttendanceComponent)
       },
       {
         path: 'assessments',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Évaluations', endpoint: 'GET /api/v1/assessments' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.ASSESSMENT_VIEW], title: 'Évaluations' },
+        loadComponent: () => import('./features/assessments/assessments.component')
+          .then((m) => m.AssessmentsComponent)
       },
       {
         path: 'grades',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Notes', endpoint: 'GET /api/v1/grades' }
+        canActivate: [permissionGuard],
+        data: {
+          permissions: [PERMISSIONS.GRADE_VIEW],
+          title: 'Notes',
+          initialTab: 'CORRECTION'
+        },
+        loadComponent: () => import('./features/assessments/assessments.component')
+          .then((m) => m.AssessmentsComponent)
       },
       {
         path: 'report-cards',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Bulletins', endpoint: 'GET /api/v1/report-cards' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.REPORT_CARD_VIEW], title: 'Bulletins' },
+        loadComponent: () => import('./features/report-cards/report-cards.component')
+          .then((m) => m.ReportCardsComponent)
       },
       {
         path: 'discipline',
@@ -167,9 +175,159 @@ export const routes: Routes = [
       },
       {
         path: 'reports',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.REPORT_VIEW], title: 'Rapports' },
+        loadComponent: () => import('./features/reports/reports.component')
+          .then((m) => m.ReportsComponent)
+      },
+      {
+        path: 'alerts',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.ALERT_VIEW], title: 'Alertes' },
+        loadComponent: () => import('./features/alerts/alerts.component')
+          .then((m) => m.AlertsComponent)
+      },
+      {
+        path: 'promotions',
         loadComponent: () => import('./features/placeholder/placeholder.component')
           .then((m) => m.PlaceholderComponent),
-        data: { title: 'Rapports', endpoint: 'GET /api/v1/reports' }
+        data: { title: 'Réinscriptions' }
+      },
+      {
+        path: 'imports',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Imports' }
+      },
+      {
+        path: 'pedagogical-enrollments',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Inscriptions pédagogiques' }
+      },
+      {
+        path: 'student-files',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.DOCUMENT_VIEW], title: 'Documents officiels' },
+        loadComponent: () => import('./features/student-files/student-files.component')
+          .then((m) => m.StudentFilesComponent)
+      },
+      {
+        path: 'options',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.ENROLLMENT_VIEW], title: 'Options et langues' },
+        loadComponent: () => import('./features/options/options.component')
+          .then((m) => m.OptionsComponent)
+      },
+      {
+        path: 'transfers',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.ENROLLMENT_VIEW], title: 'Transferts et départs' },
+        loadComponent: () => import('./features/transfers/transfers.component')
+          .then((m) => m.TransfersComponent)
+      },
+      {
+        path: 'health',
+        canActivate: [permissionGuard],
+        data: {
+          permissions: [PERMISSIONS.HEALTH_ALERT_VIEW],
+          title: 'Santé scolaire'
+        },
+        loadComponent: () => import('./features/health/health.component')
+          .then((m) => m.HealthComponent)
+      },
+      {
+        path: 'certificates',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Certificats et attestations' }
+      },
+      {
+        path: 'requests',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.DOCUMENT_VIEW], title: 'Demandes des familles' },
+        loadComponent: () => import('./features/requests/requests.component')
+          .then((m) => m.RequestsComponent)
+      },
+      {
+        path: 'documents',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Documents' }
+      },
+      {
+        path: 'councils',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Conseils de classe' }
+      },
+      {
+        path: 'cash',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Caisse' }
+      },
+      {
+        path: 'discounts',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Remises et bourses' }
+      },
+      {
+        path: 'outstanding',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.FINANCE_VIEW], title: 'Impayés' },
+        loadComponent: () => import('./features/outstanding/outstanding.component')
+          .then((m) => m.OutstandingComponent)
+      },
+      {
+        path: 'staff',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Personnel' }
+      },
+      {
+        path: 'users',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.ROLE_MANAGE], title: 'Profils d’accès' },
+        loadComponent: () => import('./features/access-profiles/access-profiles.component')
+          .then((m) => m.AccessProfilesComponent)
+      },
+      {
+        path: 'audit',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: "Journal d'audit" }
+      },
+      {
+        path: 'notifications',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Messages' }
+      },
+      {
+        path: 'portals',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Portail des familles' }
+      },
+      {
+        path: 'academic-years',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Années et périodes' }
+      },
+      {
+        path: 'levels',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Cycles et niveaux' }
+      },
+      {
+        path: 'campus',
+        loadComponent: () => import('./features/placeholder/placeholder.component')
+          .then((m) => m.PlaceholderComponent),
+        data: { title: 'Campus et salles' }
       },
       {
         path: 'administration',

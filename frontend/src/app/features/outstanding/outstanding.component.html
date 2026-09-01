@@ -1,0 +1,149 @@
+<div class="page">
+  <header class="page__header outstanding-header">
+    <div>
+      <p class="page__eyebrow">Finance · Recouvrement</p>
+      <h1 class="page__title">Impayés</h1>
+      <p class="page__meta">Les familles à accompagner, classées par ancienneté du solde.</p>
+    </div>
+    <a class="btn btn--primary" routerLink="/payments"
+       *eduopsHasPermission="createPaymentPermission">
+      <span aria-hidden="true">+</span> Encaisser un paiement
+    </a>
+  </header>
+
+  @if (board(); as data) {
+    <section class="metrics" aria-label="Synthèse des impayés">
+      <article class="metric metric--primary">
+        <div class="metric__icon" aria-hidden="true">◰</div>
+        <div>
+          <p>Solde total à recevoir</p>
+          <strong class="money">{{ data.totalOutstanding | money:data.currency }}</strong>
+          <span>{{ data.studentCount }} famille(s) concernée(s)</span>
+        </div>
+      </article>
+      <article class="metric metric--danger">
+        <div class="metric__icon" aria-hidden="true">!</div>
+        <div>
+          <p>Déjà en retard</p>
+          <strong class="money">{{ data.overdueAmount | money:data.currency }}</strong>
+          <span>Échéances dépassées</span>
+        </div>
+      </article>
+      <article class="metric metric--warning">
+        <div class="metric__icon" aria-hidden="true">⌛</div>
+        <div>
+          <p>Priorité de relance</p>
+          <strong class="numeric">{{ data.criticalCount }}</strong>
+          <span>Retards de plus de 30 jours</span>
+        </div>
+      </article>
+    </section>
+  } @else if (loading()) {
+    <section class="metrics metrics--loading" aria-hidden="true">
+      <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+    </section>
+  }
+
+  <section class="card collection-card">
+    <div class="collection-toolbar">
+      <div class="collection-toolbar__top">
+        <div>
+          <h2>Suivi des familles</h2>
+          @if (board(); as data) {
+            <p>{{ data.students.totalElements }} résultat(s) dans cette vue</p>
+          }
+        </div>
+        <div class="search-box">
+          <span aria-hidden="true">⌕</span>
+          <label class="visually-hidden" for="outstanding-search">Rechercher une famille</label>
+          <input id="outstanding-search" class="input" type="search"
+                 placeholder="Élève, matricule, classe ou responsable"
+                 [value]="search()" (input)="onSearch($any($event.target).value)" />
+        </div>
+      </div>
+      <div class="buckets" role="group" aria-label="Filtrer les impayés">
+        @for (choice of buckets; track choice.value) {
+          <button type="button" class="bucket"
+                  [class.bucket--active]="bucket() === choice.value"
+                  (click)="selectBucket(choice.value)">
+            {{ choice.label }}
+            @if (choice.value === 'CRITICAL' && board(); as data) {
+              <span class="bucket__count numeric">{{ data.criticalCount }}</span>
+            }
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (error()) {
+      <eduops-error-state
+        title="Impossible de charger les impayés"
+        message="Le registre financier n'est pas disponible pour le moment."
+        (retry)="reload()" />
+    } @else {
+      <eduops-data-table
+        [columns]="columns"
+        [page]="board()?.students ?? null"
+        [loading]="loading()"
+        caption="Liste des soldes à recouvrer"
+        emptyTitle="Aucun solde dans cette vue"
+        emptyMessage="Aucune famille ne correspond à ces critères."
+        (pageChange)="onPageChange($event)" />
+    }
+  </section>
+</div>
+
+<ng-template #studentTpl let-row>
+  <div class="person">
+    <eduops-avatar [name]="row.studentName" [photoUrl]="row.photoUrl" size="sm" />
+    <span>
+      <a class="person__name" [routerLink]="['/students', row.studentId]">{{ row.studentName }}</a>
+      <small class="numeric">{{ row.studentNumber }} · {{ row.classroomName ?? 'Sans classe' }}</small>
+    </span>
+  </div>
+</ng-template>
+
+<ng-template #guardianTpl let-row>
+  @if (row.guardianName) {
+    <div class="guardian">
+      <strong>{{ row.guardianName }}</strong>
+      @if (row.guardianPhone) {
+        <a [href]="'tel:' + row.guardianPhone">{{ row.guardianPhone }}</a>
+      } @else {
+        <small>Coordonnées non renseignées</small>
+      }
+    </div>
+  } @else {
+    <span class="missing-contact">Responsable à compléter</span>
+  }
+</ng-template>
+
+<ng-template #dueTpl let-row>
+  <div class="due-date">
+    <strong class="numeric">{{ row.oldestDueDate | date:'dd MMM yyyy' }}</strong>
+    <small>{{ row.instalmentCount }} échéance(s) ouverte(s)</small>
+  </div>
+</ng-template>
+
+<ng-template #delayTpl let-row>
+  <span class="delay" [attr.data-tone]="delayTone(row)">
+    {{ delayLabel(row) }}
+  </span>
+</ng-template>
+
+<ng-template #amountTpl let-row>
+  <div class="balance">
+    <strong class="money">{{ row.outstandingAmount | money:row.currency }}</strong>
+    @if (row.overdueAmount > 0 && row.overdueAmount !== row.outstandingAmount) {
+      <small>{{ row.overdueAmount | money:row.currency }} en retard</small>
+    }
+  </div>
+</ng-template>
+
+<ng-template #actionsTpl let-row>
+  <a class="btn btn--primary btn--sm collect-action"
+     [routerLink]="['/payments']" [queryParams]="{ studentId: row.studentId }"
+     *eduopsHasPermission="createPaymentPermission">
+    Encaisser
+  </a>
+</ng-template>

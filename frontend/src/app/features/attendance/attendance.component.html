@@ -1,0 +1,537 @@
+<div class="page">
+
+  <!-- L'aide de la configuration, appliquée telle quelle : une carte au premier
+       passage sur l'onglet, un bouton « ? Aide » pour la revoir ensuite. -->
+  <eduops-step-coachmark
+    flow="attendance"
+    [stepKey]="tab()"
+    [stepNumber]="helpCopy().step"
+    [totalSteps]="totalSteps"
+    eyebrow="Conseil pour cet onglet"
+    [title]="helpCopy().title"
+    [description]="helpCopy().description"
+    [points]="helpCopy().points"
+    [ctaLabel]="helpCopy().ctaLabel" />
+
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Présences</h1>
+      <p class="page__meta numeric">
+        @if (tab() === 'APPEL') {
+          @if (day(); as d) {
+            {{ d.sheetsDone }}/{{ d.classroomCount }} classe(s) appelée(s)
+            @if (d.attendanceRate !== undefined) {
+              · {{ formatRate(d.attendanceRate) }} de présence
+            }
+            @if (d.termName) { · {{ d.termName }} }
+          }
+        } @else {
+          @if (digest(); as g) {
+            {{ g.absenceCount }} absence(s) et {{ g.latenessCount }} retard(s) —
+            {{ g.studentCount }} élève(s) concerné(s)
+          }
+        }
+      </p>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'APPEL'"
+            [attr.aria-selected]="tab() === 'APPEL'"
+            (click)="changeTab('APPEL')">
+      Appel du jour
+      @if (pendingClassrooms().length > 0) {
+        <span class="tabs__badge numeric">{{ pendingClassrooms().length }}</span>
+      }
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'SUIVI'"
+            [attr.aria-selected]="tab() === 'SUIVI'"
+            (click)="changeTab('SUIVI')">
+      Suivi des absences
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'ATTENTE'"
+            [attr.aria-selected]="tab() === 'ATTENTE'"
+            (click)="changeTab('ATTENTE')">
+      Justificatifs et relances
+      @if (digest(); as g) {
+        @if (g.followUpCount > 0) {
+          <span class="tabs__badge numeric">{{ g.followUpCount }}</span>
+        }
+      }
+    </button>
+  </nav>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des présences..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="reload()" />
+  } @else {
+
+    <!-- ═══════════════ Appel du jour ═══════════════ -->
+    @if (tab() === 'APPEL') {
+
+      <section class="daybar card">
+        <button type="button" class="daybar__nav" (click)="goToPreviousDay()"
+                aria-label="Jour précédent">‹</button>
+        <div class="daybar__label">
+          <strong>{{ formatDate(date()) }}</strong>
+          @if (isToday()) { <span class="pill pill--ok">Aujourd'hui</span> }
+        </div>
+        <button type="button" class="daybar__nav" (click)="goToNextDay()"
+                [disabled]="isToday()" aria-label="Jour suivant">›</button>
+        <label class="daybar__picker">
+          <span class="visually-hidden">Choisir une date</span>
+          <input type="date" class="input" [value]="date()" [max]="maxDate"
+                 (change)="changeDate($any($event.target).value)" />
+        </label>
+      </section>
+
+      @if (pendingClassrooms().length > 0) {
+        <section class="alert-block" role="status">
+          <div class="alert-block__head">
+            <span class="alert-block__icon" aria-hidden="true">!</span>
+            <div>
+              <p class="alert-block__title">
+                {{ pendingClassrooms().length }} classe(s) sans appel
+              </p>
+              <p class="alert-block__text">
+                Ce ne sont pas des classes sans absents : ce sont des classes dont
+                personne ne sait rien. Aucune famille ne sera prévenue, et le taux
+                du jour ne les compte pas.
+              </p>
+            </div>
+          </div>
+          <ul class="pending">
+            @for (classroom of pendingClassrooms(); track classroom.classroomId) {
+              <li class="pending__item">
+                <span class="pending__name">{{ classroom.classroomName }}</span>
+                <span class="pending__cycle numeric">
+                  {{ classroom.expectedCount }} élève(s)
+                  @if (classroom.mainTeacherName) { · {{ classroom.mainTeacherName }} }
+                </span>
+                <button type="button" class="btn btn--primary btn--sm"
+                        (click)="openSheet(classroom)">Faire l'appel</button>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (day(); as d) {
+        <section class="stats">
+          <article class="stat">
+            <p class="stat__label">Taux de présence</p>
+            <p class="stat__value numeric">{{ formatRate(d.attendanceRate) }}</p>
+            <p class="stat__note">Sur les {{ d.sheetsDone }} classe(s) appelée(s)</p>
+          </article>
+          <article class="stat">
+            <p class="stat__label">Présents</p>
+            <p class="stat__value numeric">{{ d.presentCount }}</p>
+            <p class="stat__note">sur {{ d.expectedCount }} attendus</p>
+          </article>
+          <article class="stat stat--absent">
+            <p class="stat__label">Absents</p>
+            <p class="stat__value numeric">{{ d.absentCount }}</p>
+            <p class="stat__note">Familles prévenues à l'enregistrement</p>
+          </article>
+          <article class="stat stat--late">
+            <p class="stat__label">Retards</p>
+            <p class="stat__value numeric">{{ d.lateCount }}</p>
+            <p class="stat__note">Comptés présents au taux</p>
+          </article>
+        </section>
+      }
+
+      <section class="grid grid--3">
+        @for (classroom of orderedClassrooms(); track classroom.classroomId) {
+          <article class="klass card" [class.klass--todo]="!classroom.done">
+            <header class="klass__head">
+              <div>
+                <h2 class="klass__name">{{ classroom.classroomName }}</h2>
+                <p class="klass__meta numeric">
+                  {{ classroom.expectedCount }} élève(s)
+                  @if (classroom.mainTeacherName) { · {{ classroom.mainTeacherName }} }
+                </p>
+              </div>
+              @if (classroom.done) {
+                <span class="pill pill--ok">{{ classroom.statusLabel }}</span>
+              } @else {
+                <span class="pill pill--warn">Appel à faire</span>
+              }
+            </header>
+
+            <div class="klass__body">
+              @if (classroom.done) {
+                <p class="klass__counts numeric">
+                  <strong>{{ classroom.presentCount }}</strong> présent(s) ·
+                  <strong>{{ classroom.absentCount }}</strong> absent(s) ·
+                  <strong>{{ classroom.lateCount }}</strong> retard(s)
+                </p>
+              } @else {
+                <p class="klass__counts klass__counts--none">
+                  Rien d'enregistré pour cette journée.
+                </p>
+              }
+            </div>
+
+            <footer class="klass__footer">
+              <button type="button"
+                      [class]="classroom.done ? 'btn btn--ghost btn--sm' : 'btn btn--primary btn--sm'"
+                      (click)="openSheet(classroom)">
+                {{ classroom.done ? 'Voir ou corriger' : "Faire l'appel" }}
+              </button>
+            </footer>
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <p class="empty-state__title">Aucune classe active.</p>
+            <p class="empty-state__text">
+              Créez vos classes avant de faire l'appel : une feuille de présence se
+              rattache à une classe et à ses inscrits.
+            </p>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- ═══════════════ Suivi et file d'attente ═══════════════ -->
+    @if (tab() !== 'APPEL') {
+
+      <p class="lead">
+        @if (tab() === 'SUIVI') {
+          Absences et retards ensemble : trois quarts d'heure perdus chaque matin
+          pèsent autant qu'une journée manquée.
+        } @else {
+          Ce qui n'est pas encore couvert, de la plus ancienne absence à la plus
+          récente. La file se traite par le haut.
+        }
+      </p>
+
+      <section class="filters">
+        <div class="filters__group" role="group" aria-label="Période">
+          @for (choice of periods; track choice) {
+            <button type="button" class="chip"
+                    [class.chip--on]="periodDays() === choice"
+                    (click)="changePeriod(choice)">
+              {{ choice }} jours
+            </button>
+          }
+        </div>
+
+        <label class="filters__select">
+          <span class="visually-hidden">Filtrer par classe</span>
+          <select class="input" [value]="classroomFilter()"
+                  (change)="changeClassroom($any($event.target).value)">
+            <option value="">Toutes les classes</option>
+            @for (classroom of classroomOptions(); track classroom.classroomId) {
+              <option [value]="classroom.classroomId">{{ classroom.classroomName }}</option>
+            }
+          </select>
+        </label>
+
+        @if (tab() === 'SUIVI') {
+          <div class="filters__group" role="group" aria-label="Type">
+            <button type="button" class="chip" [class.chip--on]="filter() === 'ALL'"
+                    (click)="changeFilter('ALL')">Tout</button>
+            <button type="button" class="chip" [class.chip--on]="filter() === 'UNJUSTIFIED'"
+                    (click)="changeFilter('UNJUSTIFIED')">Non justifié</button>
+            <button type="button" class="chip" [class.chip--on]="filter() === 'FOLLOW_UP'"
+                    (click)="changeFilter('FOLLOW_UP')">À relancer</button>
+            <button type="button" class="chip" [class.chip--on]="filter() === 'LATENESS'"
+                    (click)="changeFilter('LATENESS')">Retards</button>
+            <button type="button" class="chip" [class.chip--on]="filter() === 'JUSTIFIED'"
+                    (click)="changeFilter('JUSTIFIED')">Justifié</button>
+          </div>
+        }
+      </section>
+
+      @if (digest(); as g) {
+        <section class="stats">
+          <article class="stat">
+            <p class="stat__label">Taux de présence</p>
+            <p class="stat__value numeric">{{ formatRate(g.attendanceRate) }}</p>
+            <p class="stat__note">Du {{ formatDate(g.from) }} au {{ formatDate(g.to) }}</p>
+          </article>
+          <article class="stat stat--absent">
+            <p class="stat__label">Absences</p>
+            <p class="stat__value numeric">{{ g.absenceCount }}</p>
+            <p class="stat__note">{{ g.justifiedCount }} justifiée(s) au total</p>
+          </article>
+          <article class="stat stat--late">
+            <p class="stat__label">Retards</p>
+            <p class="stat__value numeric">{{ g.latenessCount }}</p>
+            <p class="stat__note">Comptés présents, jamais oubliés</p>
+          </article>
+          <article class="stat" [class.stat--alert]="g.followUpCount > 0">
+            <p class="stat__label">À relancer</p>
+            <p class="stat__value numeric">{{ g.followUpCount }}</p>
+            <p class="stat__note">Sans justificatif depuis 2 jours ou plus</p>
+          </article>
+        </section>
+
+        @if (g.repeatedCount > 0) {
+          <section class="alert-block" role="status">
+            <div class="alert-block__head">
+              <span class="alert-block__icon" aria-hidden="true">!</span>
+              <div>
+                <p class="alert-block__title">
+                  {{ g.repeatedCount }} élève(s) à trois absences non justifiées ou plus
+                </p>
+                <p class="alert-block__text">
+                  Sur cette période, ce n'est plus un incident. Ces situations se
+                  traitent avec la famille avant le conseil de classe, pas pendant.
+                </p>
+              </div>
+            </div>
+          </section>
+        }
+      }
+
+      <div class="table-wrapper card">
+        <table class="table">
+          <caption class="visually-hidden">Absences et retards de la période</caption>
+          <thead>
+            <tr>
+              <th scope="col">Élève</th>
+              <th scope="col">Classe</th>
+              <th scope="col">Date</th>
+              <th scope="col">Marque</th>
+              <th scope="col">Motif</th>
+              <th scope="col" class="cell-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of waitingEntries(); track entry.id) {
+              <tr [class.row--alert]="entry.needsFollowUp">
+                <td>
+                  <span class="entry__name">{{ entry.studentName }}</span>
+                  <span class="entry__number numeric">{{ entry.studentNumber }}</span>
+                </td>
+                <td>{{ entry.classroomName }}</td>
+                <td class="numeric">
+                  {{ formatDate(entry.date) }}
+                  @if (entry.daysWaiting > 0) {
+                    <span class="entry__age">il y a {{ entry.daysWaiting }} j</span>
+                  }
+                </td>
+                <td>
+                  <span class="mark" [attr.data-tone]="markOf(entry.status).tone">
+                    {{ entry.statusLabel }}
+                  </span>
+                  @if (entry.minutesLate) {
+                    <span class="entry__age numeric">{{ entry.minutesLate }} min</span>
+                  }
+                </td>
+                <td class="entry__reason">
+                  @if (entry.reason) {
+                    {{ entry.reason }}
+                  } @else {
+                    <span class="muted">Aucun motif communiqué</span>
+                  }
+                  @if (entry.guardianNotified && !entry.justified) {
+                    <span class="pill pill--muted">Famille relancée</span>
+                  }
+                </td>
+                <td class="cell-actions">
+                  @if (entry.justified) {
+                    <span class="pill pill--ok">Justifiée</span>
+                  } @else {
+                    @if (entry.needsFollowUp && !entry.guardianNotified) {
+                      <button type="button" class="btn btn--ghost btn--sm"
+                              [disabled]="saving()" (click)="remind(entry)">Relancer</button>
+                    }
+                    <button type="button" class="btn btn--secondary btn--sm"
+                            (click)="openJustify(entry)">Justifier</button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state">
+                    <p class="empty-state__title">Rien à traiter sur cette période.</p>
+                    <p class="empty-state__text">
+                      @if (filter() === 'ALL') {
+                        Aucune absence ni retard enregistré. Vérifiez que l'appel est
+                        bien fait chaque jour : une liste vide peut aussi vouloir dire
+                        qu'on ne sait rien.
+                      } @else {
+                        Aucune ligne ne correspond à ce filtre. Les compteurs
+                        ci-dessus, eux, portent sur toute la période.
+                      }
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  <!-- ═══════════════ Feuille d'appel ═══════════════ -->
+  @if (sheet(); as s) {
+    <div class="drawer-backdrop" (click)="closeSheet()"></div>
+    <aside class="drawer drawer--wide" role="dialog" aria-modal="true"
+           aria-labelledby="sheet-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="sheet-title">{{ s.classroomName }}</h2>
+          <p class="drawer__meta numeric">
+            {{ formatDate(s.sessionDate) }}
+            @if (s.teacherName) { · {{ s.teacherName }} }
+            @if (s.submittedAt) { · {{ s.statusLabel }} }
+          </p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeSheet()">×</button>
+      </header>
+
+      <div class="sheet-counters numeric">
+        <span class="sheet-counters__item">
+          <strong>{{ sheetCounters().present }}</strong> présents
+        </span>
+        <span class="sheet-counters__item sheet-counters__item--absent">
+          <strong>{{ sheetCounters().absent }}</strong> absents
+        </span>
+        <span class="sheet-counters__item sheet-counters__item--late">
+          <strong>{{ sheetCounters().late }}</strong> retards
+        </span>
+        <button type="button" class="btn btn--ghost btn--sm"
+                [disabled]="!s.editable" (click)="markAllPresent()">
+          Tout le monde est présent
+        </button>
+      </div>
+
+      @if (!s.editable) {
+        <p class="hint-block">
+          Cette feuille est verrouillée : elle reste consultable, mais les marques
+          ne peuvent plus changer. C'est elle qui a servi aux bulletins.
+        </p>
+      }
+
+      <div class="drawer__body">
+        <ul class="roll">
+          @for (record of s.records; track record.studentId) {
+            <li class="roll__item" [attr.data-tone]="markOf(record.status).tone">
+              <div class="roll__identity">
+                <span class="roll__name">{{ record.studentName }}</span>
+                <span class="roll__number numeric">{{ record.studentNumber }}</span>
+              </div>
+
+              <div class="roll__marks" role="group"
+                   [attr.aria-label]="'Marque de ' + record.studentName">
+                @for (code of quickMarks; track code) {
+                  <button type="button" class="mark-btn"
+                          [class.mark-btn--on]="record.status === code"
+                          [attr.data-tone]="markOf(code).tone"
+                          [attr.title]="markOf(code).hint"
+                          [disabled]="!s.editable"
+                          (click)="mark(record.studentId, code)">
+                    {{ markOf(code).short }}
+                  </button>
+                }
+                <label class="roll__more">
+                  <span class="visually-hidden">Autre marque pour {{ record.studentName }}</span>
+                  <select class="input input--tiny" [value]="record.status"
+                          [disabled]="!s.editable"
+                          (change)="mark(record.studentId, $any($event.target).value)">
+                    @for (option of marks; track option.code) {
+                      <option [value]="option.code">{{ option.label }}</option>
+                    }
+                  </select>
+                </label>
+
+                @if (record.status === 'LATE' || record.status === 'EXCUSED_LATE') {
+                  <label class="roll__time">
+                    <span class="visually-hidden">Heure d'arrivée de {{ record.studentName }}</span>
+                    <input type="time" class="input input--tiny"
+                           [value]="record.arrivalTime || ''"
+                           [disabled]="!s.editable"
+                           (change)="setArrivalTime(record.studentId, $any($event.target).value)" />
+                  </label>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      </div>
+
+      <footer class="drawer__foot">
+        @if (missingArrivalTimes() > 0) {
+          <p class="drawer__warning">
+            {{ missingArrivalTimes() }} retard(s) sans heure d'arrivée.
+          </p>
+        } @else if (sheetDirty()) {
+          <p class="drawer__warning">
+            Marques posées, pas encore enregistrées.
+          </p>
+        }
+        <button type="button" class="btn btn--secondary" (click)="closeSheet()">
+          Fermer
+        </button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="saving() || !s.editable"
+                (click)="submitSheet()">
+          {{ s.submittedAt ? 'Enregistrer la correction' : "Valider l'appel" }}
+        </button>
+      </footer>
+    </aside>
+  }
+
+  <!-- ═══════════════ Justificatif ═══════════════ -->
+  @if (justifying(); as absence) {
+    <div class="drawer-backdrop" (click)="closeJustify()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="justify-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="justify-title">Justificatif</h2>
+          <p class="drawer__meta">
+            {{ absence.studentName }} — {{ absence.classroomName }} —
+            {{ formatDate(absence.date) }}
+          </p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeJustify()">×</button>
+      </header>
+
+      <form class="drawer__body" [formGroup]="justifyForm" (ngSubmit)="submitJustify()">
+        <p class="hint-block">
+          L'absence ne disparaît pas : elle devient justifiée. L'élève garde son
+          historique, la famille n'est plus relancée.
+        </p>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="justify-reason">Ce qui a été présenté</label>
+          <input id="justify-reason" class="input" formControlName="reason"
+                 placeholder="Certificat médical du 12/03" />
+          <p class="field__hint">
+            C'est ce texte que relira le conseil de classe en juin. « Certificat
+            médical du 12/03 » se comprend encore ; « RAS » ne se comprend plus.
+          </p>
+        </div>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="justify-url">Pièce numérisée (facultatif)</label>
+          <input id="justify-url" class="input" formControlName="documentUrl"
+                 placeholder="https://..." />
+        </div>
+      </form>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeJustify()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="justifyForm.invalid || saving()"
+                (click)="submitJustify()">
+          Enregistrer le justificatif
+        </button>
+      </footer>
+    </aside>
+  }
+</div>

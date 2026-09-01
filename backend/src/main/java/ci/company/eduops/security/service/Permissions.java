@@ -89,6 +89,15 @@ public final class Permissions {
     public static final String AUDIT_VIEW = "AUDIT_VIEW";
     public static final String USER_MANAGE = "USER_MANAGE";
     public static final String ROLE_MANAGE = "ROLE_MANAGE";
+    // Santé scolaire. HEALTH_ALERT_VIEW est volontairement séparée des autres :
+    // elle n'ouvre que le libellé et la conduite à tenir des conditions
+    // signalées, et c'est la seule que reçoit le personnel encadrant.
+    public static final String HEALTH_RECORD_VIEW = "HEALTH_RECORD_VIEW";
+    public static final String HEALTH_RECORD_MANAGE = "HEALTH_RECORD_MANAGE";
+    public static final String HEALTH_VISIT_VIEW = "HEALTH_VISIT_VIEW";
+    public static final String HEALTH_VISIT_RECORD = "HEALTH_VISIT_RECORD";
+    public static final String HEALTH_ALERT_VIEW = "HEALTH_ALERT_VIEW";
+
     public static final String PORTAL_TEACHER = "PORTAL_TEACHER";
     public static final String PORTAL_PARENT = "PORTAL_PARENT";
     public static final String PORTAL_STUDENT = "PORTAL_STUDENT";

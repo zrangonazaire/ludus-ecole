@@ -25,9 +25,14 @@ const MOCK_PROFILES: Record<string, MockProfile> = {
     roles: [ROLES.TEACHER],
     permissions: [PERMISSIONS.PORTAL_TEACHER, PERMISSIONS.DASHBOARD_VIEW,
       PERMISSIONS.CLASS_VIEW, PERMISSIONS.STUDENT_VIEW, PERMISSIONS.TIMETABLE_VIEW,
-      PERMISSIONS.ATTENDANCE_VIEW, PERMISSIONS.ATTENDANCE_CREATE,
-      PERMISSIONS.ASSESSMENT_VIEW, PERMISSIONS.ASSESSMENT_CREATE,
-      PERMISSIONS.GRADE_VIEW, PERMISSIONS.GRADE_CREATE, PERMISSIONS.REPORT_CARD_VIEW]
+       PERMISSIONS.ATTENDANCE_VIEW, PERMISSIONS.ATTENDANCE_CREATE,
+       PERMISSIONS.ASSESSMENT_VIEW, PERMISSIONS.ASSESSMENT_CREATE,
+       PERMISSIONS.GRADE_VIEW, PERMISSIONS.GRADE_CREATE, PERMISSIONS.REPORT_CARD_VIEW,
+       PERMISSIONS.ALERT_VIEW,
+       // Le professeur reçoit l'alerte et la conduite à tenir, jamais le
+      // dossier. Se connecter en « prof » en démonstration montre exactement ce
+      // que la salle des professeurs voit de la santé des élèves.
+      PERMISSIONS.HEALTH_ALERT_VIEW]
   },
   parent: {
     name: 'Mariam Traore',
@@ -53,11 +58,24 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
 
-  private readonly _accessToken = signal<string | null>(this.readStored(ACCESS_TOKEN_KEY));
+  private readonly _accessToken = signal<string | null>(this.readUsableToken());
   private readonly _currentUser = signal<CurrentUser | null>(this.restoreUser(this._accessToken()));
 
   readonly currentUser = this._currentUser.asReadonly();
-  readonly isAuthenticated = computed(() => this._accessToken() !== null);
+
+  /**
+   * Une session vaut par l'identité qu'on en tire, pas par la présence d'un jeton.
+   *
+   * <p>Se contenter de vérifier que le jeton existe laissait passer un cas
+   * précis et déroutant : un jeton illisible — celui d'une ancienne session de
+   * démonstration, ou un jeton expiré au format inattendu — rendait
+   * `isAuthenticated` vrai, `currentUser` nul et la liste des permissions
+   * vide. « Mon espace » s'affichait donc sur la page d'accueil, et menait
+   * droit à /forbidden. L'utilisateur était connecté sans avoir le droit
+   * d'entrer nulle part.</p>
+   */
+  readonly isAuthenticated = computed(
+    () => this._accessToken() !== null && this._currentUser() !== null);
   readonly permissions = computed(() => new Set(this._currentUser()?.permissions ?? []));
   readonly roles = computed(() => new Set(this._currentUser()?.roles ?? []));
 
@@ -195,6 +213,31 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Lit le jeton stocké, et le jette s'il n'est plus exploitable.
+   *
+   * <p>Un jeton dont on ne peut rien tirer n'est pas une session : le garder
+   * ne fait que produire un utilisateur sans identité ni permission. Le cas
+   * se présente en changeant `useMockData` — le jeton de démonstration
+   * `mock-access-token.admin` n'est pas un JWT et devient indéchiffrable — et
+   * se présentera de nouveau le jour où le format du jeton évoluera.</p>
+   */
+  private readUsableToken(): string | null {
+    const token = this.readStored(ACCESS_TOKEN_KEY);
+    if (token && this.restoreUser(token) === null) {
+      // On nettoie plutôt que de laisser une session fantôme : sans cela
+      // l'écran d'accueil propose « Mon espace » et le garde refuse l'entrée.
+      try {
+        sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+        sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+      } catch {
+        // sessionStorage indisponible : rien à nettoyer.
+      }
+      return null;
+    }
+    return token;
   }
 
   /** Rebuilds the UX identity from the access token after a page refresh. */

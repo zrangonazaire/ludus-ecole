@@ -1,0 +1,696 @@
+<div class="page">
+
+  <!-- L'aide de la configuration, appliquée telle quelle : une carte au premier
+       passage sur l'onglet, un bouton « ? Aide » pour la revoir ensuite. -->
+  <eduops-step-coachmark
+    flow="assessments"
+    [stepKey]="tab()"
+    [stepNumber]="helpCopy().step"
+    [totalSteps]="totalSteps"
+    eyebrow="Conseil pour cet onglet"
+    [title]="helpCopy().title"
+    [description]="helpCopy().description"
+    [points]="helpCopy().points"
+    [ctaLabel]="helpCopy().ctaLabel" />
+
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">{{ pageTitle }}</h1>
+      <p class="page__meta numeric">
+        @if (board(); as b) {
+          {{ b.total }} devoir(s)
+          @if (b.termName) { · {{ b.termName }} }
+          @if (b.awaitingValidationCount > 0) {
+            · {{ b.awaitingValidationCount }} à valider
+          }
+        }
+      </p>
+    </div>
+    @if (!gradesEntryPoint) {
+      <div class="page__actions">
+        <button type="button" class="btn btn--primary" (click)="openForm()">
+          <span aria-hidden="true">+</span> Nouveau devoir
+        </button>
+      </div>
+    }
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'PLANNING'"
+            [attr.aria-selected]="tab() === 'PLANNING'"
+            (click)="changeTab('PLANNING')">
+      Tous les devoirs
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'CORRECTION'"
+            [attr.aria-selected]="tab() === 'CORRECTION'"
+            (click)="changeTab('CORRECTION')">
+      Corrections en cours
+      @if (board(); as b) {
+        @if (b.gradingCount > 0) {
+          <span class="tabs__badge numeric">{{ b.gradingCount }}</span>
+        }
+      }
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'VALIDATION'"
+            [attr.aria-selected]="tab() === 'VALIDATION'"
+            (click)="changeTab('VALIDATION')">
+      À valider et publier
+      @if (board(); as b) {
+        @if (b.awaitingValidationCount > 0) {
+          <span class="tabs__badge numeric">{{ b.awaitingValidationCount }}</span>
+        }
+      }
+    </button>
+  </nav>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des devoirs..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+
+    @if (overdue().length > 0) {
+      <section class="alert-block" role="status">
+        <div class="alert-block__head">
+          <span class="alert-block__icon" aria-hidden="true">!</span>
+          <div>
+            <p class="alert-block__title">
+              {{ overdue().length }} devoir(s) passés sans une seule note saisie
+            </p>
+            <p class="alert-block__text">
+              Passé une semaine, une copie non rendue ne se rattrape plus dans le
+              trimestre : la note manquera au bulletin sans que rien ne le signale.
+            </p>
+          </div>
+        </div>
+        <ul class="pending">
+          @for (item of overdue(); track item.id) {
+            <li class="pending__item">
+              <span class="pending__name">{{ item.title }}</span>
+              <span class="pending__cycle numeric">
+                {{ item.classroomName }} · {{ item.subjectName }} ·
+                {{ formatDate(item.assessmentDate) }} · {{ item.teacherName }}
+              </span>
+              <button type="button" class="btn btn--primary btn--sm"
+                      (click)="openSheet(item)">Saisir les notes</button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (board(); as b) {
+      <section class="stats">
+        <article class="stat">
+          <p class="stat__label">Annoncés</p>
+          <p class="stat__value numeric">{{ b.plannedCount }}</p>
+          <p class="stat__note">Pas encore passés</p>
+        </article>
+        <article class="stat stat--doing">
+          <p class="stat__label">En correction</p>
+          <p class="stat__value numeric">{{ b.gradingCount }}</p>
+          <p class="stat__note">Copies passées, notes en cours</p>
+        </article>
+        <article class="stat" [class.stat--alert]="b.awaitingValidationCount > 0">
+          <p class="stat__label">À valider</p>
+          <p class="stat__value numeric">{{ b.awaitingValidationCount }}</p>
+          <p class="stat__note">Notes rendues, en attente de relecture</p>
+        </article>
+        <article class="stat stat--done">
+          <p class="stat__label">Publiés</p>
+          <p class="stat__value numeric">{{ b.publishedCount }}</p>
+          <p class="stat__note">{{ b.awaitingPublicationCount }} validé(s) non publié(s)</p>
+        </article>
+      </section>
+    }
+
+    <section class="filters">
+      <label class="filters__select">
+        <span class="visually-hidden">Filtrer par classe</span>
+        <select class="input" [value]="classroomFilter()"
+                (change)="changeClassroom($any($event.target).value)">
+          <option value="">Toutes les classes</option>
+          @for (classroom of classroomList(); track classroom.id) {
+            <option [value]="classroom.id">{{ classroom.name }}</option>
+          }
+        </select>
+      </label>
+      <label class="filters__select">
+        <span class="visually-hidden">Filtrer par matière</span>
+        <select class="input" [value]="subjectFilter()"
+                (change)="changeSubject($any($event.target).value)">
+          <option value="">Toutes les matières</option>
+          @for (subject of subjectList(); track subject.id) {
+            <option [value]="subject.id">{{ subject.name }}</option>
+          }
+        </select>
+      </label>
+    </section>
+
+    <section class="grid grid--3">
+      @for (item of visible(); track item.id) {
+        <article class="paper card"
+                 [attr.data-tone]="stateOf(item.status).tone"
+                 [style.--paper-color]="item.subjectColor || 'var(--brand)'">
+          <header class="paper__head">
+            <div class="paper__title">
+              <h2 class="paper__name">{{ item.title }}</h2>
+              <p class="paper__meta numeric">
+                {{ item.classroomName }} · {{ item.subjectName }} ·
+                {{ formatDate(item.assessmentDate) }}
+              </p>
+            </div>
+            <span class="state" [attr.data-tone]="stateOf(item.status).tone"
+                  [attr.title]="stateOf(item.status).hint">{{ item.statusLabel }}</span>
+          </header>
+
+          <div class="paper__body">
+            <p class="paper__scale numeric">
+              {{ item.assessmentTypeLabel }} · sur {{ item.maxScore }} ·
+              coefficient {{ item.coefficient }}
+              @if (!item.countsForAverage) {
+                <span class="pill pill--muted">Hors moyenne</span>
+              }
+            </p>
+            <p class="paper__teacher">{{ item.teacherName }}</p>
+
+            @if (item.status === 'PLANNED' || item.status === 'DRAFT') {
+              <p class="paper__progress paper__progress--none">
+                Aucune note attendue avant la date du devoir.
+              </p>
+            } @else {
+              <div class="progress">
+                <div class="progress__bar">
+                  <span class="progress__fill" [style.width.%]="progressOf(item)"></span>
+                </div>
+                <p class="progress__label numeric">
+                  {{ item.gradedCount }} / {{ item.studentCount }} corrigées
+                  @if (item.classAverage !== undefined) {
+                    · moyenne {{ formatScore(item.classAverage, item.maxScore) }}
+                  }
+                </p>
+              </div>
+            }
+          </div>
+
+          <footer class="paper__footer">
+            @if (item.status === 'PLANNED') {
+              <button type="button" class="btn btn--ghost btn--sm"
+                      (click)="openForm(item)">Modifier</button>
+              <button type="button" class="btn btn--primary btn--sm"
+                      [disabled]="saving()" (click)="openEntry(item)">
+                Ouvrir la saisie
+              </button>
+            } @else if (item.gradeEntryOpen) {
+              <button type="button" class="btn btn--ghost btn--sm"
+                      (click)="openForm(item)">Modifier</button>
+              <button type="button" class="btn btn--primary btn--sm"
+                      (click)="openSheet(item)">Saisir les notes</button>
+            } @else {
+              <button type="button" class="btn btn--secondary btn--sm"
+                      (click)="openSheet(item)">
+                {{ item.status === 'SUBMITTED' ? 'Relire et valider' : 'Voir les notes' }}
+              </button>
+            }
+          </footer>
+        </article>
+      } @empty {
+        <div class="empty-state">
+          <p class="empty-state__title">
+            @if (tab() === 'VALIDATION') {
+              Rien n'attend votre relecture.
+            } @else if (tab() === 'CORRECTION') {
+              Aucune correction en cours.
+            } @else {
+              Aucun devoir sur cette période.
+            }
+          </p>
+          <p class="empty-state__text">
+            @if (tab() === 'PLANNING') {
+              Un devoir se déclare avant d'être corrigé : c'est lui qui décide dans
+              quelle moyenne la note entrera, et avec quel poids.
+            } @else {
+              Les devoirs apparaissent ici dès que leur saisie est ouverte.
+            }
+          </p>
+          @if (tab() === 'PLANNING') {
+            <button type="button" class="btn btn--primary" (click)="openForm()">
+              Planifier un devoir
+            </button>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ═══════════════ Formulaire du devoir ═══════════════ -->
+  @if (formOpen()) {
+    <div class="drawer-backdrop" (click)="closeForm()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="paper-form-title">
+      <header class="drawer__head">
+        <h2 class="drawer__title" id="paper-form-title">
+          {{ editing() ? 'Modifier le devoir' : 'Nouveau devoir' }}
+        </h2>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeForm()">×</button>
+      </header>
+
+      <form class="drawer__body" [formGroup]="assessmentForm" (ngSubmit)="submitForm()">
+        <div class="field">
+          <label class="field__label field__label--required" for="paper-title">Intitulé</label>
+          <input id="paper-title" class="input" formControlName="title"
+                 placeholder="Devoir surveillé n°2 — équations" />
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field__label field__label--required" for="paper-class">Classe</label>
+            <select id="paper-class" class="input" formControlName="classroomId">
+              <option value="">Choisir…</option>
+              @for (classroom of classroomList(); track classroom.id) {
+                <option [value]="classroom.id">{{ classroom.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label field__label--required" for="paper-subject">Matière</label>
+            <select id="paper-subject" class="input" formControlName="subjectId">
+              <option value="">Choisir…</option>
+              @for (subject of subjectList(); track subject.id) {
+                <option [value]="subject.id">{{ subject.name }}</option>
+              }
+            </select>
+            <span class="field__hint">
+              Elle doit figurer au programme du niveau : sans coefficient, la note
+              n'entrerait dans aucune moyenne.
+            </span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="paper-teacher">
+            Enseignant correcteur
+          </label>
+          <select id="paper-teacher" class="input" formControlName="teacherId">
+            <option value="">Choisir…</option>
+            @for (teacher of teacherList(); track teacher.id) {
+              <option [value]="teacher.id">{{ teacher.fullName }}</option>
+            }
+          </select>
+          <span class="field__hint">
+            Il doit être affecté à cette matière dans cette classe, sinon les notes
+            n'apparaîtront sur aucun de ses écrans.
+          </span>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field__label field__label--required" for="paper-type">Type</label>
+            <select id="paper-type" class="input" formControlName="assessmentType">
+              @for (type of types; track type.code) {
+                <option [value]="type.code">{{ type.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label field__label--required" for="paper-date">Date</label>
+            <input id="paper-date" type="date" class="input" formControlName="assessmentDate" />
+            <span class="field__hint">
+              Elle doit tomber dans la période en cours.
+            </span>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field__label field__label--required" for="paper-scale">Barème</label>
+            <input id="paper-scale" type="number" class="input" formControlName="maxScore"
+                   min="1" max="1000" step="1" [attr.disabled]="scaleLocked() ? '' : null" />
+            @if (scaleLocked()) {
+              <span class="field__hint field__hint--lock">
+                Figé : des notes ont déjà été saisies sur ce barème. Le changer les
+                ferait toutes bouger sans que personne y touche.
+              </span>
+            }
+          </div>
+          <div class="field">
+            <label class="field__label field__label--required" for="paper-coef">Coefficient</label>
+            <input id="paper-coef" type="number" class="input" formControlName="coefficient"
+                   min="0.5" max="100" step="0.5" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="paper-duration">Durée (minutes)</label>
+          <input id="paper-duration" type="number" class="input"
+                 formControlName="durationMinutes" min="5" max="600" step="5" />
+        </div>
+
+        <label class="switch">
+          <input type="checkbox" formControlName="countsForAverage" />
+          <span>
+            Compte dans la moyenne
+            <small>Décochez pour un devoir blanc : il est corrigé et rendu, mais
+              n'entre dans aucune moyenne.</small>
+          </span>
+        </label>
+      </form>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeForm()">Annuler</button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="assessmentForm.invalid || saving()"
+                (click)="submitForm()">
+          {{ editing() ? 'Enregistrer' : 'Planifier' }}
+        </button>
+      </footer>
+    </aside>
+  }
+
+  <!-- ═══════════════ Feuille de notes ═══════════════ -->
+  @if (sheet(); as s) {
+    <div class="drawer-backdrop" (click)="closeSheet()"></div>
+    <aside class="drawer drawer--wide" role="dialog" aria-modal="true"
+           aria-labelledby="sheet-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="sheet-title">{{ s.assessment.title }}</h2>
+          <p class="drawer__meta numeric">
+            {{ s.assessment.classroomName }} · {{ s.assessment.subjectName }} ·
+            sur {{ s.assessment.maxScore }} · {{ s.assessment.statusLabel }}
+          </p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeSheet()">×</button>
+      </header>
+
+      <div class="sheet-counters numeric">
+        <span class="sheet-counters__item">
+          <strong>{{ sheetCounters().scored }}</strong> notées
+        </span>
+        <span class="sheet-counters__item sheet-counters__item--absent">
+          <strong>{{ sheetCounters().absent }}</strong> absents
+        </span>
+        <span class="sheet-counters__item sheet-counters__item--missing">
+          <strong>{{ sheetCounters().missing }}</strong> sans note
+        </span>
+        @if (sheetCounters().average !== undefined) {
+          <span class="sheet-counters__item">
+            moyenne <strong>{{ formatScore(sheetCounters().average, s.assessment.maxScore) }}</strong>
+          </span>
+        }
+
+        <span class="sheet-counters__files">
+          <button type="button" class="btn btn--ghost btn--sm" (click)="exportSheet()">
+            Exporter
+          </button>
+          @if (s.assessment.gradeEntryOpen) {
+            <label class="btn btn--ghost btn--sm file-button">
+              {{ analysing() ? 'Lecture…' : 'Importer' }}
+              <input type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt"
+                     [disabled]="analysing() || saving()"
+                     (change)="onFileChosen($event)" />
+            </label>
+          }
+        </span>
+      </div>
+
+      @if (!s.assessment.gradeEntryOpen) {
+        <div class="distribution">
+          <p class="distribution__title">Distribution de la classe</p>
+          <ul class="distribution__list numeric">
+            <li><span>Moyenne</span>
+              <strong>{{ formatScore(s.classAverage, s.assessment.maxScore) }}</strong></li>
+            <li><span>Médiane</span>
+              <strong>{{ formatScore(s.median, s.assessment.maxScore) }}</strong></li>
+            <li><span>Extrêmes</span>
+              <strong>{{ formatScore(s.minScore) }} — {{ formatScore(s.maxScoreObtained) }}</strong></li>
+            <li><span>Ont la moyenne</span>
+              <strong>{{ s.passCount }} / {{ s.rows.length - s.absentCount - s.exemptedCount }}</strong></li>
+          </ul>
+          <p class="distribution__hint">
+            Une copie où les deux tiers de la classe sont sous la moyenne est rarement
+            une mauvaise classe : c'est le plus souvent un sujet trop dur ou un barème
+            mal saisi. Cela se corrige avant la publication.
+          </p>
+        </div>
+      }
+
+      <div class="drawer__body">
+        <ul class="marks">
+          @for (row of s.rows; track row.studentId) {
+            <li class="marks__item"
+                [class.marks__item--absent]="row.absent"
+                [class.marks__item--missing]="!row.absent && !row.exempted && row.score === undefined">
+              <div class="marks__identity">
+                <span class="marks__name">{{ row.studentName }}</span>
+                <span class="marks__number numeric">
+                  {{ row.studentNumber }}
+                  @if (row.revisionCount > 0) {
+                    · {{ row.revisionCount }} correction(s)
+                  }
+                </span>
+              </div>
+
+              <div class="marks__entry">
+                @if (s.assessment.gradeEntryOpen) {
+                  <label class="marks__score">
+                    <span class="visually-hidden">Note de {{ row.studentName }}</span>
+                    <input type="number" class="input input--score"
+                           [value]="row.score ?? ''"
+                           [disabled]="row.absent || row.exempted"
+                           min="0" [max]="s.assessment.maxScore" step="0.25"
+                           (change)="setScore(row.studentId, $any($event.target).value)" />
+                  </label>
+                  <span class="marks__scale numeric">/ {{ s.assessment.maxScore }}</span>
+
+                  <label class="marks__flag">
+                    <input type="checkbox" [checked]="row.absent"
+                           (change)="toggleAbsent(row.studentId, $any($event.target).checked)" />
+                    <span>Absent</span>
+                  </label>
+                  <label class="marks__flag">
+                    <input type="checkbox" [checked]="row.exempted"
+                           (change)="toggleExempted(row.studentId, $any($event.target).checked)" />
+                    <span>Dispensé</span>
+                  </label>
+                } @else {
+                  <span class="marks__value numeric">
+                    @if (row.absent) {
+                      <span class="pill pill--warn">Absent</span>
+                    } @else if (row.exempted) {
+                      <span class="pill pill--muted">Dispensé</span>
+                    } @else {
+                      {{ formatScore(row.score, s.assessment.maxScore) }}
+                    }
+                  </span>
+                  @if (row.requiresJustifiedCorrection) {
+                    <button type="button" class="btn btn--ghost btn--sm"
+                            (click)="openCorrection(row)">Corriger</button>
+                  }
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      </div>
+
+      <footer class="drawer__foot">
+        @if (sheetDirty()) {
+          <p class="drawer__warning">Notes saisies, pas encore enregistrées.</p>
+        } @else if (sheetCounters().missing > 0 && s.assessment.gradeEntryOpen) {
+          <p class="drawer__warning">
+            {{ sheetCounters().missing }} élève(s) sans note ni absence.
+          </p>
+        }
+
+        @if (s.assessment.gradeEntryOpen) {
+          <button type="button" class="btn btn--secondary"
+                  [disabled]="saving()" (click)="saveSheet()">Enregistrer</button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="saving() || sheetCounters().missing > 0"
+                  (click)="submitSheet()">Transmettre</button>
+        } @else if (s.assessment.status === 'SUBMITTED') {
+          <button type="button" class="btn btn--secondary" (click)="closeSheet()">Fermer</button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="saving()" (click)="validateSheet()">Valider les notes</button>
+        } @else if (s.assessment.status === 'VALIDATED') {
+          <button type="button" class="btn btn--secondary" (click)="closeSheet()">Fermer</button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="saving()" (click)="publishSheet()">Publier aux familles</button>
+        } @else {
+          <button type="button" class="btn btn--secondary" (click)="closeSheet()">Fermer</button>
+        }
+      </footer>
+    </aside>
+  }
+
+  <!-- ═══════════════ Vérification de l'import ═══════════════ -->
+  @if (importPreview(); as preview) {
+    <div class="drawer-backdrop" (click)="closeImport()"></div>
+    <aside class="drawer drawer--wide" role="dialog" aria-modal="true"
+           aria-labelledby="import-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="import-title">Ce que le fichier changerait</h2>
+          <p class="drawer__meta numeric">{{ preview.fileName }}</p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeImport()">×</button>
+      </header>
+
+      <div class="sheet-counters numeric">
+        <span class="sheet-counters__item">
+          <strong>{{ preview.changedRows }}</strong> à modifier
+        </span>
+        <span class="sheet-counters__item">
+          <strong>{{ preview.unchangedRows }}</strong> inchangées
+        </span>
+        @if (preview.invalidRows + preview.unknownRows + preview.lockedRows > 0) {
+          <span class="sheet-counters__item sheet-counters__item--missing">
+            <strong>{{ preview.invalidRows + preview.unknownRows + preview.lockedRows }}</strong>
+            refusées
+          </span>
+        }
+      </div>
+
+      @if (preview.missingStudents > 0) {
+        <p class="hint-block hint-block--inset">
+          {{ preview.missingStudents }} élève(s) de la classe ne figurent pas dans le
+          fichier. Leur note actuelle est conservée telle quelle : un fichier
+          incomplet n'efface rien.
+        </p>
+      }
+
+      <div class="drawer__body">
+        <ul class="diff">
+          @for (row of preview.rows; track row.rowNumber) {
+            <li class="diff__item" [attr.data-status]="row.status">
+              <div class="diff__identity">
+                <span class="diff__name">{{ row.studentName }}</span>
+                <span class="diff__number numeric">
+                  ligne {{ row.rowNumber }}
+                  @if (row.studentNumber) { · {{ row.studentNumber }} }
+                </span>
+              </div>
+
+              <div class="diff__change numeric">
+                @if (row.status === 'CHANGED') {
+                  <span class="diff__before">
+                    @if (row.currentAbsent) { Absent }
+                    @else if (row.currentScore !== undefined) { {{ formatScore(row.currentScore) }} }
+                    @else { — }
+                  </span>
+                  <span class="diff__arrow" aria-hidden="true">→</span>
+                  <span class="diff__after">
+                    @if (row.newAbsent) { Absent }
+                    @else if (row.newScore !== undefined) { {{ formatScore(row.newScore) }} }
+                    @else { — }
+                  </span>
+                } @else if (row.status === 'UNCHANGED') {
+                  <span class="muted">Inchangée</span>
+                } @else {
+                  <span class="diff__refused">Refusée</span>
+                }
+              </div>
+
+              @if (row.errors.length > 0 || row.warnings.length > 0) {
+                <ul class="diff__notes">
+                  @for (message of row.errors; track message) {
+                    <li class="diff__note diff__note--error">{{ message }}</li>
+                  }
+                  @for (message of row.warnings; track message) {
+                    <li class="diff__note">{{ message }}</li>
+                  }
+                </ul>
+              }
+            </li>
+          } @empty {
+            <li class="diff__empty">
+              Le fichier ne contient aucune ligne exploitable.
+            </li>
+          }
+        </ul>
+      </div>
+
+      <footer class="drawer__foot">
+        @if (!preview.importable) {
+          <p class="drawer__warning">Rien à reprendre de ce fichier.</p>
+        }
+        <button type="button" class="btn btn--secondary" (click)="closeImport()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="!preview.importable || saving()"
+                (click)="applyImport()">
+          Appliquer {{ preview.changedRows }} note(s)
+        </button>
+      </footer>
+    </aside>
+  }
+
+  <!-- ═══════════════ Correction justifiée ═══════════════ -->
+  @if (correcting(); as row) {
+    <div class="drawer-backdrop" (click)="closeCorrection()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="correction-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="correction-title">Corriger une note</h2>
+          <p class="drawer__meta">{{ row.studentName }} — {{ row.statusLabel }}</p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeCorrection()">×</button>
+      </header>
+
+      <form class="drawer__body" [formGroup]="correctionForm" (ngSubmit)="submitCorrection()">
+        <p class="hint-block">
+          L'ancienne valeur et le motif sont conservés. Sans cette trace, une note
+          corrigée et une note trafiquée se ressemblent, et l'élève n'a aucun moyen
+          de contester.
+        </p>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="correction-score">
+            Nouvelle note
+          </label>
+          <input id="correction-score" type="number" class="input" formControlName="score"
+                 min="0" step="0.25" />
+        </div>
+
+        <label class="switch">
+          <input type="checkbox" formControlName="absent" />
+          <span>
+            L'élève était absent
+            <small>La note est effacée. Une absence n'est pas un zéro : elle ne
+              compte pas dans la moyenne.</small>
+          </span>
+        </label>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="correction-why">
+            Pourquoi la note change
+          </label>
+          <input id="correction-why" class="input" formControlName="justification"
+                 placeholder="Erreur d'addition sur la copie, exercice 3 recompté" />
+          <span class="field__hint">
+            Ce texte est conservé avec l'ancienne valeur et reste consultable.
+          </span>
+        </div>
+      </form>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeCorrection()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="correctionForm.invalid || saving()"
+                (click)="submitCorrection()">
+          Enregistrer la correction
+        </button>
+      </footer>
+    </aside>
+  }
+</div>

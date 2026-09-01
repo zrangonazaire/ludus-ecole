@@ -1,9 +1,20 @@
 <div class="page">
   <header class="page__header">
     <div>
-      <h1 class="page__title">Élèves</h1>
-      @if (page(); as result) {
-        <p class="page__meta numeric">{{ result.totalElements }} élève(s) enregistré(s)</p>
+      @if (classroom(); as room) {
+        <h1 class="page__title">Élèves de {{ room.name }}</h1>
+        <p class="page__meta numeric">
+          {{ room.levelName }} —
+          <strong>{{ room.activeEnrollments }}</strong>/{{ room.capacityMaximum }} places
+          @if (room.mainTeacherName) {
+            · Professeur principal : {{ room.mainTeacherName }}
+          }
+        </p>
+      } @else {
+        <h1 class="page__title">Élèves</h1>
+        @if (page(); as result) {
+          <p class="page__meta numeric">{{ result.totalElements }} élève(s) enregistré(s)</p>
+        }
       }
     </div>
     <div class="page__actions">
@@ -13,6 +24,22 @@
       </button>
     </div>
   </header>
+
+  @if (classroomFilter()) {
+    <div class="scope" role="status">
+      <span class="scope__text">
+        @if (classroom(); as room) {
+          Liste restreinte à la classe <strong>{{ room.name }}</strong>.
+        } @else {
+          Liste restreinte à une classe.
+        }
+      </span>
+      <a class="scope__link" routerLink="/classes">Retour aux classes</a>
+      <button type="button" class="btn btn--ghost btn--sm" (click)="clearClassroom()">
+        Voir tous les élèves
+      </button>
+    </div>
+  }
 
   <section class="card">
     <div class="card__header filters">

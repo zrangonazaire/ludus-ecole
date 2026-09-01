@@ -1,8 +1,7 @@
 # Assets
 
-`icons/icon-192.png` and `icons/icon-512.png` are 1x1 placeholders so the PWA
-manifest resolves and the build succeeds. Replace them with the school logo
-before any real deployment — they are what appears when a parent installs the
-app on their phone.
+`icons/icon-192.png` and `icons/icon-512.png` are the installable PWA icons.
+Their pixel dimensions must continue to match the sizes declared in
+`manifest.webmanifest`.
 
-`../favicon.ico` is likewise a placeholder.
+`../favicon.ico` is currently a placeholder.

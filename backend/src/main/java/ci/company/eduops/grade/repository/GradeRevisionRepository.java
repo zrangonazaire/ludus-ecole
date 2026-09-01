@@ -11,4 +11,7 @@ import java.util.UUID;
 public interface GradeRevisionRepository extends JpaRepository<GradeRevision, UUID> {
 
     List<GradeRevision> findByGradeIdOrderByChangedAtDesc(UUID gradeId);
+
+    /** How many times a mark has already been corrected. */
+    long countByGradeId(UUID gradeId);
 }

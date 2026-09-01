@@ -1,0 +1,55 @@
+{
+  "//": "Vecteurs partages entre SmsSegmentCounter (Java, qui facture) et sms-segments.ts (TypeScript, qui affiche le compteur pendant la frappe). Deux implementations d'une regle de facturation finissent toujours par diverger ; ce fichier est ce qui le fait remarquer.",
+  "//gsm": "Alphabet GSM 03.38 : 160 caracteres par SMS seul, 153 par segment concatene.",
+  "//ucs2": "Un seul caractere hors alphabet bascule tout le message : 70 puis 67.",
+  "cases": [
+    { "label": "message vide", "body": "", "unicode": false, "characters": 0, "segments": 1 },
+    { "label": "160 caracteres", "repeat": ["a", 160], "unicode": false, "characters": 160, "segments": 1 },
+    { "label": "161 caracteres", "repeat": ["a", 161], "unicode": false, "characters": 161, "segments": 2 },
+    { "label": "306 caracteres", "repeat": ["a", 306], "unicode": false, "characters": 306, "segments": 2 },
+    { "label": "307 caracteres", "repeat": ["a", 307], "unicode": false, "characters": 307, "segments": 3 },
+
+    { "label": "accents admis par l'alphabet",
+      "body": "Élève absent à régler : 45 000 F. Merci. ÇA ira où ?",
+      "unicode": false, "segments": 1 },
+    { "label": "relance impayes typique",
+      "body": "Ecole Horizon : la scolarite de KOUASSI Ama reste due (45 000 F). Merci de regulariser avant le 30.",
+      "unicode": false, "segments": 1 },
+
+    { "label": "un circonflexe fait basculer",
+      "body": "Reunion du mois d'Août pour les eleves.",
+      "unicode": true, "segments": 1, "offenders": ["û"],
+      "suggestion": "Reunion du mois d'Aout pour les eleves." },
+    { "label": "c cedille minuscule hors alphabet",
+      "body": "Le français commence a 8h.",
+      "unicode": true, "offenders": ["ç"],
+      "suggestion": "Le francais commence a 8h." },
+    { "label": "C cedille majuscule dans l'alphabet",
+      "body": "ÇA VA", "unicode": false, "segments": 1 },
+
+    { "label": "150 caracteres propres", "repeat": ["a", 150], "unicode": false, "segments": 1 },
+    { "label": "149 propres plus un circonflexe",
+      "repeatThenAppend": ["a", 149, "û"], "unicode": true, "segments": 3 },
+    { "label": "70 caracteres UCS-2", "repeat": ["û", 70], "unicode": true, "segments": 1 },
+    { "label": "71 caracteres UCS-2", "repeat": ["û", 71], "unicode": true, "segments": 2 },
+    { "label": "134 caracteres UCS-2", "repeat": ["û", 134], "unicode": true, "segments": 2 },
+    { "label": "135 caracteres UCS-2", "repeat": ["û", 135], "unicode": true, "segments": 3 },
+
+    { "label": "accolade echappee", "body": "{", "unicode": false, "characters": 2, "segments": 1 },
+    { "label": "euro echappe", "body": "€", "unicode": false, "characters": 2, "segments": 1 },
+    { "label": "80 accolades tiennent", "repeat": ["{", 80], "unicode": false, "characters": 160, "segments": 1 },
+    { "label": "81 accolades debordent", "repeat": ["{", 81], "unicode": false, "characters": 162, "segments": 2 },
+
+    { "//apostrophe": "U+2019, celle que Word et les telephones inserent tout seuls. Hors alphabet GSM : elle triple le cout sans que personne ne l'ait tapee volontairement.",
+      "label": "apostrophe typographique",
+      "body": "L’eleve", "unicode": true, "offenders": ["’"], "suggestion": "L'eleve" },
+    { "label": "guillemets francais",
+      "body": "Le « bulletin » est pret.", "unicode": true,
+      "suggestion": "Le \" bulletin \" est pret." },
+
+    { "label": "hors alphabet et hors substitution",
+      "body": "学校", "unicode": true, "suggestion": null },
+    { "label": "message deja propre",
+      "body": "Bonjour", "unicode": false, "suggestion": null }
+  ]
+}

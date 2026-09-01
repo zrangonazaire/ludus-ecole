@@ -27,6 +27,15 @@
           <a class="nav__login" routerLink="/dashboard">Mon espace</a>
         } @else {
           <a class="nav__login" routerLink="/login">Se connecter</a>
+          <!--
+            Deux intentions différentes, deux portes. « Composer ma démo »
+            s'adresse à qui veut voir avant de décider ; celui qui sait déjà ce
+            qu'il veut ne doit pas être obligé de traverser la démo pour ouvrir
+            un compte.
+          -->
+          <a class="nav__login" routerLink="/signup" (click)="closeMenu()">
+            Créer mon espace
+          </a>
         }
         <a class="button button--small" routerLink="/commencer" (click)="closeMenu(); prepareDemo()">
           Composer ma démo
@@ -59,10 +68,18 @@
             </button>
           </div>
 
+          <p class="price">
+            <span class="price__label">À partir de</span>
+            <strong class="price__amount">{{ startingPrice }} {{ currencyLabel }}</strong>
+            <span class="price__period">/ {{ pricing.period }}</span>
+            <span class="price__note">· {{ pricing.note }}</span>
+          </p>
+
           <ul class="assurances" aria-label="Conditions de la démonstration">
             <li><span aria-hidden="true">✓</span> Sans carte bancaire</li>
             <li><span aria-hidden="true">✓</span> Sans installation</li>
             <li><span aria-hidden="true">✓</span> Données fictives uniquement</li>
+            <li><span aria-hidden="true">✓</span> Essai gratuit avant tout paiement</li>
           </ul>
         </div>
 
@@ -318,6 +335,7 @@
       <p>Le système d’exploitation des écoles qui avancent.</p>
       <nav aria-label="Liens de pied de page">
         <a routerLink="/login">Connexion</a>
+        <a routerLink="/signup">Créer mon espace</a>
         <a routerLink="/commencer" (click)="prepareDemo()">Créer une démo</a>
         <button type="button" (click)="scrollTo('faq')">Questions</button>
       </nav>

@@ -73,6 +73,21 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
            """)
     long countActiveForYear(@Param("academicYearId") UUID academicYearId);
 
+    /**
+     * The live enrollments of a year, with pupil and classroom already loaded.
+     *
+     * <p>Callers that need to name the class of many pupils at once use this:
+     * left to lazy loading it would fire one query per pupil to draw a single
+     * screen.</p>
+     */
+    @Query("""
+           SELECT e FROM Enrollment e
+             JOIN FETCH e.student
+             LEFT JOIN FETCH e.classroom
+           WHERE e.academicYear.id = :academicYearId AND e.status IN ('VALIDATED','ACTIVE')
+           """)
+    List<Enrollment> findActiveByYear(@Param("academicYearId") UUID academicYearId);
+
     @Query("""
            SELECT e.classroom.id, COUNT(e) FROM Enrollment e
            WHERE e.academicYear.id = :academicYearId AND e.status IN ('VALIDATED','ACTIVE')

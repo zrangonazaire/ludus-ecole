@@ -1,0 +1,548 @@
+<div class="page screen-only">
+
+  <!-- L'aide de la configuration, appliquée telle quelle : une carte au premier
+       passage sur l'onglet, un bouton « ? Aide » pour la revoir ensuite. -->
+  <eduops-step-coachmark
+    flow="report-cards"
+    [stepKey]="tab()"
+    [stepNumber]="helpCopy().step"
+    [totalSteps]="totalSteps"
+    eyebrow="Conseil pour cet onglet"
+    [title]="helpCopy().title"
+    [description]="helpCopy().description"
+    [points]="helpCopy().points"
+    [ctaLabel]="helpCopy().ctaLabel" />
+
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Bulletins</h1>
+      <p class="page__meta numeric">
+        @if (batch(); as b) {
+          {{ b.generatedCount }}/{{ b.studentCount }} bulletin(s) générés
+          @if (b.publishedCount > 0) { · {{ b.publishedCount }} remis }
+          @if (b.classAverage !== undefined) {
+            · moyenne de classe {{ formatAverage(b.classAverage) }}
+          }
+        }
+      </p>
+    </div>
+    <div class="page__actions">
+      @if (batch(); as b) {
+        @if (b.generatedCount > 0) {
+          <button type="button" class="btn btn--secondary" (click)="printAll()">
+            Imprimer la classe
+          </button>
+        }
+      }
+    </div>
+  </header>
+
+  <section class="filters">
+    <label class="filters__select">
+      <span class="visually-hidden">Classe</span>
+      <select class="input" [value]="classroomId()"
+              (change)="changeClassroom($any($event.target).value)">
+        @for (classroom of classroomList(); track classroom.id) {
+          <option [value]="classroom.id">{{ classroom.name }}</option>
+        }
+      </select>
+    </label>
+    <label class="filters__select">
+      <span class="visually-hidden">Période</span>
+      <select class="input" [value]="termId()"
+              (change)="changeTerm($any($event.target).value)">
+        @for (term of termList(); track term.id) {
+          <option [value]="term.id">{{ term.name }}</option>
+        }
+      </select>
+    </label>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'GENERATION'"
+            [attr.aria-selected]="tab() === 'GENERATION'"
+            (click)="changeTab('GENERATION')">
+      Génération
+      @if (missing() > 0) {
+        <span class="tabs__badge numeric">{{ missing() }}</span>
+      }
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'RELECTURE'"
+            [attr.aria-selected]="tab() === 'RELECTURE'"
+            (click)="changeTab('RELECTURE')">
+      Relecture et appréciations
+      @if (pending() > 0) {
+        <span class="tabs__badge numeric">{{ pending() }}</span>
+      }
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'REMISE'"
+            [attr.aria-selected]="tab() === 'REMISE'"
+            (click)="changeTab('REMISE')">
+      Remis aux familles
+    </button>
+  </nav>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des bulletins..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+
+    @if (batch(); as b) {
+
+      @if (b.unvalidatedAssessments > 0) {
+        <section class="alert-block" role="status">
+          <div class="alert-block__head">
+            <span class="alert-block__icon" aria-hidden="true">!</span>
+            <div>
+              <p class="alert-block__title">
+                {{ b.unvalidatedAssessments }} devoir(s) de {{ b.termName }} sans notes validées
+              </p>
+              <p class="alert-block__text">
+                Générer maintenant calculerait les moyennes sur une partie du travail,
+                et rien en aval ne s'en apercevrait. Validez ces devoirs dans
+                Évaluations avant de continuer.
+              </p>
+            </div>
+          </div>
+        </section>
+      }
+
+      @if (b.studentsWithoutGrades > 0) {
+        <section class="alert-block alert-block--soft" role="status">
+          <div class="alert-block__head">
+            <span class="alert-block__icon" aria-hidden="true">?</span>
+            <div>
+              <p class="alert-block__title">
+                {{ b.studentsWithoutGrades }} élève(s) sans aucune note validée
+              </p>
+              <p class="alert-block__text">
+                Leur bulletin sortirait vide. C'est un problème de saisie, pas de
+                bulletin : il se règle dans Évaluations.
+              </p>
+            </div>
+          </div>
+        </section>
+      }
+
+      <section class="stats">
+        <article class="stat">
+          <p class="stat__label">Moyenne de la classe</p>
+          <p class="stat__value numeric">{{ formatAverage(b.classAverage) }}</p>
+          <p class="stat__note">
+            @if (b.classMinAverage !== undefined) {
+              de {{ formatAverage(b.classMinAverage) }} à {{ formatAverage(b.classMaxAverage) }}
+            } @else {
+              Aucun bulletin généré
+            }
+          </p>
+        </article>
+        <article class="stat stat--done">
+          <p class="stat__label">Ont la moyenne</p>
+          <p class="stat__value numeric">{{ b.passingCount }}</p>
+          <p class="stat__note">sur {{ b.generatedCount }} bulletin(s)</p>
+        </article>
+        <article class="stat" [class.stat--alert]="missing() > 0">
+          <p class="stat__label">Restent à générer</p>
+          <p class="stat__value numeric">{{ missing() }}</p>
+          <p class="stat__note">sur {{ b.studentCount }} élève(s)</p>
+        </article>
+        <article class="stat stat--done">
+          <p class="stat__label">Remis aux familles</p>
+          <p class="stat__value numeric">{{ b.publishedCount }}</p>
+          <p class="stat__note">
+            {{ b.generatedCount - b.publishedCount }} en attente de remise
+          </p>
+        </article>
+      </section>
+
+      <section class="actions-bar">
+        @if (tab() === 'GENERATION') {
+          <button type="button" class="btn btn--primary"
+                  [disabled]="saving() || !b.readyToGenerate"
+                  (click)="generate(false)">
+            {{ b.generatedCount === 0 ? 'Générer les bulletins' : 'Générer les manquants' }}
+          </button>
+          @if (b.generatedCount > 0) {
+            <button type="button" class="btn btn--secondary"
+                    [disabled]="saving() || !b.readyToGenerate"
+                    (click)="generate(true)">
+              Tout recalculer
+            </button>
+            <p class="actions-bar__note">
+              Recalculer ne touche pas aux bulletins déjà remis : ils repartent en
+              révision suivante, l'ancienne restant consultable.
+            </p>
+          }
+        } @else if (tab() === 'REMISE') {
+          <button type="button" class="btn btn--primary"
+                  [disabled]="saving() || b.generatedCount === 0
+                    || b.publishedCount === b.generatedCount"
+                  (click)="publishAll()">
+            Remettre toute la classe
+          </button>
+          <p class="actions-bar__note">
+            Les bulletins se distribuent ensemble : publier un par un ferait que
+            certaines familles voient les notes plusieurs jours avant les autres.
+          </p>
+        }
+      </section>
+    }
+
+    <div class="table-wrapper card">
+      <table class="table">
+        <caption class="visually-hidden">Classement de la classe</caption>
+        <thead>
+          <tr>
+            <th scope="col">Rang</th>
+            <th scope="col">Élève</th>
+            <th scope="col" class="numeric">Moyenne</th>
+            <th scope="col" class="numeric">Écart</th>
+            <th scope="col" class="numeric">Absences</th>
+            <th scope="col">État</th>
+            <th scope="col" class="cell-actions">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (card of visible(); track card.id) {
+            <tr [class.row--top]="card.rankInClass === 1"
+                [class.row--failing]="!card.passing && card.generalAverage !== undefined">
+              <td class="numeric rank">
+                @if (card.rankInClass !== undefined) {
+                  {{ card.rankInClass }}<small>/{{ card.classSize }}</small>
+                } @else {
+                  —
+                }
+              </td>
+              <td>
+                <span class="entry__name">{{ card.studentName }}</span>
+                <span class="entry__number numeric">
+                  {{ card.studentNumber }}
+                  @if (card.revision > 1) { · révision {{ card.revision }} }
+                </span>
+              </td>
+              <td class="numeric average" [class.average--fail]="!card.passing">
+                {{ formatAverage(card.generalAverage, card.scaleMax) }}
+              </td>
+              <td class="numeric gap">{{ gapToClass(card) || '—' }}</td>
+              <td class="numeric">
+                {{ card.absenceCount }}
+                @if (card.latenessCount > 0) {
+                  <small>· {{ card.latenessCount }} retard(s)</small>
+                }
+              </td>
+              <td>
+                <span class="state" [attr.data-tone]="stateOf(card.status).tone">
+                  {{ card.statusLabel }}
+                </span>
+                @if (card.councilDecisionLabel) {
+                  <span class="entry__decision">{{ card.councilDecisionLabel }}</span>
+                }
+              </td>
+              <td class="cell-actions">
+                <button type="button" class="btn btn--ghost btn--sm"
+                        (click)="printOne(card)">Imprimer</button>
+                <button type="button" class="btn btn--secondary btn--sm"
+                        (click)="openReview(card)">
+                  {{ card.editable ? 'Relire' : 'Voir' }}
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7">
+                <div class="empty-state">
+                  <p class="empty-state__title">
+                    @if (tab() === 'REMISE') {
+                      Aucun bulletin remis pour l'instant.
+                    } @else if (tab() === 'RELECTURE') {
+                      Aucun bulletin à relire.
+                    } @else {
+                      Aucun bulletin généré pour cette classe et cette période.
+                    }
+                  </p>
+                  <p class="empty-state__text">
+                    @if (tab() === 'GENERATION') {
+                      La génération calcule toute la classe en une passe : c'est ce qui
+                      donne un sens au rang porté par chaque bulletin.
+                    } @else {
+                      Les bulletins apparaissent ici une fois générés.
+                    }
+                  </p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- ═══════════════ Relecture d'un bulletin ═══════════════ -->
+  @if (reviewing(); as card) {
+    <div class="drawer-backdrop" (click)="closeReview()"></div>
+    <aside class="drawer drawer--wide" role="dialog" aria-modal="true"
+           aria-labelledby="review-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="review-title">{{ card.studentName }}</h2>
+          <p class="drawer__meta numeric">
+            {{ card.classroomName }} · {{ card.termName }} ·
+            {{ card.reference }}
+            @if (card.revision > 1) { · révision {{ card.revision }} }
+          </p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeReview()">×</button>
+      </header>
+
+      <div class="sheet-counters numeric">
+        <span class="sheet-counters__item">
+          moyenne <strong>{{ formatAverage(card.generalAverage, card.scaleMax) }}</strong>
+        </span>
+        <span class="sheet-counters__item">
+          rang <strong>{{ card.rankLabel || '—' }}</strong>
+        </span>
+        <span class="sheet-counters__item">
+          classe <strong>{{ formatAverage(card.classAverage) }}</strong>
+        </span>
+        <span class="sheet-counters__item"
+              [class.sheet-counters__item--missing]="card.absenceCount > 0">
+          <strong>{{ card.absenceCount }}</strong> absence(s)
+        </span>
+      </div>
+
+      <div class="drawer__body">
+        <table class="table table--compact">
+          <caption class="visually-hidden">Détail par matière</caption>
+          <thead>
+            <tr>
+              <th scope="col">Matière</th>
+              <th scope="col" class="numeric">Coef.</th>
+              <th scope="col" class="numeric">Moyenne</th>
+              <th scope="col" class="numeric">Classe</th>
+              <th scope="col" class="numeric">Rang</th>
+              <th scope="col">Appréciation</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of card.lines; track line.subjectName) {
+              <tr [class.row--empty]="line.subjectAverage === undefined">
+                <td>{{ line.subjectName }}</td>
+                <td class="numeric">{{ line.coefficient }}</td>
+                <td class="numeric average">
+                  {{ formatAverage(line.subjectAverage) }}
+                </td>
+                <td class="numeric">{{ formatAverage(line.classSubjectAverage) }}</td>
+                <td class="numeric">{{ line.rankInSubject ?? '—' }}</td>
+                <td>
+                  @if (line.appreciation) {
+                    {{ line.appreciation }}
+                  } @else {
+                    <span class="muted">Aucune note validée</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <form class="remarks" [formGroup]="remarkForm" (ngSubmit)="submitRemarks()">
+          @if (!card.editable) {
+            <p class="hint-block">
+              Ce bulletin est remis aux familles. Les appréciations font partie du
+              document qu'elles ont reçu et ne changent plus.
+            </p>
+          }
+
+          <div class="field">
+            <label class="field__label" for="remark-general">Appréciation générale</label>
+            <textarea id="remark-general" class="textarea" rows="3"
+                      formControlName="generalRemark"
+                      placeholder="Trimestre sérieux, des résultats en progression."></textarea>
+            <span class="field__hint">
+              C'est la ligne que la famille lit en premier.
+            </span>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="remark-head">Mot du professeur principal</label>
+            <textarea id="remark-head" class="textarea" rows="2"
+                      formControlName="headTeacherRemark"></textarea>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="remark-principal">
+              Mot du chef d'établissement
+            </label>
+            <textarea id="remark-principal" class="textarea" rows="2"
+                      formControlName="principalRemark"></textarea>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="remark-decision">Décision du conseil</label>
+            <select id="remark-decision" class="input" formControlName="councilDecision">
+              @for (decision of decisions; track decision.code) {
+                <option [value]="decision.code">{{ decision.label }}</option>
+              }
+            </select>
+            <span class="field__hint">
+              {{ decisions[0].hint }}
+            </span>
+          </div>
+        </form>
+      </div>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--ghost" (click)="printOne(card)">
+          Imprimer
+        </button>
+        <button type="button" class="btn btn--secondary" (click)="closeReview()">
+          Fermer
+        </button>
+        @if (card.editable) {
+          <button type="button" class="btn btn--secondary"
+                  [disabled]="saving()" (click)="submitRemarks()">
+            Enregistrer
+          </button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="saving() || card.generalAverage === undefined"
+                  (click)="publishOne(card)">
+            Remettre à la famille
+          </button>
+        }
+      </footer>
+    </aside>
+  }
+</div>
+
+<!-- ═══════════════ Feuille imprimable ═══════════════
+     Hors impression, ce bloc est vide : il n'est peuplé que le temps d'ouvrir
+     le dialogue d'impression. Une page A4 par élève. -->
+<div class="print-only">
+  @for (card of printing(); track card.id) {
+    <article class="bulletin">
+      <header class="bulletin__head">
+        <div class="bulletin__school">
+          <p class="bulletin__school-name">{{ card.classroomName }}</p>
+          <p class="bulletin__year">Année scolaire {{ card.academicYearCode }}</p>
+        </div>
+        <div class="bulletin__title">
+          <h1>Bulletin de notes</h1>
+          <p>{{ card.termName }}</p>
+        </div>
+      </header>
+
+      <section class="bulletin__identity">
+        <p><span>Élève</span><strong>{{ card.studentName }}</strong></p>
+        <p><span>Matricule</span><strong>{{ card.studentNumber }}</strong></p>
+        <p><span>Classe</span><strong>{{ card.classroomName }}</strong></p>
+        <p><span>Effectif</span><strong>{{ card.classSize }}</strong></p>
+      </section>
+
+      <table class="bulletin__table">
+        <thead>
+          <tr>
+            <th>Matière</th>
+            <th class="right">Coef.</th>
+            <th class="right">Moyenne</th>
+            <th class="right">Moy. × coef.</th>
+            <th class="right">Classe</th>
+            <th class="right">Rang</th>
+            <th>Appréciation</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (line of card.lines; track line.subjectName) {
+            <tr>
+              <td>{{ line.subjectName }}</td>
+              <td class="right">{{ line.coefficient }}</td>
+              <td class="right strong">{{ formatAverage(line.subjectAverage) }}</td>
+              <td class="right">{{ formatAverage(line.weightedAverage) }}</td>
+              <td class="right">{{ formatAverage(line.classSubjectAverage) }}</td>
+              <td class="right">{{ line.rankInSubject ?? '—' }}</td>
+              <td>{{ line.appreciation || '' }}</td>
+            </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2">Total des coefficients</td>
+            <td class="right strong">{{ card.totalCoefficient }}</td>
+            <td colspan="4"></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <section class="bulletin__summary">
+        <div class="bulletin__box">
+          <p class="bulletin__box-label">Moyenne générale</p>
+          <p class="bulletin__box-value">
+            {{ formatAverage(card.generalAverage, card.scaleMax) }}
+          </p>
+        </div>
+        <div class="bulletin__box">
+          <p class="bulletin__box-label">Rang</p>
+          <p class="bulletin__box-value">{{ card.rankLabel || '—' }}</p>
+        </div>
+        <div class="bulletin__box">
+          <p class="bulletin__box-label">Moyenne de la classe</p>
+          <p class="bulletin__box-value">{{ formatAverage(card.classAverage) }}</p>
+        </div>
+        <div class="bulletin__box">
+          <p class="bulletin__box-label">Extrêmes de la classe</p>
+          <p class="bulletin__box-value">
+            {{ formatAverage(card.classMinAverage) }} — {{ formatAverage(card.classMaxAverage) }}
+          </p>
+        </div>
+      </section>
+
+      <section class="bulletin__attendance">
+        <p>
+          <span>Absences</span>
+          <strong>{{ card.absenceCount }}</strong>
+          dont {{ card.justifiedAbsenceCount }} justifiée(s)
+        </p>
+        <p><span>Retards</span><strong>{{ card.latenessCount }}</strong></p>
+      </section>
+
+      @if (card.generalRemark || card.headTeacherRemark || card.principalRemark) {
+        <section class="bulletin__remarks">
+          @if (card.generalRemark) {
+            <p><span>Appréciation générale</span>{{ card.generalRemark }}</p>
+          }
+          @if (card.headTeacherRemark) {
+            <p><span>Professeur principal</span>{{ card.headTeacherRemark }}</p>
+          }
+          @if (card.principalRemark) {
+            <p><span>Chef d'établissement</span>{{ card.principalRemark }}</p>
+          }
+        </section>
+      }
+
+      @if (card.councilDecisionLabel) {
+        <section class="bulletin__decision">
+          <span>Décision du conseil de classe</span>
+          <strong>{{ card.councilDecisionLabel }}</strong>
+        </section>
+      }
+
+      <footer class="bulletin__foot">
+        <div class="bulletin__signature">
+          <p>Signature du chef d'établissement</p>
+        </div>
+        <div class="bulletin__stamp">
+          <p class="bulletin__reference">{{ card.reference }}</p>
+          <p class="bulletin__code">Code de vérification : {{ card.verificationCode }}</p>
+          <p class="bulletin__note">
+            Ce code permet de faire contrôler l'authenticité du bulletin auprès
+            de l'établissement.
+          </p>
+        </div>
+      </footer>
+    </article>
+  }
+</div>

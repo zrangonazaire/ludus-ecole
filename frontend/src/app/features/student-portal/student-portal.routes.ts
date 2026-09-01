@@ -9,9 +9,9 @@ export const STUDENT_PORTAL_ROUTES: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'home' },
       {
         path: 'home',
-        loadComponent: () => import('../placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Accueil', endpoint: 'GET /api/v1/student/dashboard' }
+        loadComponent: () => import('./student-home.component')
+          .then((m) => m.StudentHomeComponent),
+        data: { title: 'Accueil' }
       },
       {
         path: 'timetable',

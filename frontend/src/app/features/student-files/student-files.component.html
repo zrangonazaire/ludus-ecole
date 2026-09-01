@@ -1,0 +1,762 @@
+<div class="page screen-only">
+  <header class="page__header">
+    <div>
+      <div class="eyebrow">Scolarité · Documents</div>
+      <h1 class="page__title">Documents officiels</h1>
+      <p class="page__meta">
+        Émettez, imprimez et retrouvez les pièces remises aux élèves et aux familles.
+      </p>
+    </div>
+    <div class="page__actions">
+      <button type="button" class="btn btn--secondary" (click)="changeTab('SETTINGS')">
+        <span class="btn-icon" aria-hidden="true">⚙</span> Papier à en-tête
+      </button>
+      <button type="button" class="btn btn--primary" (click)="changeTab('CREATE')">
+        <span aria-hidden="true">＋</span> Nouveau document
+      </button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Documents officiels">
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'CREATE'"
+            [attr.aria-selected]="tab() === 'CREATE'"
+            (click)="changeTab('CREATE')">
+      Créer un document
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'REGISTER'"
+            [attr.aria-selected]="tab() === 'REGISTER'"
+            (click)="changeTab('REGISTER')">
+      Registre
+      <span class="tabs__badge numeric">{{ issuedCount() }}</span>
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'SETTINGS'"
+            [attr.aria-selected]="tab() === 'SETTINGS'"
+            (click)="changeTab('SETTINGS')">
+      Mise en page
+    </button>
+  </nav>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des documents officiels..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+
+    @if (tab() === 'CREATE') {
+      <div class="workspace">
+        <section class="builder card">
+          <header class="builder__head">
+            <span class="step-number">1</span>
+            <div>
+              <h2>Choisir le document</h2>
+              <p>Le texte officiel et les champs utiles s’adaptent au modèle.</p>
+            </div>
+          </header>
+
+          <div class="template-grid">
+            @for (template of templates; track template.type) {
+              <button type="button" class="template-card"
+                      [class.template-card--on]="issueForm.controls.type.value === template.type"
+                      [attr.data-tone]="template.tone"
+                      (click)="chooseTemplate(template.type)">
+                <span class="template-card__mark" aria-hidden="true">{{ template.shortCode }}</span>
+                <span class="template-card__copy">
+                  <strong>{{ template.label }}</strong>
+                  <small>{{ template.description }}</small>
+                </span>
+                @if (issueForm.controls.type.value === template.type) {
+                  <span class="template-card__check" aria-hidden="true">✓</span>
+                }
+              </button>
+            }
+          </div>
+
+          <header class="builder__head builder__head--section">
+            <span class="step-number">2</span>
+            <div>
+              <h2>Sélectionner l’élève</h2>
+              <p>L’identité et l’inscription sont reprises du dossier scolaire.</p>
+            </div>
+          </header>
+
+          <div class="student-filters">
+            <div class="search-box">
+              <span aria-hidden="true">⌕</span>
+              <input type="search" placeholder="Nom, prénom ou matricule"
+                     [value]="studentSearch()"
+                     (input)="studentSearch.set($any($event.target).value)" />
+            </div>
+            <select class="select" aria-label="Filtrer par classe"
+                    [value]="classroomFilter()"
+                    (change)="classroomFilter.set($any($event.target).value)">
+              <option value="">Toutes les classes</option>
+              @for (classroom of classrooms(); track classroom.id) {
+                <option [value]="classroom.id">{{ classroom.name }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="student-list" role="listbox" aria-label="Élèves">
+            @for (student of visibleStudents(); track student.id) {
+              <button type="button" class="student-row" role="option"
+                      [class.student-row--on]="selectedStudentId() === student.id"
+                      [attr.aria-selected]="selectedStudentId() === student.id"
+                      (click)="chooseStudent(student.id)">
+                <span class="student-row__avatar" aria-hidden="true">
+                  {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
+                </span>
+                <span class="student-row__copy">
+                  <strong>{{ student.fullName }}</strong>
+                  <small class="numeric">{{ student.studentNumber }}</small>
+                </span>
+                <span class="student-row__class">{{ student.classroomName || 'Sans classe' }}</span>
+                <span class="student-row__radio" aria-hidden="true"></span>
+              </button>
+            } @empty {
+              <div class="student-empty">Aucun élève ne correspond à cette recherche.</div>
+            }
+          </div>
+
+          <header class="builder__head builder__head--section">
+            <span class="step-number">3</span>
+            <div>
+              <h2>Compléter les mentions</h2>
+              <p>Seules les informations utiles au modèle choisi sont imprimées.</p>
+            </div>
+          </header>
+
+          <form class="document-fields" [formGroup]="issueForm">
+            <div class="field-row">
+              <div class="field">
+                <label class="field__label field__label--required" for="issue-date">
+                  Date de délivrance
+                </label>
+                <input id="issue-date" class="input" type="date" formControlName="issueDate" />
+              </div>
+              <div class="field">
+                <label class="field__label" for="valid-until">Valable jusqu’au</label>
+                <input id="valid-until" class="input" type="date" formControlName="validUntil" />
+                <span class="field__hint">Laissez vide si la pièce n’expire pas.</span>
+              </div>
+            </div>
+
+            @if (issueForm.controls.type.value === 'SUMMONS') {
+              <div class="field">
+                <label class="field__label field__label--required" for="purpose">Motif</label>
+                <input id="purpose" class="input" formControlName="purpose"
+                       placeholder="Entretien relatif au suivi scolaire de l’élève" />
+              </div>
+              <div class="field-row field-row--3">
+                <div class="field">
+                  <label class="field__label field__label--required" for="meeting-date">Date</label>
+                  <input id="meeting-date" class="input" type="date"
+                         formControlName="meetingDate" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="meeting-time">Heure</label>
+                  <input id="meeting-time" class="input" type="time"
+                         formControlName="meetingTime" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="meeting-place">Lieu</label>
+                  <input id="meeting-place" class="input" formControlName="meetingPlace"
+                         placeholder="Bureau de la direction" />
+                </div>
+              </div>
+            } @else {
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="recipient">Destinataire</label>
+                  <input id="recipient" class="input" formControlName="recipient"
+                         placeholder="À qui de droit" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="purpose">Motif ou usage</label>
+                  <input id="purpose" class="input" formControlName="purpose"
+                         placeholder="Pour servir et valoir ce que de droit" />
+                </div>
+              </div>
+            }
+
+            <div class="field">
+              <label class="field__label" for="additional-mention">Mention complémentaire</label>
+              <textarea id="additional-mention" class="textarea" rows="2"
+                        formControlName="additionalMention"
+                        placeholder="Cette mention apparaîtra sous le texte principal."></textarea>
+            </div>
+          </form>
+
+          @if (!canGenerate()) {
+            <p class="permission-note">
+              Votre profil peut consulter le registre, mais ne peut pas émettre de document.
+            </p>
+          }
+
+          <footer class="builder__actions">
+            <div class="issue-note">
+              <span class="issue-note__icon" aria-hidden="true">✓</span>
+              <span>Le numéro et le code d’authenticité sont attribués au moment de l’émission.</span>
+            </div>
+            <button type="button" class="btn btn--secondary"
+                    [disabled]="!readyToIssue()" (click)="issue(false)">
+              {{ saving() ? 'Émission...' : 'Émettre sans imprimer' }}
+            </button>
+            <button type="button" class="btn btn--primary"
+                    [disabled]="!readyToIssue()" (click)="issue(true)">
+              <span aria-hidden="true">▣</span>
+              {{ saving() ? 'Préparation...' : 'Émettre et imprimer' }}
+            </button>
+          </footer>
+        </section>
+
+        <aside class="preview-panel" aria-label="Aperçu du document">
+          <header class="preview-panel__head">
+            <div>
+              <span class="preview-panel__eyebrow">Aperçu avant émission</span>
+              <strong>A4 · Portrait</strong>
+            </div>
+            <span class="preview-panel__scale">72 %</span>
+          </header>
+          <div class="preview-stage">
+            @if (previewDocument(); as document) {
+              <ng-container *ngTemplateOutlet="officialSheet; context: { $implicit: document }" />
+            } @else {
+              <div class="preview-empty">Sélectionnez un élève pour afficher le document.</div>
+            }
+          </div>
+        </aside>
+      </div>
+    }
+
+    @if (tab() === 'REGISTER') {
+      <section class="register-summary">
+        <article class="summary-card">
+          <span class="summary-card__icon summary-card__icon--blue" aria-hidden="true">▤</span>
+          <div><strong class="numeric">{{ documents().length }}</strong><span>documents enregistrés</span></div>
+        </article>
+        <article class="summary-card">
+          <span class="summary-card__icon summary-card__icon--green" aria-hidden="true">✓</span>
+          <div><strong class="numeric">{{ issuedCount() }}</strong><span>documents valides</span></div>
+        </article>
+        <article class="summary-card">
+          <span class="summary-card__icon summary-card__icon--red" aria-hidden="true">×</span>
+          <div><strong class="numeric">{{ revokedCount() }}</strong><span>documents révoqués</span></div>
+        </article>
+      </section>
+
+      <section class="card register">
+        <header class="register__head">
+          <div>
+            <h2>Registre d’émission</h2>
+            <p>Une pièce émise reste traçable, même après sa révocation.</p>
+          </div>
+          <div class="register__filters">
+            <div class="search-box search-box--compact">
+              <span aria-hidden="true">⌕</span>
+              <input type="search" placeholder="Élève, matricule ou numéro"
+                     [value]="historySearch()"
+                     (input)="historySearch.set($any($event.target).value)" />
+            </div>
+            <select class="select" aria-label="Filtrer par type"
+                    [value]="historyType()"
+                    (change)="historyType.set($any($event.target).value)">
+              <option value="">Tous les documents</option>
+              @for (template of templates; track template.type) {
+                <option [value]="template.type">{{ template.label }}</option>
+              }
+            </select>
+          </div>
+        </header>
+
+        <div class="table-wrapper">
+          <table class="table register-table">
+            <caption class="visually-hidden">Documents officiels émis</caption>
+            <thead>
+              <tr>
+                <th scope="col">Document</th>
+                <th scope="col">Élève</th>
+                <th scope="col">Classe</th>
+                <th scope="col">Délivré le</th>
+                <th scope="col">État</th>
+                <th scope="col" class="cell-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (document of visibleDocuments(); track document.id) {
+                <tr [class.register-table__revoked]="document.status === 'REVOKED'">
+                  <td>
+                    <span class="document-cell__title">{{ document.typeLabel }}</span>
+                    <span class="document-cell__number numeric">{{ document.documentNumber }}</span>
+                  </td>
+                  <td>
+                    <span class="document-cell__title">{{ document.studentName }}</span>
+                    <span class="document-cell__number numeric">{{ document.studentNumber }}</span>
+                  </td>
+                  <td>{{ document.classroomName || '—' }}</td>
+                  <td class="numeric">{{ shortDate(document.issuedAt) }}</td>
+                  <td>
+                    <span class="status-pill" [attr.data-status]="document.status">
+                      {{ statusLabel(document.status) }}
+                    </span>
+                    @if (document.revokeReason) {
+                      <span class="document-cell__reason">{{ document.revokeReason }}</span>
+                    }
+                  </td>
+                  <td class="cell-actions">
+                    <button type="button" class="btn btn--ghost btn--sm"
+                            (click)="print(document)">Réimprimer</button>
+                    @if (document.status === 'ISSUED' && canGenerate()) {
+                      <button type="button" class="btn btn--ghost btn--sm btn--text-danger"
+                              (click)="openRevoke(document)">Révoquer</button>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6">
+                    <div class="register-empty">
+                      <span aria-hidden="true">▤</span>
+                      <strong>Aucun document trouvé</strong>
+                      <p>Émettez un premier document ou ajustez les filtres.</p>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    @if (tab() === 'SETTINGS') {
+      <div class="settings-workspace">
+        <section class="settings-card card">
+          <header class="settings-card__head">
+            <div>
+              <span class="settings-card__eyebrow">Paramètres de l’établissement</span>
+              <h2>Papier à en-tête officiel</h2>
+              <p>Ces réglages s’appliqueront uniquement aux prochains documents.</p>
+            </div>
+            @if (!canConfigure()) {
+              <span class="status-pill" data-status="DRAFT">Lecture seule</span>
+            }
+          </header>
+
+          <form class="settings-form" [formGroup]="layoutForm">
+            <fieldset [disabled]="!canConfigure()">
+              <legend>Identité visuelle</legend>
+              <div class="logo-editor">
+                <div class="logo-editor__preview">
+                  @if (layoutForm.controls.logoDataUrl.value && layoutForm.controls.showLogo.value) {
+                    <img [src]="layoutForm.controls.logoDataUrl.value" alt="Logo de l’établissement" />
+                  } @else {
+                    <span>{{ layoutForm.controls.schoolName.value.charAt(0) || 'E' }}</span>
+                  }
+                </div>
+                <div class="logo-editor__copy">
+                  <strong>Logo de l’établissement</strong>
+                  <small>PNG, JPG ou SVG · 500 Ko maximum</small>
+                  <div class="logo-editor__actions">
+                    <label class="btn btn--secondary btn--sm" for="school-logo">Choisir un logo</label>
+                    <input id="school-logo" class="visually-hidden" type="file"
+                           accept="image/png,image/jpeg,image/svg+xml"
+                           (change)="onLogoSelected($event)" />
+                    @if (layoutForm.controls.logoDataUrl.value) {
+                      <button type="button" class="btn btn--ghost btn--sm"
+                              (click)="removeLogo()">Retirer</button>
+                    }
+                  </div>
+                </div>
+                <label class="color-field">
+                  <span>Couleur officielle</span>
+                  <span class="color-field__control">
+                    <input type="color" formControlName="accentColor" />
+                    <input class="input numeric" formControlName="accentColor" />
+                  </span>
+                </label>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label field__label--required" for="school-name">
+                    Nom affiché
+                  </label>
+                  <input id="school-name" class="input" formControlName="schoolName" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="legal-name">Dénomination légale</label>
+                  <input id="legal-name" class="input" formControlName="legalName" />
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="motto">Devise</label>
+                  <input id="motto" class="input" formControlName="motto" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="registration-number">
+                    N° d’autorisation / agrément
+                  </label>
+                  <input id="registration-number" class="input"
+                         formControlName="registrationNumber" />
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset [disabled]="!canConfigure()">
+              <legend>En-tête institutionnel</legend>
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="header-left">Bloc gauche</label>
+                  <textarea id="header-left" class="textarea" rows="3"
+                            formControlName="headerLeft"></textarea>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="header-right">Bloc droit</label>
+                  <textarea id="header-right" class="textarea" rows="3"
+                            formControlName="headerRight"></textarea>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="address">Adresse</label>
+                  <input id="address" class="input" formControlName="address" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="city">Ville</label>
+                  <input id="city" class="input" formControlName="city" />
+                </div>
+              </div>
+              <div class="field-row field-row--3">
+                <div class="field">
+                  <label class="field__label" for="phone">Téléphone</label>
+                  <input id="phone" class="input" formControlName="phone" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="email">E-mail</label>
+                  <input id="email" class="input" type="email" formControlName="email" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="website">Site web</label>
+                  <input id="website" class="input" formControlName="website" />
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset [disabled]="!canConfigure()">
+              <legend>Signature, pied de page et sécurité</legend>
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="signatory-name">Nom du signataire</label>
+                  <input id="signatory-name" class="input" formControlName="signatoryName" />
+                </div>
+                <div class="field">
+                  <label class="field__label field__label--required" for="signatory-title">
+                    Fonction du signataire
+                  </label>
+                  <input id="signatory-title" class="input" formControlName="signatoryTitle" />
+                </div>
+              </div>
+              <div class="field">
+                <label class="field__label" for="footer-text">Texte du pied de page</label>
+                <textarea id="footer-text" class="textarea" rows="2"
+                          formControlName="footerText"></textarea>
+              </div>
+              <div class="field">
+                <label class="field__label field__label--required" for="number-pattern">
+                  Numérotation
+                </label>
+                <input id="number-pattern" class="input numeric"
+                       formControlName="documentNumberPattern" />
+                <span class="field__hint">
+                  Variables : &#123;year&#125;, &#123;yy&#125;, &#123;schoolCode&#125; et
+                  &#123;seq:6&#125;. Exemple : DOC-2026-000123.
+                </span>
+                @if (layoutForm.controls.documentNumberPattern.invalid) {
+                  <span class="field__error">Le modèle doit contenir &#123;seq&#125; ou &#123;seq:n&#125;.</span>
+                }
+              </div>
+              <div class="option-grid">
+                <label class="check-option">
+                  <input type="checkbox" formControlName="showLogo" />
+                  <span><strong>Afficher le logo</strong><small>Dans le bloc central de l’en-tête</small></span>
+                </label>
+                <label class="check-option">
+                  <input type="checkbox" formControlName="showMotto" />
+                  <span><strong>Afficher la devise</strong><small>Sous le nom de l’établissement</small></span>
+                </label>
+                <label class="check-option">
+                  <input type="checkbox" formControlName="showSignatureLine" />
+                  <span><strong>Zone de signature</strong><small>Réserve une zone pour le cachet</small></span>
+                </label>
+                <label class="check-option">
+                  <input type="checkbox" formControlName="showVerificationCode" />
+                  <span><strong>Code d’authenticité</strong><small>Identifiant unique vérifiable</small></span>
+                </label>
+              </div>
+            </fieldset>
+          </form>
+
+          <footer class="settings-card__foot">
+            <p>
+              Les documents déjà émis conservent leur ancien en-tête afin de rester identiques
+              aux exemplaires remis.
+            </p>
+            <button type="button" class="btn btn--secondary"
+                    [disabled]="layoutForm.pristine || saving()"
+                    (click)="cancelLayoutChanges()">Annuler</button>
+            <button type="button" class="btn btn--primary"
+                    [disabled]="layoutForm.invalid || layoutForm.pristine || saving() || !canConfigure()"
+                    (click)="saveLayout()">
+              {{ saving() ? 'Enregistrement...' : 'Enregistrer la mise en page' }}
+            </button>
+          </footer>
+        </section>
+
+        <aside class="preview-panel preview-panel--settings" aria-label="Aperçu du papier à en-tête">
+          <header class="preview-panel__head">
+            <div>
+              <span class="preview-panel__eyebrow">Aperçu en direct</span>
+              <strong>{{ selectedTemplate().label }}</strong>
+            </div>
+            <span class="live-dot">En direct</span>
+          </header>
+          <div class="preview-stage">
+            @if (previewDocument(); as document) {
+              <ng-container *ngTemplateOutlet="officialSheet; context: { $implicit: document }" />
+            }
+          </div>
+        </aside>
+      </div>
+    }
+  }
+
+  @if (revokeTarget(); as document) {
+    <div class="drawer-backdrop" (click)="closeRevoke()"></div>
+    <aside class="revoke-dialog card" role="dialog" aria-modal="true"
+           aria-labelledby="revoke-title">
+      <div class="revoke-dialog__icon" aria-hidden="true">!</div>
+      <h2 id="revoke-title">Révoquer {{ document.documentNumber }} ?</h2>
+      <p>
+        Le document restera dans le registre, mais son code de vérification indiquera
+        qu’il n’est plus valable. Cette action ne se supprime pas.
+      </p>
+      <form [formGroup]="revokeForm">
+        <div class="field">
+          <label class="field__label field__label--required" for="revoke-reason">Motif</label>
+          <textarea id="revoke-reason" class="textarea" rows="3" formControlName="reason"
+                    placeholder="Erreur sur l’identité, document remplacé..."></textarea>
+        </div>
+      </form>
+      <div class="revoke-dialog__actions">
+        <button type="button" class="btn btn--secondary" (click)="closeRevoke()">Annuler</button>
+        <button type="button" class="btn btn--danger"
+                [disabled]="revokeForm.invalid || saving()" (click)="revoke()">
+          {{ saving() ? 'Révocation...' : 'Confirmer la révocation' }}
+        </button>
+      </div>
+    </aside>
+  }
+</div>
+
+<!-- Un seul gabarit sert à l’aperçu et à l’impression : aucune divergence visuelle. -->
+<ng-template #officialSheet let-document>
+  <article class="official-sheet" [class.official-sheet--revoked]="document.status === 'REVOKED'"
+           [class.official-sheet--card]="document.type === 'STUDENT_CARD'"
+           [style.--document-accent]="document.layout.accentColor">
+    @if (document.status === 'DRAFT') {
+      <span class="official-sheet__watermark">APERÇU</span>
+    } @else if (document.status === 'REVOKED') {
+      <span class="official-sheet__watermark official-sheet__watermark--revoked">RÉVOQUÉ</span>
+    }
+
+    <header class="letterhead">
+      <div class="letterhead__authority letterhead__authority--left">
+        {{ document.layout.headerLeft }}
+      </div>
+      <div class="letterhead__school">
+        @if (document.layout.showLogo) {
+          @if (document.layout.logoDataUrl) {
+            <img class="letterhead__logo" [src]="document.layout.logoDataUrl" alt="" />
+          } @else {
+            <span class="letterhead__monogram" aria-hidden="true">
+              {{ document.layout.schoolName.charAt(0) }}
+            </span>
+          }
+        }
+        <strong>{{ document.layout.schoolName }}</strong>
+        @if (document.layout.legalName) { <small>{{ document.layout.legalName }}</small> }
+        @if (document.layout.showMotto && document.layout.motto) {
+          <em>« {{ document.layout.motto }} »</em>
+        }
+      </div>
+      <div class="letterhead__authority letterhead__authority--right">
+        {{ document.layout.headerRight }}
+      </div>
+    </header>
+
+    <div class="letterhead-details">
+      <span>{{ document.layout.address }}@if (document.layout.city) { · {{ document.layout.city }} }</span>
+      <span>
+        @if (document.layout.phone) { Tél. {{ document.layout.phone }} }
+        @if (document.layout.email) { · {{ document.layout.email }} }
+      </span>
+      @if (document.layout.registrationNumber) {
+        <span>{{ document.layout.registrationNumber }}</span>
+      }
+    </div>
+
+    <section class="document-heading">
+      <span class="document-heading__rule"></span>
+      <h1>{{ document.title }}</h1>
+      <p class="numeric">N° {{ document.documentNumber }}</p>
+    </section>
+
+    @if (document.type === 'SCHOOL_CERTIFICATE') {
+      <section class="document-body document-body--prose">
+        <p>
+          Je soussigné(e), <strong>{{ document.layout.signatoryName || document.layout.signatoryTitle }}</strong>,
+          {{ document.layout.signatoryTitle }}, certifie que {{ salutation(document) }}
+        </p>
+        <p class="student-name">{{ document.studentName }}</p>
+        <p>
+          matricule <strong class="numeric">{{ document.studentNumber }}</strong>,
+          {{ bornLabel(document) }} le <strong>{{ formatDate(document.birthDate) }}</strong>
+          @if (document.birthPlace) { à <strong>{{ document.birthPlace }}</strong> },
+          est régulièrement inscrit(e) en classe de
+          <strong>{{ document.classroomName || document.levelName }}</strong> au titre de l’année
+          scolaire <strong>{{ document.academicYearCode }}</strong>.
+        </p>
+        <p>
+          Le présent certificat lui est délivré
+          @if (document.metadata.recipient) { à l’attention de <strong>{{ document.metadata.recipient }}</strong> }
+          @if (document.metadata.purpose) { pour <strong>{{ document.metadata.purpose }}</strong> }
+          @else { pour servir et valoir ce que de droit }.
+        </p>
+      </section>
+    } @else if (document.type === 'ENROLLMENT_ATTESTATION') {
+      <section class="document-body document-body--prose">
+        <p>
+          La direction de <strong>{{ document.layout.schoolName }}</strong> atteste que
+          l’inscription administrative de
+        </p>
+        <p class="student-name">{{ document.studentName }}</p>
+        <p>
+          sous le matricule <strong class="numeric">{{ document.studentNumber }}</strong>,
+          est enregistrée pour l’année scolaire <strong>{{ document.academicYearCode }}</strong>,
+          en classe de <strong>{{ document.classroomName }}</strong>.
+        </p>
+        @if (document.enrollmentNumber) {
+          <p>Référence d’inscription : <strong class="numeric">{{ document.enrollmentNumber }}</strong>.</p>
+        }
+        <p>
+          La présente attestation est délivrée
+          @if (document.metadata.purpose) { pour {{ document.metadata.purpose }} }
+          @else { pour servir et valoir ce que de droit }.
+        </p>
+      </section>
+    } @else if (document.type === 'STUDENT_FILE') {
+      <section class="document-body">
+        <h2 class="section-title">Identité de l’élève</h2>
+        <dl class="identity-grid">
+          <div><dt>Nom et prénoms</dt><dd>{{ document.studentName }}</dd></div>
+          <div><dt>Matricule</dt><dd class="numeric">{{ document.studentNumber }}</dd></div>
+          <div><dt>Date de naissance</dt><dd>{{ formatDate(document.birthDate) }}</dd></div>
+          <div><dt>Lieu de naissance</dt><dd>{{ document.birthPlace || 'Non renseigné' }}</dd></div>
+          <div><dt>Nationalité</dt><dd>{{ document.nationality || 'Non renseignée' }}</dd></div>
+          <div><dt>Sexe</dt><dd>{{ document.gender === 'FEMALE' ? 'Féminin' : 'Masculin' }}</dd></div>
+        </dl>
+        <h2 class="section-title">Situation scolaire actuelle</h2>
+        <dl class="identity-grid">
+          <div><dt>Année scolaire</dt><dd>{{ document.academicYearCode }}</dd></div>
+          <div><dt>Classe</dt><dd>{{ document.classroomName || 'Non affecté(e)' }}</dd></div>
+          <div><dt>Niveau</dt><dd>{{ document.levelName || '—' }}</dd></div>
+          <div><dt>N° d’inscription</dt><dd class="numeric">{{ document.enrollmentNumber || '—' }}</dd></div>
+        </dl>
+      </section>
+    } @else if (document.type === 'SUMMONS') {
+      <section class="document-body document-body--prose">
+        <p>@if (document.metadata.recipient) { <strong>{{ document.metadata.recipient }}</strong>, }</p>
+        <p>
+          Madame, Monsieur,<br /><br />Vous êtes prié(e) de bien vouloir vous présenter à
+          <strong>{{ document.layout.schoolName }}</strong> au sujet de l’élève
+          <strong>{{ document.studentName }}</strong>, matricule
+          <strong class="numeric">{{ document.studentNumber }}</strong>.
+        </p>
+        <dl class="meeting-card">
+          <div><dt>Motif</dt><dd>{{ document.metadata.purpose || 'Entretien scolaire' }}</dd></div>
+          <div><dt>Date</dt><dd>{{ formatDate(document.metadata.meetingDate) }}</dd></div>
+          <div><dt>Heure</dt><dd>{{ document.metadata.meetingTime || 'À convenir' }}</dd></div>
+          <div><dt>Lieu</dt><dd>{{ document.metadata.meetingPlace || 'Administration' }}</dd></div>
+        </dl>
+        <p>Votre présence est vivement souhaitée. Nous vous remercions de votre ponctualité.</p>
+      </section>
+    } @else if (document.type === 'STUDENT_CARD') {
+      <section class="student-card-print">
+        <header>
+          <span>CARTE D’ÉLÈVE</span><strong>{{ document.academicYearCode }}</strong>
+        </header>
+        <div class="student-card-print__body">
+          <div class="student-card-print__photo">
+            @if (document.photoUrl) { <img [src]="document.photoUrl" alt="" /> }
+            @else { <span>{{ document.studentName.charAt(0) }}</span> }
+          </div>
+          <dl>
+            <div><dt>Nom et prénoms</dt><dd>{{ document.studentName }}</dd></div>
+            <div><dt>Matricule</dt><dd class="numeric">{{ document.studentNumber }}</dd></div>
+            <div><dt>Classe</dt><dd>{{ document.classroomName }}</dd></div>
+            <div><dt>Né(e) le</dt><dd>{{ formatDate(document.birthDate) }}</dd></div>
+          </dl>
+        </div>
+        <footer>
+          <span>{{ document.layout.signatoryTitle }}</span>
+          <span class="numeric">{{ document.verificationCode }}</span>
+        </footer>
+      </section>
+    }
+
+    @if (document.metadata.additionalMention) {
+      <p class="additional-mention">{{ document.metadata.additionalMention }}</p>
+    }
+
+    @if (document.type !== 'STUDENT_CARD') {
+      <section class="document-closing">
+        <p>
+          Fait à <strong>{{ document.layout.city || '—' }}</strong>,
+          le <strong>{{ formatDate(document.issuedAt) }}</strong>
+        </p>
+        @if (document.layout.showSignatureLine) {
+          <div class="signature-block">
+            <span>{{ document.layout.signatoryTitle }}</span>
+            <div class="signature-block__space">Signature et cachet</div>
+            @if (document.layout.signatoryName) { <strong>{{ document.layout.signatoryName }}</strong> }
+          </div>
+        }
+      </section>
+    }
+
+    <footer class="official-sheet__footer">
+      <p>{{ document.layout.footerText }}</p>
+      @if (document.layout.showVerificationCode) {
+        <div class="verification-block">
+          <span class="verification-block__qr" aria-hidden="true">▦</span>
+          <span>
+            <small>Code d’authenticité</small>
+            <strong class="numeric">{{ document.verificationCode }}</strong>
+          </span>
+        </div>
+      }
+      <span class="page-number">Page 1 / 1</span>
+    </footer>
+  </article>
+</ng-template>
+
+<div class="print-only">
+  @if (printing(); as document) {
+    <ng-container *ngTemplateOutlet="officialSheet; context: { $implicit: document }" />
+  }
+</div>
+

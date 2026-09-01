@@ -1,0 +1,192 @@
+@if (loading()) {
+  <eduops-loading-state message="Chargement de ton espace..." />
+} @else if (loadFailed()) {
+  <eduops-error-state
+    title="Ton accueil est indisponible"
+    message="Impossible de récupérer tes informations pour le moment."
+    (retry)="load()" />
+} @else {
+  @if (dashboard(); as data) {
+    <div class="student-home">
+    <section class="greeting" aria-labelledby="student-greeting">
+      <div>
+        <p class="greeting__eyebrow">{{ today() }}</p>
+        <h1 id="student-greeting">Bonjour, {{ data.student.firstName }}</h1>
+        <p class="greeting__message">Voici l'essentiel de ta journée.</p>
+      </div>
+      <eduops-avatar
+        [name]="data.student.fullName"
+        [photoUrl]="data.student.photoUrl"
+        size="lg" />
+    </section>
+
+    <section class="identity-card" aria-label="Informations scolaires">
+      <div class="identity-card__main">
+        <span class="identity-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="m3 10 9-5 9 5-9 5-9-5Zm3 2.4V17c3.4 2.7 8.6 2.7 12 0v-4.6" />
+          </svg>
+        </span>
+        <div>
+          <p class="identity-card__label">Ma classe</p>
+          <p class="identity-card__class">{{ data.student.classroomName || 'Non affectée' }}</p>
+        </div>
+      </div>
+      <div class="identity-card__details">
+        <span>{{ data.termLabel || data.academicYearLabel }}</span>
+        <span class="identity-card__number numeric">{{ data.student.studentNumber }}</span>
+      </div>
+    </section>
+
+    <section class="summary" aria-labelledby="summary-title">
+      <h2 id="summary-title" class="visually-hidden">Ma situation scolaire</h2>
+      <article class="summary-card">
+        <span class="summary-card__icon summary-card__icon--average" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M5 19V9m7 10V5m7 14v-7" />
+          </svg>
+        </span>
+        <div>
+          <p class="summary-card__label">Ma moyenne</p>
+          <p class="summary-card__value numeric">
+            {{ data.summary.academicAverage | grade:data.summary.averageScale }}
+          </p>
+        </div>
+      </article>
+      <article class="summary-card">
+        <span class="summary-card__icon summary-card__icon--attendance" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="m5 12 4 4L19 6" />
+          </svg>
+        </span>
+        <div>
+          <p class="summary-card__label">Présence</p>
+          <p class="summary-card__value numeric">
+            @if (data.summary.attendanceRate !== undefined) {
+              {{ data.summary.attendanceRate | number:'1.0-1':'fr-FR' }} %
+            } @else { - }
+          </p>
+        </div>
+      </article>
+      <a class="summary-card summary-card--link" routerLink="/student/report-cards">
+        <span class="summary-card__icon summary-card__icon--reports" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M7 3h8l4 4v14H7V3Zm8 0v5h4M10 12h6m-6 4h6" />
+          </svg>
+        </span>
+        <div>
+          <p class="summary-card__label">Bulletins</p>
+          <p class="summary-card__value numeric">{{ data.summary.publishedReportCards }}</p>
+        </div>
+      </a>
+    </section>
+
+    @if (data.summary.unjustifiedAbsences > 0) {
+      <a class="absence-alert" routerLink="/student/attendance">
+        <span class="absence-alert__icon" aria-hidden="true">!</span>
+        <span>
+          <strong>{{ data.summary.unjustifiedAbsences }} absence non justifiée</strong>
+          <small>Consulter mes absences</small>
+        </span>
+        <span class="arrow" aria-hidden="true">›</span>
+      </a>
+    }
+
+    <div class="dashboard-grid">
+      <section class="panel schedule" aria-labelledby="schedule-title">
+        <header class="section-heading">
+          <div>
+            <p class="section-heading__eyebrow">À venir</p>
+            <h2 id="schedule-title">Mes prochains cours</h2>
+          </div>
+          <a routerLink="/student/timetable">Tout voir</a>
+        </header>
+
+        <div class="course-list">
+          @for (course of data.upcomingCourses; track course.id; let first = $first) {
+            <article class="course" [class.course--next]="first">
+              <div class="course__time numeric">
+                <strong>{{ course.startsAt | date:'HH:mm' }}</strong>
+                <span>{{ course.endsAt | date:'HH:mm' }}</span>
+              </div>
+              <span class="course__marker" aria-hidden="true"></span>
+              <div class="course__body">
+                <div class="course__topline">
+                  <p class="course__day">{{ courseDay(course) }}</p>
+                  @if (first) { <span class="badge badge--info badge--pill">Prochain</span> }
+                </div>
+                <h3>{{ course.subjectName }}</h3>
+                <p>
+                  {{ course.teacherName || 'Enseignant à confirmer' }}
+                  @if (course.roomName) { <span> · {{ course.roomName }}</span> }
+                </p>
+              </div>
+            </article>
+          } @empty {
+            <p class="panel-empty">Aucun cours à venir.</p>
+          }
+        </div>
+      </section>
+
+      <section class="panel grades" aria-labelledby="grades-title">
+        <header class="section-heading">
+          <div>
+            <p class="section-heading__eyebrow">Résultats</p>
+            <h2 id="grades-title">Mes dernières notes</h2>
+          </div>
+          <a routerLink="/student/grades">Tout voir</a>
+        </header>
+
+        <div class="grade-list">
+          @for (grade of data.recentGrades; track grade.id) {
+            <article class="grade-row">
+              <span class="grade-row__subject" aria-hidden="true">
+                {{ grade.subjectName.slice(0, 2).toUpperCase() }}
+              </span>
+              <div class="grade-row__body">
+                <h3>{{ grade.subjectName }}</h3>
+                <p>{{ grade.assessmentName }}</p>
+              </div>
+              <div class="grade-row__result">
+                <strong class="numeric">{{ grade.score | grade:grade.maxScore }}</strong>
+                <span>{{ grade.publishedAt | date:'dd MMM':'':'fr-FR' }}</span>
+              </div>
+            </article>
+          } @empty {
+            <p class="panel-empty">Aucune note publiée récemment.</p>
+          }
+        </div>
+      </section>
+    </div>
+
+    <section class="announcements" aria-labelledby="announcements-title">
+      <header class="section-heading">
+        <div>
+          <p class="section-heading__eyebrow">À retenir</p>
+          <h2 id="announcements-title">Annonces</h2>
+        </div>
+      </header>
+
+      <div class="announcement-list">
+        @for (announcement of data.announcements; track announcement.id) {
+          <article class="announcement">
+            <span class="announcement__dot" [class]="'announcement__dot announcement__dot--' + announcement.category.toLowerCase()" aria-hidden="true"></span>
+            <div class="announcement__body">
+              <div class="announcement__meta">
+                <span>{{ announcementLabel(announcement.category) }}</span>
+                <time [attr.datetime]="announcement.publishedAt">
+                  {{ announcement.publishedAt | date:'dd MMM':'':'fr-FR' }}
+                </time>
+              </div>
+              <h3>{{ announcement.title }}</h3>
+              <p>{{ announcement.message }}</p>
+            </div>
+          </article>
+        } @empty {
+          <p class="panel-empty">Aucune annonce pour le moment.</p>
+        }
+      </div>
+    </section>
+    </div>
+  }
+}

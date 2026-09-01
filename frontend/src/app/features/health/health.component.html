@@ -1,0 +1,903 @@
+<section class="page">
+
+  <!-- L'aide, une fois par onglet, exactement comme dans la configuration. -->
+  <eduops-step-coachmark
+    flow="health"
+    [stepKey]="tab()"
+    [stepNumber]="helpCopy().step"
+    [totalSteps]="totalSteps"
+    eyebrow="Conseil pour cet onglet"
+    [title]="helpCopy().title"
+    [description]="helpCopy().description"
+    [points]="helpCopy().points"
+    [ctaLabel]="helpCopy().ctaLabel" />
+
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Santé scolaire</h1>
+      <p class="page__meta numeric">
+        @if (board(); as b) {
+          {{ b.alertCount }} alerte(s) en cours
+          @if (b.fullAccess) {
+            · {{ b.visitCountThisWeek }} passage(s) cette semaine
+            @if (b.missingVaccineCount > 0) {
+              · {{ b.missingVaccineCount }} vaccin(s) à réclamer
+            }
+            @if (b.overdueExaminationCount > 0) {
+              · {{ b.overdueExaminationCount }} visite(s) en retard
+            }
+          }
+        }
+      </p>
+    </div>
+    <div class="page__actions">
+      @if (fullAccess()) {
+        @if (tab() === 'INFIRMERIE' && canRecordVisit()) {
+          <button type="button" class="btn btn--primary" (click)="openVisit()">
+            <span aria-hidden="true">✚</span> Consigner un passage
+          </button>
+        } @else if (tab() === 'FICHES' && canManage()) {
+          <button type="button" class="btn btn--primary" (click)="openCondition()">
+            <span aria-hidden="true">＋</span> Déclarer une condition
+          </button>
+        } @else if (tab() === 'SUIVI' && canManage()) {
+          <button type="button" class="btn btn--primary" (click)="openExam()">
+            <span aria-hidden="true">＋</span> Programmer une visite
+          </button>
+        }
+      }
+    </div>
+  </header>
+
+  @if (fullAccess()) {
+    <nav class="tabs" role="tablist">
+      <button type="button" class="tabs__item" role="tab"
+              [class.tabs__item--on]="tab() === 'INFIRMERIE'"
+              [attr.aria-selected]="tab() === 'INFIRMERIE'"
+              (click)="changeTab('INFIRMERIE')">
+        Infirmerie
+        @if (awaitingGuardian().length > 0) {
+          <span class="tabs__badge numeric">{{ awaitingGuardian().length }}</span>
+        }
+      </button>
+      <button type="button" class="tabs__item" role="tab"
+              [class.tabs__item--on]="tab() === 'FICHES'"
+              [attr.aria-selected]="tab() === 'FICHES'"
+              (click)="changeTab('FICHES')">
+        Fiches de santé
+        @if (alerts().length > 0) {
+          <span class="tabs__badge numeric">{{ alerts().length }}</span>
+        }
+      </button>
+      <button type="button" class="tabs__item" role="tab"
+              [class.tabs__item--on]="tab() === 'SUIVI'"
+              [attr.aria-selected]="tab() === 'SUIVI'"
+              (click)="changeTab('SUIVI')">
+        Vaccins et visites
+        @if (overdueExams().length > 0) {
+          <span class="tabs__badge numeric">{{ overdueExams().length }}</span>
+        }
+      </button>
+    </nav>
+
+    <div class="filters">
+      <label class="filters__search">
+        <span class="sr-only">Rechercher un élève</span>
+        <input type="search" class="input" placeholder="Nom ou matricule…"
+               [value]="search()"
+               (change)="applySearch($any($event.target).value)">
+      </label>
+    </div>
+  }
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement du dossier de santé…" />
+  } @else if (error()) {
+    <eduops-error-state message="Impossible de charger la santé scolaire."
+                        (retry)="load()" />
+  } @else {
+
+    <!-- ══════════════ Ce que voit le personnel encadrant ══════════════ -->
+    @if (!fullAccess()) {
+      <div class="notice">
+        <p class="notice__title">Vous voyez les alertes, pas les dossiers</p>
+        <p class="notice__text">
+          Le détail médical reste à l'infirmerie et à la direction. Ce qui suit
+          est ce qu'il faut savoir pour agir : la conduite à tenir, et rien
+          d'autre. Ces informations ne se commentent pas devant la classe.
+        </p>
+      </div>
+
+      @if (alerts().length === 0) {
+        <div class="empty-state">
+          <p class="empty-state__title">Aucune alerte signalée</p>
+          <p class="empty-state__text">
+            Aucun élève de l'établissement ne fait l'objet d'une conduite à
+            tenir particulière cette année.
+          </p>
+        </div>
+      } @else {
+        <ul class="alert-cards">
+          @for (alert of alerts(); track alert.studentId + alert.label) {
+            <li class="alert-card" [attr.data-tone]="severityTone(alert.severity)">
+              <div class="alert-card__head">
+                <div>
+                  <span class="alert-card__name">{{ alert.studentName }}</span>
+                  <span class="alert-card__class">{{ alert.classroomName }}</span>
+                </div>
+                <span class="state" [attr.data-tone]="severityTone(alert.severity)">
+                  {{ alert.severityLabel }}
+                </span>
+              </div>
+              <p class="alert-card__label">{{ alert.label }}</p>
+              @if (alert.actionToTake) {
+                <p class="alert-card__action">{{ alert.actionToTake }}</p>
+              }
+              @if (alert.selfCarried) {
+                <p class="alert-card__carried">
+                  L'élève garde son traitement sur lui.
+                </p>
+              }
+            </li>
+          }
+        </ul>
+      }
+    }
+
+    <!-- ═══════════════════════ Infirmerie ═══════════════════════ -->
+    @if (fullAccess() && tab() === 'INFIRMERIE') {
+
+      @if (awaitingGuardian().length > 0) {
+        <div class="alert-block">
+          <div class="alert-block__head">
+            <span class="alert-block__icon" aria-hidden="true">!</span>
+            <div>
+              <p class="alert-block__title">
+                {{ awaitingGuardian().length }} famille(s) à joindre
+              </p>
+              <p class="alert-block__text">
+                Ces élèves ont quitté l'école sans que la famille ait été
+                jointe. À régler avant la fin de la journée.
+              </p>
+            </div>
+          </div>
+          <ul class="pending">
+            @for (visit of awaitingGuardian(); track visit.id) {
+              <li class="pending__item">
+                <span class="pending__name">{{ visit.studentName }}</span>
+                <span class="pending__cycle">
+                  {{ visit.complaint }} · {{ visit.outcomeLabel }}
+                </span>
+                @if (canRecordVisit()) {
+                  <button type="button" class="btn btn--sm"
+                          [disabled]="saving()" (click)="markNotified(visit)">
+                    Famille jointe
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (visits().length === 0) {
+        <div class="empty-state">
+          <p class="empty-state__title">Aucun passage cette semaine</p>
+          <p class="empty-state__text">
+            Le registre s'ouvre sur les sept derniers jours. Consignez un
+            passage dès qu'un élève se présente, même pour un soin bénin.
+          </p>
+        </div>
+      } @else {
+        <div class="table-wrapper">
+          <table class="table">
+            <caption class="sr-only">Registre de l'infirmerie</caption>
+            <thead>
+              <tr>
+                <th scope="col">Élève</th>
+                <th scope="col">Quand</th>
+                <th scope="col">Motif</th>
+                <th scope="col">Soins donnés</th>
+                <th scope="col">Température</th>
+                <th scope="col">Suite</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (visit of visits(); track visit.id) {
+                <tr [class.row--attention]="visit.awaitingGuardian">
+                  <td>
+                    <span class="entry__name">{{ visit.studentName }}</span>
+                    <span class="entry__number numeric">
+                      {{ visit.studentNumber }} · {{ visit.classroomName }}
+                    </span>
+                  </td>
+                  <td class="numeric">{{ visit.occurredAt | date:'dd/MM à HH:mm' }}</td>
+                  <td class="entry__reason">{{ visit.complaint }}</td>
+                  <td class="entry__reason">{{ visit.careGiven }}</td>
+                  <td class="numeric">
+                    @if (visit.temperatureCelsius) {
+                      <span [class.temp--high]="visit.temperatureCelsius >= 38">
+                        {{ visit.temperatureCelsius }} °C
+                      </span>
+                    } @else {
+                      <span class="muted">—</span>
+                    }
+                  </td>
+                  <td>
+                    <span class="state" [attr.data-tone]="outcomeTone(visit.outcome)">
+                      {{ visit.outcomeLabel }}
+                    </span>
+                    @if (visit.referredTo) {
+                      <span class="entry__destination">{{ visit.referredTo }}</span>
+                    }
+                    @if (visit.awaitingGuardian) {
+                      <span class="entry__soon">Famille non jointe</span>
+                    }
+                  </td>
+                  <td class="cell-actions">
+                    @if (visit.awaitingGuardian && canRecordVisit()) {
+                      <button type="button" class="btn btn--sm"
+                              [disabled]="saving()" (click)="markNotified(visit)">
+                        Famille jointe
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    <!-- ═══════════════════════ Fiches de santé ═══════════════════════ -->
+    @if (fullAccess() && tab() === 'FICHES') {
+
+      @if (incompleteRecords().length > 0) {
+        <div class="alert-block alert-block--soft">
+          <div class="alert-block__head">
+            <span class="alert-block__icon" aria-hidden="true">i</span>
+            <div>
+              <p class="alert-block__title">
+                {{ incompleteRecords().length }} fiche(s) incomplète(s)
+              </p>
+              <p class="alert-block__text">
+                Autorisation de soins manquante ou vaccin sans preuve. Rien de
+                bloquant : ce sont des pièces à réclamer aux familles.
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (records().length === 0) {
+        <div class="empty-state">
+          <p class="empty-state__title">Aucune fiche de santé</p>
+          <p class="empty-state__text">
+            Ouvrez une fiche en déclarant une première condition, ou en
+            enregistrant l'autorisation de soins d'une famille.
+          </p>
+        </div>
+      } @else {
+        <div class="table-wrapper">
+          <table class="table">
+            <caption class="sr-only">Fiches de santé des élèves</caption>
+            <thead>
+              <tr>
+                <th scope="col">Élève</th>
+                <th scope="col">Groupe</th>
+                <th scope="col">Conditions</th>
+                <th scope="col">Soins autorisés</th>
+                <th scope="col">Vaccins</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (record of records(); track record.id) {
+                <tr [class.row--attention]="record.alertCount > 0">
+                  <td>
+                    <span class="entry__name">{{ record.studentName }}</span>
+                    <span class="entry__number numeric">
+                      {{ record.studentNumber }} · {{ record.classroomName }}
+                    </span>
+                  </td>
+                  <td class="numeric">{{ record.bloodGroup || '—' }}</td>
+                  <td>
+                    @if (record.alertCount > 0) {
+                      <span class="pill pill--danger">
+                        {{ record.alertCount }} alerte(s)
+                      </span>
+                    }
+                    <span class="muted">
+                      {{ record.conditions.length }} au total
+                    </span>
+                  </td>
+                  <td>
+                    @if (record.careConsent) {
+                      <span class="state" data-tone="low">Autorisés</span>
+                    } @else {
+                      <span class="state" data-tone="high">Sans autorisation</span>
+                    }
+                  </td>
+                  <td>
+                    @if (record.missingVaccineCount > 0) {
+                      <span class="docs">
+                        {{ record.missingVaccineCount }} à réclamer
+                      </span>
+                    } @else {
+                      <span class="docs docs--complete">Complet</span>
+                    }
+                  </td>
+                  <td class="cell-actions">
+                    <button type="button" class="btn btn--sm btn--ghost"
+                            (click)="review(record)">
+                      Ouvrir
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    <!-- ═══════════════════ Vaccins et visites ═══════════════════ -->
+    @if (fullAccess() && tab() === 'SUIVI') {
+
+      @if (overdueExams().length > 0) {
+        <div class="alert-block">
+          <div class="alert-block__head">
+            <span class="alert-block__icon" aria-hidden="true">!</span>
+            <div>
+              <p class="alert-block__title">
+                {{ overdueExams().length }} visite(s) en retard
+              </p>
+              <p class="alert-block__text">
+                Prévues, jamais consignées. Une visite non passée reste due :
+                elle ne se referme pas toute seule.
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (examinations().length === 0) {
+        <div class="empty-state">
+          <p class="empty-state__title">Aucune visite programmée</p>
+          <p class="empty-state__text">
+            Programmez les visites d'admission et les visites annuelles pour
+            suivre celles qui restent à passer.
+          </p>
+        </div>
+      } @else {
+        <div class="table-wrapper">
+          <table class="table">
+            <caption class="sr-only">Visites médicales</caption>
+            <thead>
+              <tr>
+                <th scope="col">Élève</th>
+                <th scope="col">Visite</th>
+                <th scope="col">Prévue le</th>
+                <th scope="col">Passée le</th>
+                <th scope="col">Résultat</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (exam of examinations(); track exam.id) {
+                <tr [class.row--attention]="exam.overdue">
+                  <td>
+                    <span class="entry__name">{{ exam.studentName }}</span>
+                    <span class="entry__number numeric">
+                      {{ exam.studentNumber }} · {{ exam.classroomName }}
+                    </span>
+                  </td>
+                  <td>{{ exam.kindLabel }}</td>
+                  <td class="numeric">{{ exam.scheduledOn | date:'dd/MM/yyyy' }}</td>
+                  <td class="numeric">
+                    {{ exam.performedOn ? (exam.performedOn | date:'dd/MM/yyyy') : '—' }}
+                  </td>
+                  <td>
+                    <span class="state" [attr.data-tone]="examTone(exam.outcome)">
+                      {{ exam.outcomeLabel }}
+                    </span>
+                    @if (exam.restriction) {
+                      <span class="entry__destination">{{ exam.restriction }}</span>
+                    }
+                    @if (exam.overdue) {
+                      <span class="entry__soon">En retard</span>
+                    }
+                  </td>
+                  <td class="cell-actions">
+                    @if (exam.outcome === 'PENDING' && canManage()) {
+                      <button type="button" class="btn btn--sm"
+                              (click)="openResult(exam)">
+                        Consigner
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+
+  <!-- ═══════════════════ Panneau : consigner un passage ═══════════════════ -->
+  @if (visitOpen()) {
+    <div class="drawer-backdrop" (click)="closeVisit()"></div>
+    <aside class="drawer" role="dialog" aria-labelledby="visit-title">
+      <div class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="visit-title">Passage à l'infirmerie</h2>
+          <p class="drawer__meta">
+            Écrivez les soins donnés, même minimes.
+          </p>
+        </div>
+        <button type="button" class="drawer__close" (click)="closeVisit()"
+                aria-label="Fermer">×</button>
+      </div>
+
+      <form class="drawer__body" [formGroup]="visitForm" (ngSubmit)="submitVisit()">
+        <label class="field">
+          <span class="field__label">Élève</span>
+          <select class="input" formControlName="studentId">
+            <option value="">Choisir un élève…</option>
+            @for (student of studentList(); track student.id) {
+              <option [value]="student.id">
+                {{ student.fullName }} — {{ student.studentNumber }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Motif du passage</span>
+          <input type="text" class="input" formControlName="complaint"
+                 placeholder="Céphalées, chute dans la cour…">
+        </label>
+
+        <label class="field">
+          <span class="field__label">Soins donnés</span>
+          <textarea class="input" rows="3" formControlName="careGiven"
+                    placeholder="Nettoyage, pansement, repos trente minutes…"></textarea>
+          <span class="field__hint">
+            Un registre vide ne prouve rien le jour où une famille demande des
+            comptes.
+          </span>
+        </label>
+
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Température (°C)</span>
+            <input type="number" class="input" step="0.1" min="30" max="45"
+                   formControlName="temperatureCelsius" placeholder="37.5">
+          </label>
+
+          <label class="field">
+            <span class="field__label">Suite donnée</span>
+            <select class="input" formControlName="outcome">
+              @for (choice of outcomes; track choice.value) {
+                <option [value]="choice.value">{{ choice.label }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        @if (visitNeedsReferral()) {
+          <label class="field">
+            <span class="field__label">Orienté vers</span>
+            <input type="text" class="input" formControlName="referredTo"
+                   placeholder="Centre de santé urbain de Cocody">
+            <span class="field__hint field__hint--warn">
+              Sans ce nom, personne ne saura où l'élève a été conduit.
+            </span>
+          </label>
+        }
+
+        @if (visitNeedsGuardian()) {
+          <label class="switch">
+            <input type="checkbox" formControlName="guardianNotified">
+            <span>
+              La famille a été jointe
+              <small>
+                Obligatoire : un élève ne quitte pas l'école sans que quelqu'un
+                ait été prévenu. Le serveur refusera l'enregistrement sinon.
+              </small>
+            </span>
+          </label>
+        }
+
+        <label class="field">
+          <span class="field__label">Observations (facultatif)</span>
+          <textarea class="input" rows="2" formControlName="notes"></textarea>
+        </label>
+      </form>
+
+      <div class="drawer__foot">
+        <button type="button" class="btn btn--ghost" (click)="closeVisit()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="saving() || visitForm.invalid" (click)="submitVisit()">
+          {{ saving() ? 'Enregistrement…' : 'Consigner le passage' }}
+        </button>
+      </div>
+    </aside>
+  }
+
+  <!-- ═══════════════ Panneau : déclarer une condition ═══════════════ -->
+  @if (conditionOpen()) {
+    <div class="drawer-backdrop" (click)="closeCondition()"></div>
+    <aside class="drawer" role="dialog" aria-labelledby="condition-title">
+      <div class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="condition-title">Déclarer une condition</h2>
+          <p class="drawer__meta">
+            Allergie, maladie chronique, traitement en cours.
+          </p>
+        </div>
+        <button type="button" class="drawer__close" (click)="closeCondition()"
+                aria-label="Fermer">×</button>
+      </div>
+
+      <form class="drawer__body" [formGroup]="conditionForm"
+            (ngSubmit)="submitCondition()">
+        <label class="field">
+          <span class="field__label">Élève</span>
+          <select class="input" formControlName="studentId">
+            <option value="">Choisir un élève…</option>
+            @for (student of studentList(); track student.id) {
+              <option [value]="student.id">
+                {{ student.fullName }} — {{ student.studentNumber }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Nature</span>
+            <select class="input" formControlName="kind">
+              @for (choice of kinds; track choice.value) {
+                <option [value]="choice.value">{{ choice.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Gravité</span>
+            <select class="input" formControlName="severity">
+              @for (choice of severities; track choice.value) {
+                <option [value]="choice.value">{{ choice.label }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Libellé</span>
+          <input type="text" class="input" formControlName="label"
+                 placeholder="Allergie aux arachides">
+          <span class="field__hint">
+            Court et clair : c'est ce que lira un professeur, hors contexte.
+          </span>
+        </label>
+
+        @if (severityIsAlert()) {
+          <div class="hint-block hint-block--warn">
+            Cette condition sera signalée au personnel encadrant. Ils recevront
+            le libellé et la conduite à tenir — jamais le diagnostic ni le
+            traitement.
+          </div>
+
+          <label class="field">
+            <span class="field__label">Conduite à tenir</span>
+            <textarea class="input" rows="4" formControlName="actionToTake"
+                      placeholder="Écarter tout aliment contenant de l'arachide. En cas de gêne respiratoire : utiliser le stylo auto-injecteur, puis appeler le 185."></textarea>
+            <span class="field__hint field__hint--warn">
+              Obligatoire. Écrivez pour quelqu'un qui n'est pas soignant et qui
+              doit agir tout de suite.
+            </span>
+          </label>
+        }
+
+        <label class="field">
+          <span class="field__label">Description (reste à l'infirmerie)</span>
+          <textarea class="input" rows="2" formControlName="description"></textarea>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Médicament (reste à l'infirmerie)</span>
+          <input type="text" class="input" formControlName="medication"
+                 placeholder="Stylo auto-injecteur">
+        </label>
+
+        <label class="switch">
+          <input type="checkbox" formControlName="selfCarried">
+          <span>
+            L'élève garde son traitement sur lui
+            <small>Inhalateur, stylo auto-injecteur : à savoir en cas d'urgence.</small>
+          </span>
+        </label>
+      </form>
+
+      <div class="drawer__foot">
+        <button type="button" class="btn btn--ghost" (click)="closeCondition()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="saving() || conditionForm.invalid"
+                (click)="submitCondition()">
+          {{ saving() ? 'Enregistrement…' : 'Porter à la fiche' }}
+        </button>
+      </div>
+    </aside>
+  }
+
+  <!-- ═══════════════════ Panneau : la fiche d'un élève ═══════════════════ -->
+  @if (reviewing(); as record) {
+    <div class="drawer-backdrop" (click)="closeReview()"></div>
+    <aside class="drawer drawer--wide" role="dialog" aria-labelledby="record-title">
+      <div class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="record-title">{{ record.studentName }}</h2>
+          <p class="drawer__meta numeric">
+            {{ record.studentNumber }} · {{ record.classroomName }}
+            @if (record.bloodGroup) { · Groupe {{ record.bloodGroup }} }
+          </p>
+        </div>
+        <button type="button" class="drawer__close" (click)="closeReview()"
+                aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sheet-counters">
+        <span class="sheet-counters__item">
+          <strong>{{ record.alertCount }}</strong> alerte(s)
+        </span>
+        <span class="sheet-counters__item"
+              [class.sheet-counters__item--due]="record.missingVaccineCount > 0">
+          <strong>{{ record.missingVaccineCount }}</strong> vaccin(s) à réclamer
+        </span>
+        @if (record.physicianName) {
+          <span class="sheet-counters__item">
+            Médecin : <strong>{{ record.physicianName }}</strong>
+            @if (record.physicianPhone) { — {{ record.physicianPhone }} }
+          </span>
+        }
+      </div>
+
+      <div class="drawer__body">
+        @if (!record.careConsent) {
+          <div class="hint-block hint-block--warn">
+            Les parents n'ont pas autorisé les premiers soins. Sans cette
+            autorisation, l'infirmerie ne peut qu'appeler la famille.
+          </div>
+        }
+
+        @if (canManage()) {
+          <button type="button" class="btn btn--sm" [disabled]="saving()"
+                  (click)="toggleConsent(record)">
+            {{ record.careConsent
+              ? 'Retirer l\'autorisation de soins'
+              : 'Enregistrer l\'autorisation de soins' }}
+          </button>
+        }
+
+        <h3 class="section-title">Conditions déclarées</h3>
+        @if (record.conditions.length === 0) {
+          <p class="muted">Aucune condition portée à cette fiche.</p>
+        } @else {
+          <ul class="docs-list">
+            @for (condition of record.conditions; track condition.id) {
+              <li class="docs-list__item"
+                  [class.docs-list__item--closed]="!condition.active">
+                <div class="condition__head">
+                  <span class="docs-list__label">{{ condition.label }}</span>
+                  <span class="state" [attr.data-tone]="severityTone(condition.severity)">
+                    {{ condition.severityLabel }}
+                  </span>
+                </div>
+                <p class="condition__kind">{{ condition.kindLabel }}</p>
+                @if (condition.description) {
+                  <p class="condition__text">{{ condition.description }}</p>
+                }
+                @if (condition.actionToTake) {
+                  <p class="condition__action">
+                    <strong>Conduite à tenir :</strong> {{ condition.actionToTake }}
+                  </p>
+                }
+                @if (condition.medication) {
+                  <p class="condition__text">Médicament : {{ condition.medication }}</p>
+                }
+                @if (condition.selfCarried) {
+                  <p class="condition__text">L'élève garde son traitement sur lui.</p>
+                }
+                @if (!condition.active) {
+                  <p class="condition__text muted">
+                    Close le {{ condition.resolvedOn | date:'dd/MM/yyyy' }}
+                  </p>
+                } @else if (canManage()) {
+                  <button type="button" class="btn btn--sm btn--ghost"
+                          [disabled]="saving()"
+                          (click)="resolveCondition(condition.id)">
+                    Clore
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        }
+
+        <h3 class="section-title">Carnet de vaccination</h3>
+        @if (record.vaccinations.length === 0) {
+          <p class="muted">Aucun vaccin enregistré.</p>
+        } @else {
+          <ul class="docs-list">
+            @for (shot of record.vaccinations; track shot.id) {
+              <li class="docs-list__item"
+                  [class.docs-list__item--done]="shot.complete">
+                <div class="condition__head">
+                  <span class="docs-list__label">{{ shot.vaccineLabel }}</span>
+                  <span class="numeric muted">
+                    {{ shot.dosesReceived }} / {{ shot.dosesExpected }} dose(s)
+                  </span>
+                </div>
+                @if (shot.outstanding) {
+                  <p class="condition__text">
+                    {{ shot.certificateSeen
+                      ? 'Doses incomplètes : à compléter.'
+                      : 'Carnet non présenté : preuve à réclamer à la famille.' }}
+                  </p>
+                  @if (canManage()) {
+                    <button type="button" class="btn btn--sm" [disabled]="saving()"
+                            (click)="markCertificateSeen(record, shot.vaccineId,
+                                                         shot.dosesExpected)">
+                      Carnet vu, doses à jour
+                    </button>
+                  }
+                } @else if (!shot.required) {
+                  <p class="condition__text muted">Non exigé par l'établissement.</p>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <div class="drawer__foot">
+        @if (canManage()) {
+          <button type="button" class="btn btn--ghost"
+                  (click)="openCondition(record.studentId)">
+            Déclarer une condition
+          </button>
+        }
+        <button type="button" class="btn btn--primary" (click)="closeReview()">
+          Fermer
+        </button>
+      </div>
+    </aside>
+  }
+
+  <!-- ═══════════════ Panneau : programmer une visite ═══════════════ -->
+  @if (examOpen()) {
+    <div class="drawer-backdrop" (click)="closeExam()"></div>
+    <aside class="drawer" role="dialog" aria-labelledby="exam-title">
+      <div class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="exam-title">Programmer une visite</h2>
+          <p class="drawer__meta">Une seule visite de chaque type par élève et par année.</p>
+        </div>
+        <button type="button" class="drawer__close" (click)="closeExam()"
+                aria-label="Fermer">×</button>
+      </div>
+
+      <form class="drawer__body" [formGroup]="examForm" (ngSubmit)="submitExam()">
+        <label class="field">
+          <span class="field__label">Élève</span>
+          <select class="input" formControlName="studentId">
+            <option value="">Choisir un élève…</option>
+            @for (student of studentList(); track student.id) {
+              <option [value]="student.id">
+                {{ student.fullName }} — {{ student.studentNumber }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Type de visite</span>
+            <select class="input" formControlName="kind">
+              @for (choice of examKinds; track choice.value) {
+                <option [value]="choice.value">{{ choice.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Prévue le</span>
+            <input type="date" class="input" formControlName="scheduledOn">
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Praticien (facultatif)</span>
+          <input type="text" class="input" formControlName="practitioner"
+                 placeholder="Dr Aya N'Dri, médecine scolaire">
+        </label>
+      </form>
+
+      <div class="drawer__foot">
+        <button type="button" class="btn btn--ghost" (click)="closeExam()">Annuler</button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="saving() || examForm.invalid" (click)="submitExam()">
+          {{ saving() ? 'Enregistrement…' : 'Programmer' }}
+        </button>
+      </div>
+    </aside>
+  }
+
+  <!-- ═══════════════ Panneau : consigner un résultat ═══════════════ -->
+  @if (resulting(); as exam) {
+    <div class="drawer-backdrop" (click)="closeResult()"></div>
+    <aside class="drawer" role="dialog" aria-labelledby="result-title">
+      <div class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="result-title">{{ exam.kindLabel }}</h2>
+          <p class="drawer__meta">
+            {{ exam.studentName }} · prévue le
+            {{ exam.scheduledOn | date:'dd/MM/yyyy' }}
+          </p>
+        </div>
+        <button type="button" class="drawer__close" (click)="closeResult()"
+                aria-label="Fermer">×</button>
+      </div>
+
+      <form class="drawer__body" [formGroup]="resultForm" (ngSubmit)="submitResult()">
+        <label class="field">
+          <span class="field__label">Résultat</span>
+          <select class="input" formControlName="outcome">
+            @for (choice of examOutcomes; track choice.value) {
+              <option [value]="choice.value">{{ choice.label }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Passée le</span>
+          <input type="date" class="input" formControlName="performedOn">
+        </label>
+
+        @if (resultNeedsRestriction()) {
+          <label class="field">
+            <span class="field__label">Réserve prononcée</span>
+            <textarea class="input" rows="3" formControlName="restriction"
+                      placeholder="Dispense de course de fond, autres activités autorisées."></textarea>
+            <span class="field__hint field__hint--warn">
+              Obligatoire : sans elle, le professeur d'éducation physique ne
+              sait pas quoi aménager.
+            </span>
+          </label>
+        }
+
+        <label class="field">
+          <span class="field__label">Observations (facultatif)</span>
+          <textarea class="input" rows="2" formControlName="notes"></textarea>
+        </label>
+      </form>
+
+      <div class="drawer__foot">
+        <button type="button" class="btn btn--ghost" (click)="closeResult()">Annuler</button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="saving()" (click)="submitResult()">
+          {{ saving() ? 'Enregistrement…' : 'Consigner le résultat' }}
+        </button>
+      </div>
+    </aside>
+  }
+</section>

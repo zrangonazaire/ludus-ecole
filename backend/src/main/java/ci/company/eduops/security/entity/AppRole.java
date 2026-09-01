@@ -36,6 +36,10 @@ public class AppRole {
     @Column(name = "system_role", nullable = false)
     private boolean systemRole;
 
+    /** NULL for built-in profiles; tenant id for a school-created profile. */
+    @Column(name = "school_id")
+    private UUID schoolId;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "app_role_permission",
             joinColumns = @JoinColumn(name = "role_id"),
@@ -80,6 +84,14 @@ public class AppRole {
 
     public void setSystemRole(boolean systemRole) {
         this.systemRole = systemRole;
+    }
+
+    public UUID getSchoolId() {
+        return schoolId;
+    }
+
+    public void setSchoolId(UUID schoolId) {
+        this.schoolId = schoolId;
     }
 
     public Set<AppPermission> getPermissions() {

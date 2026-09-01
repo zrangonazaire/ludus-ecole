@@ -1,0 +1,347 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Demandes des familles</h1>
+      <p class="page__meta">
+        Une file unique pour répondre, préparer les documents et rappeler les familles.
+      </p>
+    </div>
+    @if (canManage()) {
+      <div class="page__actions">
+        <button type="button" class="btn btn--primary" (click)="openCreate()">
+          <span aria-hidden="true">+</span> Enregistrer une demande
+        </button>
+      </div>
+    }
+  </header>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des demandes…" />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    @if (board(); as b) {
+    <section class="stats" aria-label="État de la file">
+      <button type="button" class="stat" [class.stat--selected]="statusFilter() === 'OPEN'"
+              (click)="filterStatus('OPEN')">
+        <span class="stat__label">À traiter</span>
+        <strong class="stat__value numeric">
+          {{ b.newCount + b.inProgressCount + b.waitingFamilyCount + b.readyCount }}
+        </strong>
+        <span class="stat__note">demandes ouvertes</span>
+      </button>
+      <button type="button" class="stat stat--new"
+              [class.stat--selected]="statusFilter() === 'NEW'" (click)="filterStatus('NEW')">
+        <span class="stat__label">Nouvelles</span>
+        <strong class="stat__value numeric">{{ b.newCount }}</strong>
+        <span class="stat__note">à attribuer</span>
+      </button>
+      <button type="button" class="stat stat--progress"
+              [class.stat--selected]="statusFilter() === 'IN_PROGRESS'"
+              (click)="filterStatus('IN_PROGRESS')">
+        <span class="stat__label">En traitement</span>
+        <strong class="stat__value numeric">{{ b.inProgressCount }}</strong>
+        <span class="stat__note">prises en charge</span>
+      </button>
+      <button type="button" class="stat stat--ready"
+              [class.stat--selected]="statusFilter() === 'READY'" (click)="filterStatus('READY')">
+        <span class="stat__label">Prêtes</span>
+        <strong class="stat__value numeric">{{ b.readyCount }}</strong>
+        <span class="stat__note">à remettre</span>
+      </button>
+      <button type="button" class="stat stat--overdue" (click)="filterStatus('OPEN')">
+        <span class="stat__label">En retard</span>
+        <strong class="stat__value numeric">{{ b.overdueCount }}</strong>
+        <span class="stat__note">délai dépassé</span>
+      </button>
+    </section>
+
+    @if (b.overdueCount > 0) {
+      <section class="warning-block" role="status">
+        <span class="warning-block__icon" aria-hidden="true">!</span>
+        <div>
+          <strong>{{ b.overdueCount }} demande(s) ont dépassé leur délai</strong>
+          <p>Les plus anciennes et les urgentes apparaissent en tête de file.</p>
+        </div>
+      </section>
+    }
+
+    <section class="toolbar" aria-label="Filtres">
+      <label class="search-field">
+        <span class="search-field__icon" aria-hidden="true">⌕</span>
+        <span class="visually-hidden">Rechercher une demande</span>
+        <input type="search" class="input" [value]="search()"
+               placeholder="Référence, élève, famille ou objet…"
+               (change)="applySearch($any($event.target).value)"
+               (keyup.enter)="applySearch($any($event.target).value)">
+      </label>
+
+      <select class="input toolbar__select" [value]="statusFilter()"
+              aria-label="Filtrer par statut"
+              (change)="filterStatus($any($event.target).value)">
+        <option value="">Tous les statuts</option>
+        <option value="OPEN">Toutes les demandes ouvertes</option>
+        @for (status of statuses; track status.code) {
+          <option [value]="status.code">{{ status.label }}</option>
+        }
+      </select>
+
+      <select class="input toolbar__select" [value]="typeFilter()"
+              aria-label="Filtrer par type"
+              (change)="filterType($any($event.target).value)">
+        <option value="">Tous les types</option>
+        @for (type of types; track type.code) {
+          <option [value]="type.code">{{ type.label }}</option>
+        }
+      </select>
+
+      @if (hasFilters()) {
+        <button type="button" class="btn btn--ghost btn--sm" (click)="resetFilters()">
+          Réinitialiser
+        </button>
+      }
+    </section>
+
+    <section class="queue" aria-labelledby="queue-title">
+      <header class="queue__head">
+        <div>
+          <h2 id="queue-title">File de traitement</h2>
+          <p>{{ b.requests.length }} demande(s) affichée(s)</p>
+        </div>
+      </header>
+
+      <div class="request-list">
+        @for (request of visible(); track request.id) {
+          <article class="request-card" [class.request-card--overdue]="request.overdue">
+            <div class="request-card__priority"
+                 [attr.data-tone]="priorityTone(request.priority)" aria-hidden="true"></div>
+
+            <div class="request-card__main">
+              <div class="request-card__eyebrow">
+                <span class="status" [attr.data-tone]="statusTone(request.status)">
+                  {{ request.statusLabel }}
+                </span>
+                <span class="priority" [attr.data-tone]="priorityTone(request.priority)">
+                  {{ request.priorityLabel }}
+                </span>
+                <span class="request-card__reference numeric">{{ request.reference }}</span>
+              </div>
+              <h3>{{ request.subject }}</h3>
+              <p class="request-card__type">{{ request.typeLabel }}</p>
+              <div class="request-card__people">
+                <span><strong>{{ request.studentName }}</strong> · {{ request.studentNumber }}</span>
+                @if (request.classroomName) { <span>{{ request.classroomName }}</span> }
+                <span>Demandée par {{ request.guardianName }}</span>
+              </div>
+            </div>
+
+            <div class="request-card__timing">
+              <span [class.request-card__late]="request.overdue">{{ dueLabel(request) }}</span>
+              <small>Reçue le {{ request.submittedAt | date:'dd/MM à HH:mm' }}</small>
+              <small>{{ request.channelLabel }}</small>
+            </div>
+
+            <div class="request-card__owner">
+              <span>{{ request.assignedTo || 'Non attribuée' }}</span>
+              <button type="button" class="btn btn--secondary btn--sm" (click)="review(request)">
+                {{ canManage() ? 'Traiter' : 'Consulter' }}
+              </button>
+            </div>
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <span class="empty-state__icon" aria-hidden="true">✓</span>
+            <h3>Aucune demande dans cette vue</h3>
+            <p>
+              {{ hasFilters()
+                ? 'Modifiez les filtres pour retrouver les autres demandes.'
+                : 'La file est vide : aucune famille n’attend de réponse.' }}
+            </p>
+            @if (hasFilters()) {
+              <button type="button" class="btn btn--secondary" (click)="resetFilters()">
+                Voir les demandes ouvertes
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </section>
+    }
+  }
+
+  @if (creating()) {
+    <div class="drawer-backdrop" (click)="closeCreate()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="create-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="create-title">Enregistrer une demande</h2>
+          <p class="drawer__meta">Pour une demande reçue au téléphone ou à l'accueil.</p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeCreate()">×</button>
+      </header>
+
+      <form class="drawer__body" [formGroup]="createForm" (ngSubmit)="submitCreate()">
+        <label class="field">
+          <span class="field__label field__label--required">Élève concerné</span>
+          <select class="input" formControlName="studentId">
+            <option value="">Choisir un élève…</option>
+            @for (student of studentList(); track student.id) {
+              <option [value]="student.id">
+                {{ student.fullName }} — {{ student.studentNumber }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label field__label--required">Demandeur</span>
+            <input class="input" formControlName="guardianName" placeholder="Nom du responsable">
+          </label>
+          <label class="field">
+            <span class="field__label">Téléphone</span>
+            <input class="input" formControlName="guardianPhone" type="tel">
+          </label>
+        </div>
+
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label field__label--required">Type</span>
+            <select class="input" formControlName="type">
+              @for (type of types; track type.code) {
+                <option [value]="type.code">{{ type.label }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label field__label--required">Canal</span>
+            <select class="input" formControlName="channel">
+              @for (channel of channels; track channel.code) {
+                <option [value]="channel.code">{{ channel.label }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label field__label--required">Objet</span>
+          <input class="input" formControlName="subject"
+                 placeholder="Ex. Certificat pour allocation familiale">
+        </label>
+
+        <label class="field">
+          <span class="field__label">Précisions</span>
+          <textarea class="input" rows="4" formControlName="description"></textarea>
+        </label>
+
+        <label class="field">
+          <span class="field__label field__label--required">Priorité</span>
+          <select class="input" formControlName="priority">
+            @for (priority of priorities; track priority.code) {
+              <option [value]="priority.code">{{ priority.label }}</option>
+            }
+          </select>
+          <span class="field__hint">Une urgence est attendue sous 24 heures.</span>
+        </label>
+      </form>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--ghost" (click)="closeCreate()">Annuler</button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="createForm.invalid || saving()" (click)="submitCreate()">
+          {{ saving() ? 'Enregistrement…' : 'Ajouter à la file' }}
+        </button>
+      </footer>
+    </aside>
+  }
+
+  @if (reviewing(); as request) {
+    <div class="drawer-backdrop" (click)="closeReview()"></div>
+    <aside class="drawer drawer--wide" role="dialog" aria-modal="true"
+           aria-labelledby="review-title">
+      <header class="drawer__head">
+        <div>
+          <span class="drawer__reference numeric">{{ request.reference }}</span>
+          <h2 class="drawer__title" id="review-title">{{ request.subject }}</h2>
+          <p class="drawer__meta">{{ request.typeLabel }} · {{ request.channelLabel }}</p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeReview()">×</button>
+      </header>
+
+      <div class="drawer__body">
+        <section class="request-detail">
+          <div class="detail-person">
+            <span class="detail-person__avatar" aria-hidden="true">
+              {{ request.studentName.charAt(0) }}
+            </span>
+            <div>
+              <strong>{{ request.studentName }}</strong>
+              <span>{{ request.studentNumber }} @if (request.classroomName) { · {{ request.classroomName }} }</span>
+            </div>
+          </div>
+
+          <dl class="detail-grid">
+            <div><dt>Demandeur</dt><dd>{{ request.guardianName }}</dd></div>
+            <div><dt>Téléphone</dt><dd>{{ request.guardianPhone || 'Non renseigné' }}</dd></div>
+            <div><dt>Reçue le</dt><dd>{{ request.submittedAt | date:'dd/MM/yyyy à HH:mm' }}</dd></div>
+            <div><dt>Échéance</dt><dd [class.detail-grid__late]="request.overdue">{{ dueLabel(request) }}</dd></div>
+          </dl>
+
+          @if (request.description) {
+            <div class="detail-description">
+              <h3>Précisions de la famille</h3>
+              <p>{{ request.description }}</p>
+            </div>
+          }
+        </section>
+
+        @if (canManage()) {
+          <form class="processing" [formGroup]="reviewForm" (ngSubmit)="saveReview()">
+            <h3>Traitement</h3>
+            <div class="grid2">
+              <label class="field">
+                <span class="field__label">Statut</span>
+                <select class="input" formControlName="status">
+                  @for (status of statuses; track status.code) {
+                    <option [value]="status.code">{{ status.label }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field">
+                <span class="field__label">Attribuée à</span>
+                <input class="input" formControlName="assignedTo"
+                       placeholder="Nom de l'agent">
+              </label>
+            </div>
+            <label class="field">
+              <span class="field__label">Note interne</span>
+              <textarea class="input" rows="4" formControlName="internalNote"
+                        placeholder="Pièce manquante, appel effectué, document préparé…"></textarea>
+              <span class="field__hint">Cette note reste interne à l'établissement.</span>
+            </label>
+          </form>
+        } @else if (request.internalNote) {
+          <div class="detail-description">
+            <h3>Note de traitement</h3>
+            <p>{{ request.internalNote }}</p>
+          </div>
+        }
+      </div>
+
+      <footer class="drawer__foot">
+        @if (request.status === 'READY') {
+          <a class="btn btn--secondary" routerLink="/student-files">Ouvrir les documents</a>
+        }
+        <button type="button" class="btn btn--ghost" (click)="closeReview()">Fermer</button>
+        @if (canManage()) {
+          <button type="button" class="btn btn--primary" [disabled]="saving()"
+                  (click)="saveReview()">
+            {{ saving() ? 'Enregistrement…' : 'Enregistrer le traitement' }}
+          </button>
+        }
+      </footer>
+    </aside>
+  }
+</div>

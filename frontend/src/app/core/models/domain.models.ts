@@ -91,8 +91,8 @@ export interface StudentDetail extends StudentSummary {
   phone?: string;
   addressLine1?: string;
   city?: string;
-  bloodGroup?: string;
-  medicalNotes?: string;
+  // Le groupe sanguin et les notes médicales ont rejoint la fiche de santé :
+  // ils ne se lisent plus avec le dossier administratif de l'élève.
   hasDisability: boolean;
   admissionDate?: string;
   previousSchool?: string;
@@ -185,26 +185,37 @@ export interface AttendanceRecord {
   studentName: string;
   photoUrl?: string;
   status: AttendanceStatus;
+  /** Libellé français de la marque, décidé par le serveur. */
+  statusLabel?: string;
   arrivalTime?: string;
+  departureTime?: string;
   minutesLate?: number;
   reason?: string;
   justified: boolean;
 }
 
 export interface AttendanceSheet {
+  /** Nul tant que la feuille n'a jamais été enregistrée. */
   id?: string;
   classroomId: string;
   classroomName: string;
+  levelName?: string;
   subjectId?: string;
   subjectName?: string;
+  teacherId?: string;
+  teacherName?: string;
   sessionDate: string;
   startTime?: string;
   endTime?: string;
   status: 'OPEN' | 'SUBMITTED' | 'VALIDATED' | 'LOCKED';
+  statusLabel?: string;
   expectedCount: number;
   presentCount: number;
   absentCount: number;
   lateCount: number;
+  submittedAt?: string;
+  /** Faux quand la feuille est verrouillée : lisible, plus modifiable. */
+  editable?: boolean;
   records: AttendanceRecord[];
 }
 
@@ -241,46 +252,15 @@ export interface Grade {
   comment?: string;
 }
 
-export interface SubjectAverageLine {
-  subjectId: string;
-  subjectName: string;
-  coefficient: number;
-  average?: number;
-  weightedAverage?: number;
-  classAverage?: number;
-  minScore?: number;
-  maxScore?: number;
-  rankInSubject?: number;
-  assessmentCount: number;
-  appreciation?: string;
-  teacherName?: string;
-}
+/**
+ * Le bulletin vit dans son propre modèle.
+ *
+ * <p>Il était défini ici et redéfini là-bas ; deux définitions du même document
+ * finissent toujours par diverger, et c'est le genre de divergence qui se voit
+ * le jour où un parent compare son papier à l'écran.</p>
+ */
+export type { ReportCard, ReportCardLine as SubjectAverageLine } from './report-card.models';
 
-export interface ReportCard {
-  id: string;
-  reference: string;
-  verificationCode: string;
-  studentId: string;
-  studentName: string;
-  studentNumber: string;
-  classroomName: string;
-  academicYearCode: string;
-  termName: string;
-  generalAverage?: number;
-  classAverage?: number;
-  classMinAverage?: number;
-  classMaxAverage?: number;
-  rankInClass?: number;
-  classSize?: number;
-  totalCoefficient?: number;
-  absenceCount: number;
-  latenessCount: number;
-  generalRemark?: string;
-  councilDecision?: string;
-  status: 'DRAFT' | 'GENERATED' | 'VALIDATED' | 'PUBLISHED' | 'ARCHIVED';
-  publishedAt?: string;
-  lines: SubjectAverageLine[];
-}
 
 /* --------------------------------------------------------------- finance */
 
