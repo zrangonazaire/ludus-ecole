@@ -85,12 +85,10 @@ public class Student extends AuditableEntity {
     @Column(name = "city", length = 120)
     private String city;
 
-    @Column(name = "blood_group", length = 10)
-    private String bloodGroup;
-
-    @Column(name = "medical_notes")
-    private String medicalNotes;
-
+    // Le groupe sanguin et les notes medicales vivaient ici, declares mais
+    // jamais lus. V37 les a deplaces dans StudentHealthRecord, ou leur lecture
+    // peut etre accordee separement : la fiche de l'eleve est ouverte a tout le
+    // secretariat, son dossier medical ne doit pas l'etre.
     @Column(name = "has_disability", nullable = false)
     private boolean hasDisability;
 

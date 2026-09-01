@@ -37,8 +37,17 @@
         {{ submitting() ? 'Connexion...' : 'Se connecter' }}
       </button>
 
-      <a class="login__forgot" href="#" (click)="$event.preventDefault()">Mot de passe oublie ?</a>
+      <a class="login__forgot" href="#" (click)="$event.preventDefault()">Mot de passe oublié ?</a>
     </form>
+
+    <!--
+      Sans ce lien, quelqu'un qui arrive directement sur la connexion n'a aucun
+      moyen de créer un compte : l'écran existait, mais rien n'y menait.
+    -->
+    <p class="login__switch">
+      Pas encore d'établissement sur EduOps ?
+      <a routerLink="/signup">Créer mon espace</a>
+    </p>
 
     @if (demoMode) {
       <div class="login__demo">

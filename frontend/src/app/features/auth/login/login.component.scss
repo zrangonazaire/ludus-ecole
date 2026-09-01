@@ -50,6 +50,21 @@
   color: var(--text-muted);
 }
 
+/* La porte vers la création de compte : discrète, mais toujours présente. */
+.login__switch {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-light);
+
+  a {
+    font-weight: 600;
+    color: var(--brand);
+  }
+}
+
 .login__demo {
   padding-top: var(--space-5);
   border-top: 1px solid var(--border);

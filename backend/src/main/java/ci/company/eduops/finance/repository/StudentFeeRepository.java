@@ -49,6 +49,18 @@ public interface StudentFeeRepository extends JpaRepository<StudentFee, UUID> {
     List<StudentFee> findOutstandingOldestFirst(@Param("studentId") UUID studentId,
                                                 @Param("academicYearId") UUID academicYearId);
 
+    /** All balances of a year, with the relations required by the collection board. */
+    @Query("""
+           SELECT f FROM StudentFee f
+           JOIN FETCH f.student s
+           JOIN FETCH f.enrollment e
+           JOIN FETCH e.classroom c
+           WHERE f.academicYear.id = :academicYearId
+             AND f.status IN ('DUE','PARTIALLY_PAID','OVERDUE')
+           ORDER BY f.dueDate ASC, f.sequence ASC
+           """)
+    List<StudentFee> findAllOutstandingForYear(@Param("academicYearId") UUID academicYearId);
+
     /** Locks the lines being paid so two cashiers cannot over-allocate. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT f FROM StudentFee f WHERE f.id IN :ids")

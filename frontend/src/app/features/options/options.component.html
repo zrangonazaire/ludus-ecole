@@ -1,0 +1,634 @@
+<div class="page">
+
+  <!-- L'aide de la configuration, appliquée telle quelle : une carte au premier
+       passage sur l'onglet, un bouton « ? Aide » pour la revoir ensuite. -->
+  <eduops-step-coachmark
+    flow="options"
+    [stepKey]="tab()"
+    [stepNumber]="helpCopy().step"
+    [totalSteps]="totalSteps"
+    eyebrow="Conseil pour cet onglet"
+    [title]="helpCopy().title"
+    [description]="helpCopy().description"
+    [points]="helpCopy().points"
+    [ctaLabel]="helpCopy().ctaLabel" />
+
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Options et langues</h1>
+      <p class="page__meta numeric">
+        @if (overview(); as o) {
+          {{ o.activeOptionCount }} option(s) · {{ o.offeringCount }} ouverture(s) de niveau
+          · {{ o.confirmedCount }} place(s) confirmée(s) sur {{ o.totalCapacity }}
+          @if (o.waitlistedCount > 0) {
+            · {{ o.waitlistedCount }} en attente
+          }
+        }
+      </p>
+    </div>
+    <div class="page__actions">
+      @if (tab() === 'VOEUX') {
+        <button type="button" class="btn btn--primary" (click)="openAssign()">
+          <span aria-hidden="true">+</span> Inscrire un élève
+        </button>
+      } @else {
+        <button type="button" class="btn btn--primary" (click)="openForm()">
+          <span aria-hidden="true">+</span> Nouvelle option
+        </button>
+      }
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'CATALOGUE'"
+            [attr.aria-selected]="tab() === 'CATALOGUE'"
+            (click)="changeTab('CATALOGUE')">
+      Catalogue
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'NIVEAUX'"
+            [attr.aria-selected]="tab() === 'NIVEAUX'"
+            (click)="changeTab('NIVEAUX')">
+      Ouverture par niveau
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'VOEUX'"
+            [attr.aria-selected]="tab() === 'VOEUX'"
+            (click)="changeTab('VOEUX')">
+      Vœux des élèves
+      @if (overview(); as o) {
+        @if (o.waitlistedCount > 0) {
+          <span class="tabs__badge numeric">{{ o.waitlistedCount }}</span>
+        }
+      }
+    </button>
+  </nav>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des options..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+
+    @if (fullOfferings().length > 0) {
+      <section class="alert-block" role="status">
+        <div class="alert-block__head">
+          <span class="alert-block__icon" aria-hidden="true">!</span>
+          <div>
+            <p class="alert-block__title">
+              {{ fullOfferings().length }} ouverture(s) au complet
+            </p>
+            <p class="alert-block__text">
+              Les vœux qui arrivent sur ces groupes passent en liste d'attente.
+              Augmenter la capacité, ou ouvrir un second groupe, libère la file.
+            </p>
+          </div>
+        </div>
+        <ul class="pending">
+          @for (offering of fullOfferings(); track offering.id) {
+            <li class="pending__item">
+              <span class="pending__name">
+                {{ optionOf(offering.id)?.name }} — {{ offering.levelName }}
+              </span>
+              <span class="pending__cycle numeric">
+                {{ offering.confirmedCount }}/{{ offering.capacity }} places ·
+                {{ offering.waitlistedCount }} en attente
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <!-- ═══════════════ Catalogue ═══════════════ -->
+    @if (tab() === 'CATALOGUE') {
+      <p class="lead">
+        Une option existe une seule fois pour tout l'établissement. Ce qui change
+        d'un niveau à l'autre — capacité, horaire, période de choix — se règle dans
+        <button type="button" class="linklike" (click)="changeTab('NIVEAUX')">
+          Ouverture par niveau</button>.
+      </p>
+
+      <section class="grid grid--3">
+        @for (option of options(); track option.id) {
+          <article class="option card"
+                   [style.--option-color]="option.colorHex || 'var(--brand)'">
+            <header class="option__head">
+              <div class="option__title">
+                <h2 class="option__name">{{ option.name }}</h2>
+                <p class="option__meta numeric">
+                  {{ option.code }} · {{ option.categoryLabel }}
+                  @if (option.languageCode) { · {{ option.languageCode }} }
+                </p>
+              </div>
+              @if (option.waitlistedCount > 0) {
+                <span class="pill pill--warn numeric">
+                  {{ option.waitlistedCount }} en attente
+                </span>
+              }
+            </header>
+
+            <div class="option__body">
+              @if (option.description) {
+                <p class="option__note">{{ option.description }}</p>
+              }
+              @if (option.levelCount > 0) {
+                <p class="option__usage numeric">
+                  Ouverte sur <strong>{{ option.levelCount }}</strong> niveau(x) ·
+                  <strong>{{ option.confirmedCount }}</strong> / {{ option.totalCapacity }}
+                  place(s) prise(s)
+                </p>
+              } @else {
+                <p class="option__usage option__usage--none">
+                  Ouverte sur aucun niveau : personne ne peut la choisir.
+                </p>
+              }
+            </div>
+
+            <footer class="option__footer">
+              <button type="button" class="btn btn--ghost btn--sm"
+                      (click)="openForm(option)">Modifier</button>
+              <button type="button" class="btn btn--ghost btn--sm"
+                      [disabled]="saving() || option.confirmedCount > 0
+                        || option.requestedCount > 0 || option.waitlistedCount > 0"
+                      [attr.title]="option.confirmedCount > 0
+                        ? 'Des élèves l\'ont choisie' : null"
+                      (click)="archive(option)">Archiver</button>
+              <button type="button" class="btn btn--secondary btn--sm"
+                      (click)="openOfferings(option)">Niveaux</button>
+            </footer>
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <p class="empty-state__title">Aucune option déclarée.</p>
+            <p class="empty-state__text">
+              Commencez par les langues vivantes : ce sont les seuls choix que tous
+              les élèves doivent faire. Le reste — latin, musique, informatique —
+              vient ensuite.
+            </p>
+            <button type="button" class="btn btn--primary" (click)="openForm()">
+              Déclarer une option
+            </button>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- ═══════════════ Ouverture par niveau ═══════════════ -->
+    @if (tab() === 'NIVEAUX') {
+      <p class="lead">
+        Chaque case dit ce qui est ouvert, avec les places prises sur les places
+        offertes. Une case vide veut dire que l'option n'est pas proposée à ce
+        niveau : aucun élève ne peut la demander.
+      </p>
+
+      <div class="table-wrapper card">
+        <table class="table matrix">
+          <caption class="visually-hidden">Options ouvertes par niveau</caption>
+          <thead>
+            <tr>
+              <th scope="col">Option</th>
+              @for (level of levels(); track level.id) {
+                <th scope="col" class="numeric">{{ level.name }}</th>
+              }
+              <th scope="col" class="cell-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (option of options(); track option.id) {
+              <tr>
+                <th scope="row" class="matrix__option">
+                  <span class="matrix__swatch"
+                        [style.background]="option.colorHex || 'var(--brand)'"
+                        aria-hidden="true"></span>
+                  <span>
+                    <span class="matrix__name">{{ option.name }}</span>
+                    <span class="matrix__code numeric">{{ option.code }}</span>
+                  </span>
+                </th>
+                @for (level of levels(); track level.id) {
+                  <td class="numeric matrix__cell">
+                    @if (offeringAt(option, level.id); as offering) {
+                      <span class="matrix__seats"
+                            [class.matrix__seats--full]="offering.availableSeats === 0">
+                        {{ offering.confirmedCount }}/{{ offering.capacity }}
+                      </span>
+                      <span class="matrix__bar" aria-hidden="true">
+                        <span class="matrix__fill" [style.width.%]="fillOf(offering)"></span>
+                      </span>
+                      @if (offering.waitlistedCount > 0) {
+                        <span class="matrix__wait">{{ offering.waitlistedCount }} en attente</span>
+                      }
+                    } @else {
+                      <span class="matrix__closed" aria-label="Non proposée">—</span>
+                    }
+                  </td>
+                }
+                <td class="cell-actions">
+                  <button type="button" class="btn btn--secondary btn--sm"
+                          (click)="openOfferings(option)">Régler</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td [attr.colspan]="levels().length + 2">
+                  <div class="empty-state">
+                    <p class="empty-state__title">Aucune option au catalogue.</p>
+                    <p class="empty-state__text">
+                      Déclarez d'abord une option, puis revenez l'ouvrir sur les
+                      niveaux concernés.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- ═══════════════ Vœux des élèves ═══════════════ -->
+    @if (tab() === 'VOEUX') {
+      <section class="filters">
+        <label class="filters__select">
+          <span class="visually-hidden">Filtrer par niveau</span>
+          <select class="input" [value]="levelFilter()"
+                  (change)="changeLevelFilter($any($event.target).value)">
+            <option value="">Tous les niveaux</option>
+            @for (level of levels(); track level.id) {
+              <option [value]="level.id">{{ level.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="filters__select">
+          <span class="visually-hidden">Filtrer par état</span>
+          <select class="input" [value]="statusFilter()"
+                  (change)="changeStatusFilter($any($event.target).value)">
+            <option value="">Tous les états</option>
+            @for (state of states; track state.code) {
+              <option [value]="state.code">{{ state.label }}</option>
+            }
+          </select>
+        </label>
+        <label class="filters__search">
+          <span class="visually-hidden">Rechercher un élève</span>
+          <input type="search" class="input" placeholder="Nom ou matricule"
+                 [value]="search()"
+                 (change)="changeSearch($any($event.target).value)" />
+        </label>
+      </section>
+
+      <div class="table-wrapper card">
+        <table class="table">
+          <caption class="visually-hidden">Vœux d'options des élèves</caption>
+          <thead>
+            <tr>
+              <th scope="col">Élève</th>
+              <th scope="col">Option</th>
+              <th scope="col">Niveau</th>
+              <th scope="col" class="numeric">Priorité</th>
+              <th scope="col">État</th>
+              <th scope="col" class="cell-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (choice of choices(); track choice.id) {
+              <tr [class.row--wait]="choice.status === 'WAITLISTED'">
+                <td>
+                  <span class="entry__name">{{ choice.studentName }}</span>
+                  <span class="entry__number numeric">
+                    {{ choice.studentNumber }} · {{ choice.classroomName }}
+                  </span>
+                </td>
+                <td>
+                  <span class="chip-option"
+                        [style.--option-color]="choice.optionColor || 'var(--brand)'">
+                    {{ choice.optionName }}
+                  </span>
+                </td>
+                <td>{{ choice.levelName }}</td>
+                <td class="numeric">{{ choice.priority }}</td>
+                <td>
+                  <span class="state" [attr.data-tone]="stateOf(choice.status).tone"
+                        [attr.title]="stateOf(choice.status).hint">
+                    {{ choice.statusLabel }}
+                  </span>
+                </td>
+                <td class="cell-actions">
+                  @if (choice.status !== 'CONFIRMED') {
+                    <button type="button" class="btn btn--secondary btn--sm"
+                            [disabled]="saving()"
+                            (click)="changeStatus(choice, 'CONFIRMED')">Confirmer</button>
+                  }
+                  @if (choice.status === 'REQUESTED') {
+                    <button type="button" class="btn btn--ghost btn--sm"
+                            [disabled]="saving()"
+                            (click)="changeStatus(choice, 'WAITLISTED')">Mettre en attente</button>
+                  }
+                  @if (choice.status !== 'CANCELLED') {
+                    <button type="button" class="btn btn--ghost btn--sm"
+                            [disabled]="saving()"
+                            (click)="changeStatus(choice, 'CANCELLED')">Retirer</button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state">
+                    <p class="empty-state__title">Aucun vœu sur ce filtre.</p>
+                    <p class="empty-state__text">
+                      Les vœux arrivent du portail des familles, ou s'inscrivent ici
+                      pendant la campagne de choix.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  <!-- ═══════════════ Formulaire d'option ═══════════════ -->
+  @if (formOpen()) {
+    <div class="drawer-backdrop" (click)="closeForm()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="option-form-title">
+      <header class="drawer__head">
+        <h2 class="drawer__title" id="option-form-title">
+          {{ editing() ? 'Modifier l\'option' : 'Nouvelle option' }}
+        </h2>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeForm()">×</button>
+      </header>
+
+      <form class="drawer__body" [formGroup]="optionForm" (ngSubmit)="submitForm()">
+        <div class="grid2">
+          <div class="field">
+            <label class="field__label field__label--required" for="option-code">Code</label>
+            <input id="option-code" class="input" formControlName="code"
+                   placeholder="ESP-LV2" />
+          </div>
+          <div class="field">
+            <label class="field__label field__label--required" for="option-cat">Famille</label>
+            <select id="option-cat" class="input" formControlName="category">
+              @for (category of categories; track category.code) {
+                <option [value]="category.code">{{ category.label }}</option>
+              }
+            </select>
+            <span class="field__hint">
+              {{ categoryHint(optionForm.controls.category.value) }}
+            </span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="option-name">Intitulé</label>
+          <input id="option-name" class="input" formControlName="name"
+                 placeholder="Espagnol LV2" />
+        </div>
+
+        @if (optionForm.controls.category.value === 'LANGUAGE') {
+          <div class="field">
+            <label class="field__label" for="option-lang">Code de la langue</label>
+            <input id="option-lang" class="input" formControlName="languageCode"
+                   placeholder="es" />
+            <span class="field__hint">
+              Code ISO à deux lettres : es, de, en. C'est lui qui distinguera une LV1
+              d'une LV2 dans les bulletins.
+            </span>
+          </div>
+        }
+
+        <div class="field">
+          <label class="field__label" for="option-desc">Description</label>
+          <textarea id="option-desc" class="textarea" rows="2"
+                    formControlName="description"
+                    placeholder="Deuxième langue vivante, à partir de la 4e."></textarea>
+        </div>
+
+        <div class="field">
+          <span class="field__label">Couleur</span>
+          <div class="swatches">
+            @for (color of colors; track color) {
+              <button type="button" class="swatch"
+                      [class.swatch--on]="optionForm.controls.colorHex.value === color"
+                      [style.background]="color"
+                      [attr.aria-label]="'Couleur ' + color"
+                      (click)="pickColor(color)"></button>
+            }
+          </div>
+          <span class="field__hint">
+            Elle rend l'option reconnaissable dans l'emploi du temps et les listes.
+          </span>
+        </div>
+      </form>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeForm()">Annuler</button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="optionForm.invalid || saving()"
+                (click)="submitForm()">
+          {{ editing() ? 'Enregistrer' : 'Créer' }}
+        </button>
+      </footer>
+    </aside>
+  }
+
+  <!-- ═══════════════ Ouverture sur les niveaux ═══════════════ -->
+  @if (offeringFor(); as option) {
+    <div class="drawer-backdrop" (click)="closeOfferings()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="offering-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="offering-title">{{ option.name }}</h2>
+          <p class="drawer__meta numeric">{{ option.code }} · {{ option.categoryLabel }}</p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeOfferings()">×</button>
+      </header>
+
+      <form class="drawer__body" [formGroup]="offeringForm" (ngSubmit)="submitOfferings()">
+        <p class="hint-block">
+          Cocher un niveau ouvre l'option avec la capacité et l'horaire ci-dessous.
+          C'est un remplacement : un niveau décoché ferme son offre.
+        </p>
+
+        <div class="field">
+          <span class="field__label field__label--required">Niveaux</span>
+          <ul class="levels">
+            @for (level of levels(); track level.id) {
+              <li class="levels__item">
+                <label class="levels__check">
+                  <input type="checkbox" [checked]="isSelected(level.id)"
+                         (change)="toggleLevel(level.id)" />
+                  <span>{{ level.name }}</span>
+                </label>
+                @if (offeringAt(option, level.id); as offering) {
+                  <span class="levels__state numeric">
+                    {{ offering.confirmedCount }}/{{ offering.capacity }} places
+                    @if (offering.waitlistedCount > 0) {
+                      · {{ offering.waitlistedCount }} en attente
+                    }
+                  </span>
+                } @else {
+                  <span class="levels__state levels__state--none">Non ouverte</span>
+                }
+              </li>
+            }
+          </ul>
+        </div>
+
+        @if (closingLevels().length > 0) {
+          <p class="hint-block hint-block--warn">
+            {{ closingLevels().length }} niveau(x) seront fermés à l'enregistrement.
+            Un niveau portant des vœux ne peut pas être fermé : retirez d'abord les
+            élèves concernés.
+          </p>
+        }
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field__label field__label--required" for="off-capacity">
+              Places par niveau
+            </label>
+            <input id="off-capacity" type="number" class="input" formControlName="capacity"
+                   min="1" max="500" step="1" />
+            <span class="field__hint">
+              Au-delà, un vœu passe en liste d'attente plutôt que d'être refusé.
+            </span>
+          </div>
+          <div class="field">
+            <label class="field__label field__label--required" for="off-hours">
+              Heures par semaine
+            </label>
+            <input id="off-hours" type="number" class="input" formControlName="weeklyHours"
+                   min="0.25" step="0.25" />
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field__label" for="off-start">Ouverture des choix</label>
+            <input id="off-start" type="date" class="input" formControlName="choiceStartDate" />
+          </div>
+          <div class="field">
+            <label class="field__label" for="off-end">Clôture des choix</label>
+            <input id="off-end" type="date" class="input" formControlName="choiceEndDate" />
+          </div>
+        </div>
+      </form>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeOfferings()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="offeringForm.invalid || saving()"
+                (click)="submitOfferings()">
+          Enregistrer
+        </button>
+      </footer>
+    </aside>
+  }
+
+  <!-- ═══════════════ Inscrire un élève ═══════════════ -->
+  @if (assignOpen()) {
+    <div class="drawer-backdrop" (click)="closeAssign()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="assign-title">
+      <header class="drawer__head">
+        <h2 class="drawer__title" id="assign-title">Inscrire un élève à une option</h2>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="closeAssign()">×</button>
+      </header>
+
+      <form class="drawer__body" [formGroup]="assignForm" (ngSubmit)="submitAssign()">
+        <div class="field">
+          <label class="field__label field__label--required" for="assign-offering">
+            Option et niveau
+          </label>
+          <select id="assign-offering" class="input" formControlName="offeringId"
+                  (change)="onOfferingChosen($any($event.target).value)">
+            <option value="">Choisir…</option>
+            @for (offering of allOfferings(); track offering.id) {
+              <option [value]="offering.id">
+                {{ optionOf(offering.id)?.name }} — {{ offering.levelName }}
+                ({{ offering.availableSeats }} place(s))
+              </option>
+            }
+          </select>
+          @if (assignTarget(); as target) {
+            @if (target.availableSeats === 0) {
+              <span class="field__hint field__hint--warn">
+                Ce groupe est complet : le vœu partira en liste d'attente.
+              </span>
+            } @else {
+              <span class="field__hint">
+                {{ target.availableSeats }} place(s) restante(s) sur {{ target.capacity }}.
+                @if (target.choiceEndDate) {
+                  Choix ouverts jusqu'au {{ formatDate(target.choiceEndDate) }}.
+                }
+              </span>
+            }
+          }
+        </div>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="assign-student">Élève</label>
+          <select id="assign-student" class="input" formControlName="studentId">
+            <option value="">Choisir…</option>
+            @for (student of candidates(); track student.id) {
+              <option [value]="student.id">
+                {{ student.fullName }} — {{ student.classroomName }}
+              </option>
+            }
+          </select>
+          <span class="field__hint">
+            Seuls les élèves du niveau où l'option est ouverte apparaissent : ailleurs,
+            elle ne tomberait sur aucune heure de leur emploi du temps.
+          </span>
+        </div>
+
+        <div class="field">
+          <label class="field__label field__label--required" for="assign-priority">
+            Priorité du vœu
+          </label>
+          <input id="assign-priority" type="number" class="input" formControlName="priority"
+                 min="1" max="10" step="1" />
+          <span class="field__hint">
+            1 pour le premier choix de l'élève. C'est ce classement qui départage
+            quand les places manquent.
+          </span>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="assign-notes">Observation</label>
+          <textarea id="assign-notes" class="textarea" rows="2"
+                    formControlName="notes"></textarea>
+        </div>
+
+        <label class="switch">
+          <input type="checkbox" formControlName="confirmImmediately" />
+          <span>
+            Confirmer la place tout de suite
+            <small>Décochez pour enregistrer le vœu sans trancher. Si le groupe est
+              complet, la confirmation devient automatiquement une mise en attente.</small>
+          </span>
+        </label>
+      </form>
+
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeAssign()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="assignForm.invalid || saving()"
+                (click)="submitAssign()">
+          Inscrire
+        </button>
+      </footer>
+    </aside>
+  }
+</div>

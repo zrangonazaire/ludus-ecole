@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,6 +16,28 @@ import java.util.UUID;
 public interface GradeRepository extends JpaRepository<Grade, UUID> {
 
     List<Grade> findByAssessmentId(UUID assessmentId);
+
+    /**
+     * Marking progress and class average for a batch of assessments.
+     *
+     * <p>One query for the whole board. Loading each sheet to count its lines
+     * would be a query per assessment, and the board of a busy term holds
+     * several dozen.</p>
+     *
+     * <p>A row counts as marked when it carries a score, an absence or an
+     * exemption. A saved row with none of the three is a pupil whose paper has
+     * not been looked at yet — which is exactly what the board must show.</p>
+     */
+    @Query("""
+           SELECT g.assessment.id,
+                  SUM(CASE WHEN g.score IS NOT NULL OR g.absent = true OR g.exempted = true
+                           THEN 1 ELSE 0 END),
+                  AVG(g.normalizedScore)
+           FROM Grade g
+           WHERE g.assessment.id IN :assessmentIds
+           GROUP BY g.assessment.id
+           """)
+    List<Object[]> summarise(@Param("assessmentIds") Collection<UUID> assessmentIds);
 
     Optional<Grade> findByAssessmentIdAndStudentId(UUID assessmentId, UUID studentId);
 

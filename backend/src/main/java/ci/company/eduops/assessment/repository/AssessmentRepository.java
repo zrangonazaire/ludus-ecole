@@ -18,6 +18,30 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
 
     List<Assessment> findByClassroomIdAndTermId(UUID classroomId, UUID termId);
 
+    /**
+     * The board's one query: a term, optionally narrowed.
+     *
+     * <p>Cancelled papers stay out. They are not work in progress and listing
+     * them would put the only two counters that matter — corrections not
+     * finished, marks not validated — inside a longer list than they deserve.</p>
+     */
+    @Query("""
+           SELECT a FROM Assessment a
+           WHERE a.academicYear.id = :academicYearId
+             AND (:termId IS NULL OR a.term.id = :termId)
+             AND (:classroomId IS NULL OR a.classroom.id = :classroomId)
+             AND (:subjectId IS NULL OR a.subject.id = :subjectId)
+             AND (:status IS NULL OR a.status = :status)
+             AND (:includeCancelled = true OR a.status <> 'CANCELLED')
+           ORDER BY a.assessmentDate DESC, a.classroom.name ASC
+           """)
+    List<Assessment> search(@Param("academicYearId") UUID academicYearId,
+                            @Param("termId") UUID termId,
+                            @Param("classroomId") UUID classroomId,
+                            @Param("subjectId") UUID subjectId,
+                            @Param("status") AssessmentStatus status,
+                            @Param("includeCancelled") boolean includeCancelled);
+
     List<Assessment> findByClassroomIdAndSubjectIdAndTermId(UUID classroomId, UUID subjectId, UUID termId);
 
     /**

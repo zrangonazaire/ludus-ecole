@@ -1,10 +1,10 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable, delay, of, throwError } from 'rxjs';
 import { PageQuery, PageResponse } from '@core/models/common.models';
 import {
   AcademicYear, Assessment, AttendanceSheet, Classroom, DashboardData, Enrollment,
   EnrollmentCheckResult, FinancialSummary, GlobalSearchResult, Grade, Payment,
-  ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term
+  StudentDetail, StudentSummary, Subject, Teacher, Term
 } from '@core/models/domain.models';
 import {
   ClassroomBulkCreatePayload, ClassroomCreatePayload, ClassroomUpdatePayload, LevelCapacity
@@ -21,9 +21,50 @@ import {
   Instalment, LevelFees
 } from '@core/models/fee.models';
 import {
+  Absence, AbsenceDigest, AbsenceQuery, AttendanceDay, JustifyPayload
+} from '@core/models/attendance.models';
+import { MOCK_ATTENDANCE } from './mock-attendance-store';
+import { MOCK_ASSESSMENTS } from './mock-assessment-store';
+import { MOCK_REPORT_CARDS } from './mock-report-card-store';
+import { MOCK_OPTIONS } from './mock-option-store';
+import { MOCK_TRANSFERS } from './mock-transfer-store';
+import { MOCK_HEALTH } from './mock-health-store';
+import { MOCK_FAMILY_REQUESTS } from './mock-family-request-store';
+import { AuthService } from '@core/auth/auth.service';
+import { PERMISSIONS } from '@core/models/auth.models';
+import {
+  ExaminationPayload, ExaminationResultPayload, HealthBoard, HealthCondition,
+  HealthConditionPayload, HealthRecord, HealthRecordPayload, InfirmaryVisit,
+  InfirmaryVisitPayload, MedicalExamination, Vaccination, VaccinationPayload
+} from '@core/models/health.models';
+import {
+  FamilyRequest, FamilyRequestBoard, FamilyRequestCreatePayload,
+  FamilyRequestQuery, FamilyRequestUpdatePayload
+} from '@core/models/family-request.models';
+import {
+  ClassChange, ClassChangePayload, Departure, DepartureDocumentsPayload,
+  DepartureRecordPayload, TransferBoard
+} from '@core/models/transfer.models';
+import {
+  OptionChoice, OptionChoiceAssignPayload, OptionChoiceQuery, OptionChoiceStatus,
+  OptionOfferingsSavePayload, OptionOverview, OptionUpsertPayload
+} from '@core/models/option.models';
+import {
+  ReportCard, ReportCardBatch, ReportCardGeneratePayload, ReportCardQuery,
+  ReportCardRemarkPayload
+} from '@core/models/report-card.models';
+import {
+  AssessmentBoard, AssessmentItem, AssessmentQuery, AssessmentStatus,
+  AssessmentUpsertPayload, GradeCorrectionPayload, GradeEntryPayload, GradeSheet
+} from '@core/models/assessment.models';
+import {
+  OutstandingBoard, OutstandingQuery, OutstandingStudent
+} from '@core/models/outstanding.models';
+import {
   ClassroomDataSource, DashboardDataSource, EnrollmentDataSource, FinanceDataSource,
   GradeDataSource, AttendanceDataSource, ReferenceDataSource, StudentDataSource, TeacherDataSource,
-  TimetableDataSource, CurriculumDataSource, FeeDataSource
+  TimetableDataSource, CurriculumDataSource, FeeDataSource, ReportCardDataSource,
+  OptionDataSource, TransferDataSource, HealthDataSource, FamilyRequestDataSource
 } from '../data-source';
 import {
   MOCK_ACADEMIC_YEAR, MOCK_CLASSROOMS, MOCK_DASHBOARD, MOCK_RECENT_ENROLLMENTS,
@@ -55,6 +96,15 @@ function matches(haystack: string[], term?: string): boolean {
   if (!term) return true;
   const needle = term.toLowerCase();
   return haystack.some((value) => value?.toLowerCase().includes(needle));
+}
+
+function dateFromToday(dayOffset: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + dayOffset);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 @Injectable()
@@ -349,73 +399,98 @@ export class MockTeacherDataSource implements TeacherDataSource {
   }
 }
 
+/**
+ * Attendance in demonstration mode, backed by a register that remembers.
+ *
+ * <p>The state lives in {@link MOCK_ATTENDANCE} rather than in this class: a
+ * sheet validated here has to still be validated when the follow-up tab asks,
+ * and an absence justified at the office has to leave the list. Answering each
+ * call from a fresh snapshot would produce a screen nobody can work with.</p>
+ */
 @Injectable()
 export class MockAttendanceDataSource implements AttendanceDataSource {
+  day(date: string): Observable<AttendanceDay> {
+    return of(MOCK_ATTENDANCE.day(date)).pipe(delay(LATENCY));
+  }
+
   openSheet(classroomId: string, date: string, subjectId?: string): Observable<AttendanceSheet> {
-    const classroom = MOCK_CLASSROOMS.find((c) => c.id === classroomId) ?? MOCK_CLASSROOMS[0];
-    const students = MOCK_STUDENTS.filter((s) => s.classroomId === classroom.id);
-    return of({
-      classroomId: classroom.id,
-      classroomName: classroom.name,
-      subjectId,
-      subjectName: MOCK_SUBJECTS.find((s) => s.id === subjectId)?.name,
-      sessionDate: date,
-      status: 'OPEN' as const,
-      expectedCount: students.length,
-      presentCount: students.length,
-      absentCount: 0,
-      lateCount: 0,
-      records: students.map((student) => ({
-        studentId: student.id,
-        studentNumber: student.studentNumber,
-        studentName: student.fullName,
-        status: 'PRESENT' as const,
-        justified: false
-      }))
-    }).pipe(delay(LATENCY));
+    const sheet = MOCK_ATTENDANCE.sheet(classroomId, date);
+    return of(subjectId
+      ? { ...sheet, subjectId, subjectName: MOCK_SUBJECTS.find((s) => s.id === subjectId)?.name }
+      : sheet).pipe(delay(LATENCY));
   }
 
   submitSheet(sheet: AttendanceSheet): Observable<AttendanceSheet> {
-    return of({ ...sheet, status: 'SUBMITTED' as const }).pipe(delay(350));
+    return of(MOCK_ATTENDANCE.submit(sheet)).pipe(delay(350));
+  }
+
+  absences(query: AbsenceQuery): Observable<AbsenceDigest> {
+    return of(MOCK_ATTENDANCE.absences(query)).pipe(delay(LATENCY));
+  }
+
+  justify(attendanceId: string, payload: JustifyPayload): Observable<Absence> {
+    return of(MOCK_ATTENDANCE.justify(attendanceId, payload)).pipe(delay(300));
+  }
+
+  remind(attendanceId: string): Observable<Absence> {
+    return of(MOCK_ATTENDANCE.remind(attendanceId)).pipe(delay(300));
   }
 }
 
+/**
+ * Assessments in demonstration mode, backed by a board that remembers.
+ *
+ * <p>The state lives in {@link MOCK_ASSESSMENTS}: a paper validated here has to
+ * leave the office's queue and stay out of it. Answering each call from a fresh
+ * snapshot would produce a workflow that never advances.</p>
+ */
 @Injectable()
 export class MockGradeDataSource implements GradeDataSource {
-  listAssessments(classroomId?: string): Observable<Assessment[]> {
-    const list = classroomId
-      ? MOCK_UPCOMING_ASSESSMENTS.filter((a) => a.classroomId === classroomId)
-      : MOCK_UPCOMING_ASSESSMENTS;
-    return of(list).pipe(delay(LATENCY));
+  board(query: AssessmentQuery): Observable<AssessmentBoard> {
+    return of(MOCK_ASSESSMENTS.board(query)).pipe(delay(LATENCY));
   }
 
-  getGrades(assessmentId: string): Observable<Grade[]> {
-    const assessment = MOCK_UPCOMING_ASSESSMENTS.find((a) => a.id === assessmentId);
-    const students = MOCK_STUDENTS
-      .filter((s) => s.classroomId === assessment?.classroomId)
-      .slice(0, 30);
-    return of(students.map((student) => ({
-      assessmentId,
-      studentId: student.id,
-      studentNumber: student.studentNumber,
-      studentName: student.fullName,
-      maxScore: assessment?.maxScore ?? 20,
-      absent: false,
-      status: 'DRAFT' as const
-    }))).pipe(delay(LATENCY));
+  createAssessment(payload: AssessmentUpsertPayload): Observable<AssessmentItem> {
+    return of(MOCK_ASSESSMENTS.create(payload)).pipe(delay(350));
   }
 
-  saveGrades(_assessmentId: string, grades: Grade[]): Observable<Grade[]> {
-    return of(grades).pipe(delay(300));
+  updateAssessment(id: string, payload: AssessmentUpsertPayload): Observable<AssessmentItem> {
+    return of(MOCK_ASSESSMENTS.update(id, payload)).pipe(delay(350));
   }
 
-  submitGrades(_assessmentId: string): Observable<void> {
-    return of(undefined).pipe(delay(300));
+  changeStatus(id: string, target: AssessmentStatus): Observable<AssessmentItem> {
+    return of(MOCK_ASSESSMENTS.changeStatus(id, target)).pipe(delay(300));
+  }
+
+  gradeSheet(assessmentId: string): Observable<GradeSheet> {
+    return of(MOCK_ASSESSMENTS.sheet(assessmentId)).pipe(delay(LATENCY));
+  }
+
+  saveGrades(assessmentId: string, entries: GradeEntryPayload[]): Observable<GradeSheet> {
+    return of(MOCK_ASSESSMENTS.saveGrades(assessmentId, entries)).pipe(delay(350));
+  }
+
+  submitGrades(assessmentId: string): Observable<GradeSheet> {
+    return of(MOCK_ASSESSMENTS.submit(assessmentId)).pipe(delay(350));
+  }
+
+  validateGrades(assessmentId: string): Observable<GradeSheet> {
+    return of(MOCK_ASSESSMENTS.validate(assessmentId)).pipe(delay(350));
+  }
+
+  publishGrades(assessmentId: string): Observable<GradeSheet> {
+    return of(MOCK_ASSESSMENTS.publish(assessmentId)).pipe(delay(350));
+  }
+
+  correctGrade(gradeId: string, payload: GradeCorrectionPayload): Observable<GradeSheet> {
+    return of(MOCK_ASSESSMENTS.correct(gradeId, payload)).pipe(delay(350));
   }
 }
 
 @Injectable()
 export class MockFinanceDataSource implements FinanceDataSource {
+  private readonly paymentsByOperation = new Map<string, Payment>();
+
   searchPayments(query: PageQuery): Observable<PageResponse<Payment>> {
     const filtered = MOCK_RECENT_PAYMENTS.filter((p) =>
       matches([p.studentName, p.studentNumber, p.paymentReference, p.receiptNumber ?? ''],
@@ -423,12 +498,100 @@ export class MockFinanceDataSource implements FinanceDataSource {
     return of(paginate(filtered, query)).pipe(delay(LATENCY));
   }
 
-  recordPayment(_payload: unknown): Observable<Payment> {
-    return of(MOCK_RECENT_PAYMENTS[0]).pipe(delay(450));
+  recordPayment(rawPayload: unknown): Observable<Payment> {
+    const payload = rawPayload as {
+      studentId: string;
+      amount: number;
+      paymentMethod: Payment['paymentMethod'];
+      paymentDate: string;
+      externalReference?: string;
+      payerName?: string;
+      operationId: string;
+    };
+    const replay = this.paymentsByOperation.get(payload.operationId);
+    if (replay) {
+      return of(replay).pipe(delay(250));
+    }
+
+    const student = MOCK_STUDENTS.find((item) => item.id === payload.studentId)
+      ?? MOCK_STUDENTS[0];
+    const sequence = MOCK_RECENT_PAYMENTS.length + 1;
+    const amount = Number(payload.amount);
+    const outstandingBefore = 200000;
+    const payment: Payment = {
+      id: crypto.randomUUID(),
+      paymentReference: `PAY-2026-${String(sequence).padStart(8, '0')}`,
+      studentId: student.id,
+      studentNumber: student.studentNumber,
+      studentName: student.fullName,
+      amount,
+      allocatedAmount: Math.min(amount, outstandingBefore),
+      unallocatedAmount: Math.max(0, amount - outstandingBefore),
+      currency: 'XOF',
+      paymentMethod: payload.paymentMethod,
+      paymentDate: payload.paymentDate,
+      status: 'VALIDATED',
+      externalReference: payload.externalReference,
+      payerName: payload.payerName,
+      receiptNumber: `REC-2026-${String(1234 + sequence).padStart(8, '0')}`,
+      outstandingAfterPayment: Math.max(0, outstandingBefore - amount),
+      allocations: []
+    };
+    this.paymentsByOperation.set(payload.operationId, payment);
+    MOCK_RECENT_PAYMENTS.unshift(payment);
+    return of(payment).pipe(delay(450));
   }
 
   getStudentSummary(studentId: string): Observable<FinancialSummary> {
     return new MockStudentDataSource().getFinancialSummary(studentId);
+  }
+
+  outstanding(query: OutstandingQuery): Observable<OutstandingBoard> {
+    const delays = [74, 51, 36, 28, 20, 14, 9, 5, 2, 0, 0, 0, 43, 17, 7, 0, 31, 12];
+    const amounts = [385000, 240000, 175000, 325000, 96000, 210000, 150000, 75000,
+      120000, 200000, 85000, 300000, 165000, 110000, 60000, 190000, 275000, 135000];
+    const allRows: OutstandingStudent[] = MOCK_STUDENTS.slice(0, delays.length)
+      .map((student, index) => {
+        const daysOverdue = delays[index];
+        const outstandingAmount = amounts[index];
+        return {
+          studentId: student.id,
+          studentNumber: student.studentNumber,
+          studentName: student.fullName,
+          photoUrl: student.photoUrl,
+          classroomName: student.classroomName,
+          guardianName: index % 2 === 0 ? `Mariam ${student.lastName}` : `Yacouba ${student.lastName}`,
+          guardianPhone: `+225 07 0${index % 10} 2${index % 10} 4${index % 10} 6${index % 10}`,
+          outstandingAmount,
+          overdueAmount: daysOverdue > 0 ? outstandingAmount : 0,
+          currency: 'XOF',
+          oldestDueDate: dateFromToday(daysOverdue > 0 ? -daysOverdue : index % 12 + 2),
+          daysOverdue,
+          instalmentCount: 1 + index % 3
+        };
+      });
+
+    const bucket = query.bucket ?? 'ALL';
+    const filtered = allRows
+      .filter((row) => matches([
+        row.studentName, row.studentNumber, row.classroomName ?? '', row.guardianName ?? ''
+      ], query.search))
+      .filter((row) => bucket === 'ALL'
+        || (bucket === 'OVERDUE' && row.daysOverdue > 0)
+        || (bucket === 'CRITICAL' && row.daysOverdue >= 30)
+        || (bucket === 'DUE_SOON' && row.daysOverdue === 0))
+      .sort((left, right) => right.daysOverdue - left.daysOverdue
+        || right.outstandingAmount - left.outstandingAmount);
+
+    const board: OutstandingBoard = {
+      totalOutstanding: allRows.reduce((sum, row) => sum + row.outstandingAmount, 0),
+      overdueAmount: allRows.reduce((sum, row) => sum + row.overdueAmount, 0),
+      studentCount: allRows.length,
+      criticalCount: allRows.filter((row) => row.daysOverdue >= 30).length,
+      currency: 'XOF',
+      students: paginate(filtered, query)
+    };
+    return of(board).pipe(delay(LATENCY));
   }
 }
 
@@ -436,6 +599,124 @@ export class MockFinanceDataSource implements FinanceDataSource {
 export class MockDashboardDataSource implements DashboardDataSource {
   load(): Observable<DashboardData> {
     return of({ ...MOCK_DASHBOARD, generatedAt: new Date().toISOString() }).pipe(delay(320));
+  }
+}
+
+/**
+ * Report cards in demonstration mode, computed from the marks and remembered.
+ *
+ * <p>The averages come from {@link MOCK_ASSESSMENTS} and from nowhere else: a
+ * bulletin that disagreed with the grade sheet two clicks away would never be
+ * trusted again.</p>
+ */
+@Injectable()
+export class MockReportCardDataSource implements ReportCardDataSource {
+  batch(query: ReportCardQuery): Observable<ReportCardBatch> {
+    return of(MOCK_REPORT_CARDS.batch(query)).pipe(delay(LATENCY));
+  }
+
+  generate(payload: ReportCardGeneratePayload): Observable<ReportCardBatch> {
+    // Une classe entière : plus long qu'un enregistrement ordinaire, et l'écran
+    // doit le montrer.
+    return of(MOCK_REPORT_CARDS.generate(payload)).pipe(delay(700));
+  }
+
+  getById(reportCardId: string): Observable<ReportCard> {
+    return of(MOCK_REPORT_CARDS.getById(reportCardId)).pipe(delay(LATENCY));
+  }
+
+  remark(reportCardId: string, payload: ReportCardRemarkPayload): Observable<ReportCard> {
+    return of(MOCK_REPORT_CARDS.remark(reportCardId, payload)).pipe(delay(300));
+  }
+
+  publish(reportCardId: string): Observable<ReportCard> {
+    return of(MOCK_REPORT_CARDS.publish(reportCardId)).pipe(delay(350));
+  }
+
+  publishAll(query: ReportCardQuery): Observable<ReportCardBatch> {
+    return of(MOCK_REPORT_CARDS.publishAll(query)).pipe(delay(600));
+  }
+
+  verify(code: string): Observable<ReportCard> {
+    return of(MOCK_REPORT_CARDS.verify(code)).pipe(delay(LATENCY));
+  }
+}
+
+/**
+ * Options in demonstration mode, with the capacity rules of the server.
+ *
+ * <p>A wish beyond capacity is waitlisted rather than refused, and cancelling
+ * a confirmed place frees a seat. A demo that only ever confirmed would make
+ * the waiting list look like decoration.</p>
+ */
+@Injectable()
+export class MockOptionDataSource implements OptionDataSource {
+  overview(): Observable<OptionOverview> {
+    return of(MOCK_OPTIONS.overview()).pipe(delay(LATENCY));
+  }
+
+  create(payload: OptionUpsertPayload): Observable<OptionOverview> {
+    return of(MOCK_OPTIONS.create(payload)).pipe(delay(350));
+  }
+
+  update(optionId: string, payload: OptionUpsertPayload): Observable<OptionOverview> {
+    return of(MOCK_OPTIONS.update(optionId, payload)).pipe(delay(350));
+  }
+
+  archive(optionId: string): Observable<OptionOverview> {
+    return of(MOCK_OPTIONS.archive(optionId)).pipe(delay(300));
+  }
+
+  saveOfferings(optionId: string,
+                payload: OptionOfferingsSavePayload): Observable<OptionOverview> {
+    return of(MOCK_OPTIONS.saveOfferings(optionId, payload)).pipe(delay(400));
+  }
+
+  choices(query: OptionChoiceQuery): Observable<PageResponse<OptionChoice>> {
+    return of(MOCK_OPTIONS.choicesPage(query)).pipe(delay(LATENCY));
+  }
+
+  assign(payload: OptionChoiceAssignPayload): Observable<OptionChoice> {
+    return of(MOCK_OPTIONS.assign(payload)).pipe(delay(350));
+  }
+
+  changeChoiceStatus(choiceId: string, status: OptionChoiceStatus): Observable<OptionChoice> {
+    return of(MOCK_OPTIONS.changeStatus(choiceId, status)).pipe(delay(300));
+  }
+}
+
+/**
+ * Movements in demonstration mode, with the register the screen changes.
+ *
+ * <p>A pupil struck off leaves the class lists, and a cancelled departure puts
+ * them back. Without that the cancellation would only have corrected a line on
+ * screen.</p>
+ */
+@Injectable()
+export class MockTransferDataSource implements TransferDataSource {
+  board(search?: string): Observable<TransferBoard> {
+    return of(MOCK_TRANSFERS.board(search)).pipe(delay(LATENCY));
+  }
+
+  changeClass(payload: ClassChangePayload): Observable<ClassChange> {
+    return of(MOCK_TRANSFERS.changeClass(payload)).pipe(delay(350));
+  }
+
+  recordDeparture(payload: DepartureRecordPayload): Observable<Departure> {
+    return of(MOCK_TRANSFERS.recordDeparture(payload)).pipe(delay(400));
+  }
+
+  updateDocuments(departureId: string,
+                  payload: DepartureDocumentsPayload): Observable<Departure> {
+    return of(MOCK_TRANSFERS.updateDocuments(departureId, payload)).pipe(delay(300));
+  }
+
+  clearDeparture(departureId: string): Observable<Departure> {
+    return of(MOCK_TRANSFERS.clear(departureId)).pipe(delay(350));
+  }
+
+  cancelDeparture(departureId: string, reason: string): Observable<Departure> {
+    return of(MOCK_TRANSFERS.cancel(departureId, reason)).pipe(delay(350));
   }
 }
 
@@ -1176,5 +1457,84 @@ export class MockFeeDataSource implements FeeDataSource {
       scheduleCount: 0, mandatoryTotal: 0, optionalTotal: 0,
       instalmentCount: 0, ready: false, currency: 'XOF', schedules: []
     }));
+  }
+}
+
+@Injectable()
+export class MockHealthDataSource implements HealthDataSource {
+  private readonly auth = inject(AuthService);
+
+  /**
+   * En démonstration comme sur le serveur, le droit décide de la forme.
+   *
+   * <p>Le magasin ne construit pas le détail médical pour un appelant sans
+   * HEALTH_RECORD_VIEW : se connecter en « prof » montre exactement ce que la
+   * salle des professeurs voit, et rien d'autre n'a été assemblé.</p>
+   */
+  board(search?: string): Observable<HealthBoard> {
+    const fullAccess = this.auth.has(PERMISSIONS.HEALTH_RECORD_VIEW);
+    return of(MOCK_HEALTH.board(fullAccess, search)).pipe(delay(LATENCY));
+  }
+
+  record(studentId: string): Observable<HealthRecord> {
+    return of(MOCK_HEALTH.record(studentId)).pipe(delay(LATENCY));
+  }
+
+  saveRecord(payload: HealthRecordPayload): Observable<HealthRecord> {
+    return of(MOCK_HEALTH.saveRecord(payload)).pipe(delay(350));
+  }
+
+  addCondition(payload: HealthConditionPayload): Observable<HealthCondition> {
+    return of(MOCK_HEALTH.addCondition(payload)).pipe(delay(350));
+  }
+
+  updateCondition(conditionId: string,
+                  payload: HealthConditionPayload): Observable<HealthCondition> {
+    return of(MOCK_HEALTH.updateCondition(conditionId, payload)).pipe(delay(300));
+  }
+
+  resolveCondition(conditionId: string): Observable<HealthCondition> {
+    return of(MOCK_HEALTH.resolveCondition(conditionId)).pipe(delay(300));
+  }
+
+  recordVisit(payload: InfirmaryVisitPayload): Observable<InfirmaryVisit> {
+    return of(MOCK_HEALTH.recordVisit(payload)).pipe(delay(400));
+  }
+
+  notifyGuardian(visitId: string): Observable<InfirmaryVisit> {
+    return of(MOCK_HEALTH.notifyGuardian(visitId)).pipe(delay(300));
+  }
+
+  saveVaccination(payload: VaccinationPayload): Observable<Vaccination> {
+    return of(MOCK_HEALTH.saveVaccination(payload)).pipe(delay(300));
+  }
+
+  vaccines(): Observable<{ id: string; code: string; label: string;
+                           required: boolean; dosesExpected: number }[]> {
+    return of(MOCK_HEALTH.vaccines()).pipe(delay(LATENCY));
+  }
+
+  planExamination(payload: ExaminationPayload): Observable<MedicalExamination> {
+    return of(MOCK_HEALTH.planExamination(payload)).pipe(delay(350));
+  }
+
+  recordExamination(examinationId: string,
+                    payload: ExaminationResultPayload): Observable<MedicalExamination> {
+    return of(MOCK_HEALTH.recordExamination(examinationId, payload)).pipe(delay(350));
+  }
+}
+
+@Injectable()
+export class MockFamilyRequestDataSource implements FamilyRequestDataSource {
+  board(query: FamilyRequestQuery): Observable<FamilyRequestBoard> {
+    return of(MOCK_FAMILY_REQUESTS.board(query)).pipe(delay(LATENCY));
+  }
+
+  create(payload: FamilyRequestCreatePayload): Observable<FamilyRequest> {
+    return of(MOCK_FAMILY_REQUESTS.create(payload)).pipe(delay(350));
+  }
+
+  update(requestId: string, payload: FamilyRequestUpdatePayload): Observable<FamilyRequest> {
+    return of(MOCK_FAMILY_REQUESTS.update(requestId, payload)).pipe(delay(300));
   }
 }

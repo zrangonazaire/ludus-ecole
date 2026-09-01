@@ -43,4 +43,12 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
     Page<AppUser> search(@Param("search") String search,
                          @Param("status") UserStatus status,
                          Pageable pageable);
+
+    @Query(value = """
+           SELECT count(*) FROM app_user_role ur
+           JOIN app_user u ON u.id = ur.user_id
+           WHERE ur.role_id = :roleId AND u.school_id = :schoolId
+           """, nativeQuery = true)
+    long countByRoleAndSchool(@Param("roleId") UUID roleId,
+                              @Param("schoolId") UUID schoolId);
 }

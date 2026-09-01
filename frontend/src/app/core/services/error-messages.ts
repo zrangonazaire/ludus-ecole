@@ -23,6 +23,8 @@ const MESSAGES: Record<string, string> = {
   ACCOUNT_LOCKED: 'Compte temporairement verrouillé après plusieurs échecs.',
   ACCOUNT_DISABLED: 'Ce compte est désactivé.',
   TOKEN_EXPIRED: 'Votre session a expiré.',
+  ACCESS_PROFILE_NOT_FOUND: 'Ce profil d’accès est introuvable.',
+  ACCESS_PROFILE_CODE_ALREADY_USED: 'Un autre profil utilise déjà ce code.',
 
   // academic
   ACADEMIC_YEAR_NOT_ACTIVE: "L'année scolaire n'est pas active.",
@@ -62,20 +64,78 @@ const MESSAGES: Record<string, string> = {
   ADMISSION_NOT_ACCEPTED: "La candidature n'a pas été acceptée.",
   GUARDIAN_PRIMARY_REQUIRED: 'Un élève doit conserver un responsable principal.',
 
+  // transferts et départs
+  TRANSFER_SAME_CLASSROOM: "L'élève est déjà dans cette classe.",
+  TRANSFER_CLASSROOM_MISMATCH: "La classe d'accueil appartient à une autre année "
+    + "scolaire : l'inscription pointerait hors de sa propre année.",
+  DEPARTURE_NOT_FOUND: 'Cette sortie est introuvable.',
+  DEPARTURE_ALREADY_RECORDED: 'Une sortie est déjà enregistrée pour cet élève. '
+    + "Annulez-la d'abord si elle est erronée : deux radiations pour la même année "
+    + "raconteraient deux histoires différentes du même élève.",
+  DEPARTURE_NOT_EDITABLE: 'Cette sortie est soldée ou annulée : elle ne change plus.',
+  DEPARTURE_DOCUMENTS_INCOMPLETE: 'Il manque des pièces à remettre. Solder un dossier '
+    + 'incomplet ferait croire que la famille est repartie avec tout.',
+  DEPARTURE_DATE_BEFORE_ENROLLMENT: "La date de sortie précède l'inscription.",
+
   // timetable / attendance
   TIMETABLE_CONFLICT: "L'enseignant ou la classe est déjà occupe sur ce creneau.",
   ROOM_CONFLICT: 'La salle est deja reservee sur ce creneau.',
-  TEACHER_NOT_ASSIGNED: "Vous n'etes pas affecte a cette classe ou cette matiere.",
   INVALID_ATTENDANCE: 'Saisie de présence invalide.',
-  ATTENDANCE_SESSION_LOCKED: 'Cette feuille de présence est verrouillée.',
+  ATTENDANCE_SESSION_LOCKED: 'Cette feuille de présence est verrouillée. Elle reste '
+    + 'consultable, mais les marques ne peuvent plus changer : c\'est elle qui a servi '
+    + 'aux bulletins.',
+  ATTENDANCE_SESSION_NOT_FOUND: 'Cette feuille de présence est introuvable.',
+  ATTENDANCE_STUDENT_NOT_IN_CLASS: "Un élève de la feuille n'est pas inscrit dans cette "
+    + 'classe. Rechargez la page : la composition de la classe a changé depuis '
+    + "l'ouverture de l'appel.",
 
   // grades
-  GRADE_NOT_ALLOWED: "Vous n'etes pas autorisé a saisir des notes pour cette classe.",
-  GRADE_OUT_OF_RANGE: 'La note doit être comprise entre 0 et le bareme.',
-  GRADE_ALREADY_PUBLISHED: 'Cette note est publiee : une correction justifiee est requise.',
-  GRADE_JUSTIFICATION_REQUIRED: 'Une justification est obligatoire pour corriger une note publiee.',
-  REPORT_CARD_NOT_READY: 'Des notes ne sont pas validees : le bulletin ne peut pas etre publie.',
-  REPORT_CARD_ALREADY_PUBLISHED: 'Ce bulletin est deja publie.',
+  GRADE_NOT_ALLOWED: "Vous n'êtes pas autorisé à saisir des notes pour cette classe.",
+  GRADE_OUT_OF_RANGE: 'La note doit être comprise entre 0 et le barème.',
+  GRADE_ALREADY_PUBLISHED: 'Cette note est déjà validée : sa correction passe par le '
+    + 'formulaire dédié, avec un motif écrit.',
+  GRADE_JUSTIFICATION_REQUIRED: 'Un motif écrit est obligatoire pour corriger une note '
+    + 'déjà validée.',
+  GRADE_NOT_FOUND: 'Cette note est introuvable.',
+
+  // assessments
+  ASSESSMENT_NOT_FOUND: 'Ce devoir est introuvable.',
+  ASSESSMENT_NOT_OPEN: "La saisie n'est pas ouverte sur ce devoir.",
+  ASSESSMENT_INVALID_TRANSITION: "Ce devoir ne peut pas passer directement à cet état.",
+  ASSESSMENT_DATE_OUTSIDE_TERM: 'La date du devoir ne tombe pas dans la période '
+    + 'retenue : la note irait dans le mauvais bulletin.',
+  ASSESSMENT_INCOMPLETE: "Des élèves n'ont ni note ni absence. Une note manquante ne se "
+    + "voit pas dans une moyenne : l'élève pèse simplement moins.",
+  ASSESSMENT_SCALE_LOCKED: 'Le barème est figé : des notes ont déjà été saisies dessus. '
+    + 'Le changer les ferait toutes bouger sans que personne y touche.',
+  TEACHER_NOT_ASSIGNED: "Cet enseignant n'est pas affecté à cette matière dans cette "
+    + "classe. Les notes n'apparaîtraient sur aucun de ses écrans.",
+  CURRICULUM_SUBJECT_NOT_FOUND: "Cette matière n'est pas au programme du niveau. Sans "
+    + "coefficient, la note n'entrerait dans aucune moyenne.",
+  // bulletins
+  REPORT_CARD_NOT_FOUND: 'Ce bulletin est introuvable.',
+  REPORT_CARD_NOT_READY: "La génération est refusée tant que des notes de la période ne "
+    + 'sont pas validées : les moyennes porteraient sur une partie du travail. Un '
+    + "bulletin sans moyenne générale ne peut pas non plus être remis — il n'apprendrait "
+    + 'rien à la famille et ne pourrait pas être contesté.',
+  REPORT_CARD_ALREADY_PUBLISHED: 'Ce bulletin est déjà remis aux familles. Les '
+    + 'appréciations font partie du document reçu et ne changent plus ; une note '
+    + 'corrigée produira la révision suivante.',
+
+  // options et langues
+  OPTION_NOT_FOUND: 'Cette option est introuvable.',
+  OPTION_CODE_ALREADY_USED: 'Une autre option utilise déjà ce code.',
+  OPTION_OFFERING_NOT_FOUND: "Cette option n'est pas ouverte à ce niveau.",
+  OPTION_CHOICE_NOT_FOUND: 'Ce vœu est introuvable.',
+  OPTION_CHOICE_ALREADY_EXISTS: 'Cet élève a déjà un vœu sur cette option.',
+  OPTION_CAPACITY_REACHED: 'Le groupe est complet. Un vœu supplémentaire passe en liste '
+    + "d'attente ; confirmer une place au-delà de la capacité créerait un effectif que "
+    + 'la salle ne peut pas contenir.',
+  OPTION_LEVEL_MISMATCH: "Cette option n'est pas ouverte au niveau de l'élève : elle ne "
+    + "tomberait sur aucune heure de son emploi du temps.",
+  OPTION_IN_USE: 'Des élèves ont choisi cette option. Retirez leurs vœux avant de la '
+    + 'fermer : sinon ils se retrouveraient sans enseignement, sans que rien ne le '
+    + 'signale.',
 
   // finance
   PAYMENT_NOT_FOUND: 'Paiement introuvable.',

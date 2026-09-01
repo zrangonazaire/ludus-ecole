@@ -115,6 +115,20 @@ class TenantIsolationIT extends AbstractIntegrationTest {
         assertThat(owners).containsExactly(schoolA);
     }
 
+    @Test
+    @DisplayName("les profils personnalises sont isoles mais les profils systeme restent visibles")
+    @Transactional
+    void customAccessProfilesAreIsolated() {
+        insertAccessProfile(schoolA, "SURVEILLANT", "Surveillant Alpha");
+        insertAccessProfile(schoolB, "SURVEILLANT", "Surveillant Beta");
+
+        TenantContext.setSchoolId(schoolA);
+        applyTenant();
+
+        assertThat(visibleCustomProfileOwners()).containsExactly(schoolA);
+        assertThat(visibleSystemProfileCount()).isGreaterThan(0L);
+    }
+
     // ------------------------------------------------------------------
     // helpers
     // ------------------------------------------------------------------
@@ -135,6 +149,19 @@ class TenantIsolationIT extends AbstractIntegrationTest {
         return (List<UUID>) entityManager
                 .createNativeQuery("SELECT school_id FROM academic_year")
                 .getResultList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<UUID> visibleCustomProfileOwners() {
+        return (List<UUID>) entityManager
+                .createNativeQuery("SELECT school_id FROM app_role WHERE system_role = false")
+                .getResultList();
+    }
+
+    private long visibleSystemProfileCount() {
+        return ((Number) entityManager
+                .createNativeQuery("SELECT count(*) FROM app_role WHERE system_role = true")
+                .getSingleResult()).longValue();
     }
 
     /** Mirrors what TenantTransactionAspect does on a real request. */
@@ -187,6 +214,22 @@ class TenantIsolationIT extends AbstractIntegrationTest {
                     .setParameter("first", firstName)
                     .setParameter("last", lastName)
                     .setParameter("birth", LocalDate.of(2012, 5, 14))
+                    .executeUpdate();
+        });
+    }
+
+    private void insertAccessProfile(UUID schoolId, String code, String label) {
+        transactionTemplate.executeWithoutResult(status -> {
+            entityManager
+                    .createNativeQuery("SELECT set_config('app.bypass_rls', 'on', true)")
+                    .getSingleResult();
+            entityManager.createNativeQuery("""
+                            INSERT INTO app_role (code, label, description, system_role, school_id)
+                            VALUES (:code, :label, 'Profil de test', false, :school)
+                            """)
+                    .setParameter("code", code)
+                    .setParameter("label", label)
+                    .setParameter("school", schoolId)
                     .executeUpdate();
         });
     }

@@ -1,5 +1,6 @@
 package ci.company.eduops.config;
 
+import ci.company.eduops.common.tenant.TenantBypass;
 import ci.company.eduops.security.entity.AppRole;
 import ci.company.eduops.security.entity.AppUser;
 import ci.company.eduops.security.entity.UserStatus;
@@ -47,6 +48,7 @@ public class BootstrapDataInitializer implements ApplicationRunner {
 
     @Override
     @Transactional
+    @TenantBypass
     public void run(ApplicationArguments args) {
         String email = properties.getBootstrap().getAdminEmail();
         if (userRepository.existsByEmailIgnoreCase(email)) {

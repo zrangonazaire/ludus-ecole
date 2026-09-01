@@ -22,8 +22,38 @@ import {
   FeeApplyPayload, FeeSchedulePayload, FeeType, FeeTypeUpsertPayload, LevelFees
 } from '@core/models/fee.models';
 import {
+  Absence, AbsenceDigest, AbsenceQuery, AttendanceDay, JustifyPayload
+} from '@core/models/attendance.models';
+import {
+  AssessmentBoard, AssessmentItem, AssessmentQuery, AssessmentStatus,
+  AssessmentUpsertPayload, GradeCorrectionPayload, GradeEntryPayload, GradeSheet
+} from '@core/models/assessment.models';
+import {
+  ReportCardBatch, ReportCardGeneratePayload, ReportCardQuery, ReportCardRemarkPayload
+} from '@core/models/report-card.models';
+import {
+  OptionChoice, OptionChoiceAssignPayload, OptionChoiceQuery, OptionChoiceStatus,
+  OptionOfferingsSavePayload, OptionOverview, OptionUpsertPayload
+} from '@core/models/option.models';
+import {
+  ClassChange, ClassChangePayload, Departure, DepartureDocumentsPayload,
+  DepartureRecordPayload, TransferBoard
+} from '@core/models/transfer.models';
+import {
+  ExaminationPayload, ExaminationResultPayload, HealthBoard, HealthCondition,
+  HealthConditionPayload, HealthRecord, HealthRecordPayload, InfirmaryVisit,
+  InfirmaryVisitPayload, MedicalExamination, Vaccination, VaccinationPayload
+} from '@core/models/health.models';
+import {
+  FamilyRequest, FamilyRequestBoard, FamilyRequestCreatePayload,
+  FamilyRequestQuery, FamilyRequestUpdatePayload
+} from '@core/models/family-request.models';
+import { OutstandingBoard, OutstandingQuery } from '@core/models/outstanding.models';
+import {
   AttendanceDataSource, ClassroomDataSource, TimetableDataSource, CurriculumDataSource, FeeDataSource, DashboardDataSource, EnrollmentDataSource,
-  FinanceDataSource, GradeDataSource, ReferenceDataSource, StudentDataSource, TeacherDataSource
+  FinanceDataSource, GradeDataSource, ReferenceDataSource, StudentDataSource, TeacherDataSource,
+  ReportCardDataSource, OptionDataSource, TransferDataSource, HealthDataSource,
+  FamilyRequestDataSource
 } from '../data-source';
 
 /**
@@ -166,6 +196,11 @@ export class ApiTeacherDataSource implements TeacherDataSource {
 export class ApiAttendanceDataSource implements AttendanceDataSource {
   private readonly http = inject(HttpClient);
 
+  day(date: string): Observable<AttendanceDay> {
+    return this.http.get<AttendanceDay>(`${API}/attendance/day`,
+      { params: toParams({ date }) });
+  }
+
   openSheet(classroomId: string, date: string, subjectId?: string): Observable<AttendanceSheet> {
     return this.http.get<AttendanceSheet>(`${API}/attendance/sheet`,
       { params: toParams({ classroomId, date, subjectId }) });
@@ -173,8 +208,37 @@ export class ApiAttendanceDataSource implements AttendanceDataSource {
 
   /** The idempotency key makes an offline replay safe (section 80). */
   submitSheet(sheet: AttendanceSheet, idempotencyKey: string): Observable<AttendanceSheet> {
-    return this.http.post<AttendanceSheet>(`${API}/attendance`,
-      { ...sheet, idempotencyKey });
+    return this.http.post<AttendanceSheet>(`${API}/attendance`, {
+      classroomId: sheet.classroomId,
+      sessionDate: sheet.sessionDate,
+      subjectId: sheet.subjectId,
+      startTime: sheet.startTime,
+      endTime: sheet.endTime,
+      idempotencyKey,
+      // Only the marks travel: the counters are the server's to compute, and a
+      // client that sent its own would let a stale tab rewrite the totals.
+      records: sheet.records.map((record) => ({
+        studentId: record.studentId,
+        status: record.status,
+        arrivalTime: record.arrivalTime,
+        departureTime: record.departureTime,
+        minutesLate: record.minutesLate,
+        reason: record.reason
+      }))
+    });
+  }
+
+  absences(query: AbsenceQuery): Observable<AbsenceDigest> {
+    return this.http.get<AbsenceDigest>(`${API}/attendance/absences`,
+      { params: toParams(query) });
+  }
+
+  justify(attendanceId: string, payload: JustifyPayload): Observable<Absence> {
+    return this.http.post<Absence>(`${API}/attendance/${attendanceId}/justify`, payload);
+  }
+
+  remind(attendanceId: string): Observable<Absence> {
+    return this.http.post<Absence>(`${API}/attendance/${attendanceId}/remind`, {});
   }
 }
 
@@ -182,21 +246,45 @@ export class ApiAttendanceDataSource implements AttendanceDataSource {
 export class ApiGradeDataSource implements GradeDataSource {
   private readonly http = inject(HttpClient);
 
-  listAssessments(classroomId?: string, termId?: string): Observable<Assessment[]> {
-    return this.http.get<Assessment[]>(`${API}/assessments`,
-      { params: toParams({ classroomId, termId }) });
+  board(query: AssessmentQuery): Observable<AssessmentBoard> {
+    return this.http.get<AssessmentBoard>(`${API}/assessments`, { params: toParams(query) });
   }
 
-  getGrades(assessmentId: string): Observable<Grade[]> {
-    return this.http.get<Grade[]>(`${API}/grades`, { params: toParams({ assessmentId }) });
+  createAssessment(payload: AssessmentUpsertPayload): Observable<AssessmentItem> {
+    return this.http.post<AssessmentItem>(`${API}/assessments`, payload);
   }
 
-  saveGrades(assessmentId: string, grades: Grade[]): Observable<Grade[]> {
-    return this.http.post<Grade[]>(`${API}/grades`, { assessmentId, grades });
+  updateAssessment(id: string, payload: AssessmentUpsertPayload): Observable<AssessmentItem> {
+    return this.http.put<AssessmentItem>(`${API}/assessments/${id}`, payload);
   }
 
-  submitGrades(assessmentId: string): Observable<void> {
-    return this.http.post<void>(`${API}/grades/submit`, { assessmentId });
+  changeStatus(id: string, target: AssessmentStatus): Observable<AssessmentItem> {
+    return this.http.post<AssessmentItem>(`${API}/assessments/${id}/status`, {},
+      { params: toParams({ target }) });
+  }
+
+  gradeSheet(assessmentId: string): Observable<GradeSheet> {
+    return this.http.get<GradeSheet>(`${API}/assessments/${assessmentId}/grades`);
+  }
+
+  saveGrades(assessmentId: string, entries: GradeEntryPayload[]): Observable<GradeSheet> {
+    return this.http.put<GradeSheet>(`${API}/assessments/${assessmentId}/grades`, { entries });
+  }
+
+  submitGrades(assessmentId: string): Observable<GradeSheet> {
+    return this.http.post<GradeSheet>(`${API}/assessments/${assessmentId}/submit`, {});
+  }
+
+  validateGrades(assessmentId: string): Observable<GradeSheet> {
+    return this.http.post<GradeSheet>(`${API}/assessments/${assessmentId}/validate`, {});
+  }
+
+  publishGrades(assessmentId: string): Observable<GradeSheet> {
+    return this.http.post<GradeSheet>(`${API}/assessments/${assessmentId}/publish`, {});
+  }
+
+  correctGrade(gradeId: string, payload: GradeCorrectionPayload): Observable<GradeSheet> {
+    return this.http.post<GradeSheet>(`${API}/assessments/grades/${gradeId}/correct`, payload);
   }
 }
 
@@ -215,6 +303,10 @@ export class ApiFinanceDataSource implements FinanceDataSource {
   getStudentSummary(studentId: string): Observable<FinancialSummary> {
     return this.http.get<FinancialSummary>(`${API}/students/${studentId}/financial-summary`);
   }
+
+  outstanding(query: OutstandingQuery): Observable<OutstandingBoard> {
+    return this.http.get<OutstandingBoard>(`${API}/outstanding`, { params: toParams(query) });
+  }
 }
 
 @Injectable()
@@ -224,6 +316,112 @@ export class ApiDashboardDataSource implements DashboardDataSource {
   load(academicYearId?: string, campusId?: string): Observable<DashboardData> {
     return this.http.get<DashboardData>(`${API}/dashboard`,
       { params: toParams({ academicYearId, campusId }) });
+  }
+}
+
+@Injectable()
+export class ApiReportCardDataSource implements ReportCardDataSource {
+  private readonly http = inject(HttpClient);
+
+  batch(query: ReportCardQuery): Observable<ReportCardBatch> {
+    return this.http.get<ReportCardBatch>(`${API}/report-cards`, { params: toParams(query) });
+  }
+
+  generate(payload: ReportCardGeneratePayload): Observable<ReportCardBatch> {
+    return this.http.post<ReportCardBatch>(`${API}/report-cards/generate`, payload);
+  }
+
+  getById(reportCardId: string): Observable<ReportCard> {
+    return this.http.get<ReportCard>(`${API}/report-cards/${reportCardId}`);
+  }
+
+  remark(reportCardId: string, payload: ReportCardRemarkPayload): Observable<ReportCard> {
+    return this.http.put<ReportCard>(`${API}/report-cards/${reportCardId}/remarks`, payload);
+  }
+
+  publish(reportCardId: string): Observable<ReportCard> {
+    return this.http.post<ReportCard>(`${API}/report-cards/${reportCardId}/publish`, {});
+  }
+
+  publishAll(query: ReportCardQuery): Observable<ReportCardBatch> {
+    return this.http.post<ReportCardBatch>(`${API}/report-cards/publish`, {},
+      { params: toParams(query) });
+  }
+
+  verify(code: string): Observable<ReportCard> {
+    return this.http.get<ReportCard>(`${API}/report-cards/verify`, { params: toParams({ code }) });
+  }
+}
+
+@Injectable()
+export class ApiOptionDataSource implements OptionDataSource {
+  private readonly http = inject(HttpClient);
+
+  overview(): Observable<OptionOverview> {
+    return this.http.get<OptionOverview>(`${API}/options`);
+  }
+
+  create(payload: OptionUpsertPayload): Observable<OptionOverview> {
+    return this.http.post<OptionOverview>(`${API}/options`, payload);
+  }
+
+  update(optionId: string, payload: OptionUpsertPayload): Observable<OptionOverview> {
+    return this.http.put<OptionOverview>(`${API}/options/${optionId}`, payload);
+  }
+
+  archive(optionId: string): Observable<OptionOverview> {
+    return this.http.delete<OptionOverview>(`${API}/options/${optionId}`);
+  }
+
+  saveOfferings(optionId: string,
+                payload: OptionOfferingsSavePayload): Observable<OptionOverview> {
+    return this.http.put<OptionOverview>(`${API}/options/${optionId}/offerings`, payload);
+  }
+
+  choices(query: OptionChoiceQuery): Observable<PageResponse<OptionChoice>> {
+    return this.http.get<PageResponse<OptionChoice>>(`${API}/options/choices`,
+      { params: toParams(query) });
+  }
+
+  assign(payload: OptionChoiceAssignPayload): Observable<OptionChoice> {
+    return this.http.post<OptionChoice>(`${API}/options/choices`, payload);
+  }
+
+  changeChoiceStatus(choiceId: string, status: OptionChoiceStatus): Observable<OptionChoice> {
+    return this.http.put<OptionChoice>(`${API}/options/choices/${choiceId}/status`, { status });
+  }
+}
+
+@Injectable()
+export class ApiTransferDataSource implements TransferDataSource {
+  private readonly http = inject(HttpClient);
+
+  board(search?: string): Observable<TransferBoard> {
+    return this.http.get<TransferBoard>(`${API}/transfers`, { params: toParams({ search }) });
+  }
+
+  changeClass(payload: ClassChangePayload): Observable<ClassChange> {
+    return this.http.post<ClassChange>(`${API}/transfers/class-change`, payload);
+  }
+
+  recordDeparture(payload: DepartureRecordPayload): Observable<Departure> {
+    return this.http.post<Departure>(`${API}/transfers/departures`, payload);
+  }
+
+  updateDocuments(departureId: string,
+                  payload: DepartureDocumentsPayload): Observable<Departure> {
+    return this.http.put<Departure>(
+      `${API}/transfers/departures/${departureId}/documents`, payload);
+  }
+
+  clearDeparture(departureId: string): Observable<Departure> {
+    return this.http.post<Departure>(
+      `${API}/transfers/departures/${departureId}/clear`, {});
+  }
+
+  cancelDeparture(departureId: string, reason: string): Observable<Departure> {
+    return this.http.post<Departure>(
+      `${API}/transfers/departures/${departureId}/cancel`, { reason });
   }
 }
 
@@ -370,5 +568,83 @@ export class ApiFeeDataSource implements FeeDataSource {
 
   apply(payload: FeeApplyPayload): Observable<LevelFees[]> {
     return this.http.post<LevelFees[]>(`${API}/fees/apply`, payload);
+  }
+}
+
+@Injectable()
+export class ApiHealthDataSource implements HealthDataSource {
+  private readonly http = inject(HttpClient);
+
+  board(search?: string): Observable<HealthBoard> {
+    return this.http.get<HealthBoard>(`${API}/health`, { params: toParams({ search }) });
+  }
+
+  record(studentId: string): Observable<HealthRecord> {
+    return this.http.get<HealthRecord>(`${API}/health/records/${studentId}`);
+  }
+
+  saveRecord(payload: HealthRecordPayload): Observable<HealthRecord> {
+    return this.http.put<HealthRecord>(`${API}/health/records`, payload);
+  }
+
+  addCondition(payload: HealthConditionPayload): Observable<HealthCondition> {
+    return this.http.post<HealthCondition>(`${API}/health/conditions`, payload);
+  }
+
+  updateCondition(conditionId: string,
+                  payload: HealthConditionPayload): Observable<HealthCondition> {
+    return this.http.put<HealthCondition>(`${API}/health/conditions/${conditionId}`, payload);
+  }
+
+  resolveCondition(conditionId: string): Observable<HealthCondition> {
+    return this.http.put<HealthCondition>(
+      `${API}/health/conditions/${conditionId}/resolve`, {});
+  }
+
+  recordVisit(payload: InfirmaryVisitPayload): Observable<InfirmaryVisit> {
+    return this.http.post<InfirmaryVisit>(`${API}/health/visits`, payload);
+  }
+
+  notifyGuardian(visitId: string): Observable<InfirmaryVisit> {
+    return this.http.put<InfirmaryVisit>(`${API}/health/visits/${visitId}/notify`, {});
+  }
+
+  saveVaccination(payload: VaccinationPayload): Observable<Vaccination> {
+    return this.http.put<Vaccination>(`${API}/health/vaccinations`, payload);
+  }
+
+  vaccines(): Observable<{ id: string; code: string; label: string;
+                           required: boolean; dosesExpected: number }[]> {
+    return this.http.get<{ id: string; code: string; label: string;
+                           required: boolean; dosesExpected: number }[]>(
+      `${API}/health/vaccines`);
+  }
+
+  planExamination(payload: ExaminationPayload): Observable<MedicalExamination> {
+    return this.http.post<MedicalExamination>(`${API}/health/examinations`, payload);
+  }
+
+  recordExamination(examinationId: string,
+                    payload: ExaminationResultPayload): Observable<MedicalExamination> {
+    return this.http.put<MedicalExamination>(
+      `${API}/health/examinations/${examinationId}`, payload);
+  }
+}
+
+@Injectable()
+export class ApiFamilyRequestDataSource implements FamilyRequestDataSource {
+  private readonly http = inject(HttpClient);
+
+  board(query: FamilyRequestQuery): Observable<FamilyRequestBoard> {
+    return this.http.get<FamilyRequestBoard>(`${API}/family-requests`,
+      { params: toParams(query) });
+  }
+
+  create(payload: FamilyRequestCreatePayload): Observable<FamilyRequest> {
+    return this.http.post<FamilyRequest>(`${API}/family-requests`, payload);
+  }
+
+  update(requestId: string, payload: FamilyRequestUpdatePayload): Observable<FamilyRequest> {
+    return this.http.patch<FamilyRequest>(`${API}/family-requests/${requestId}`, payload);
   }
 }

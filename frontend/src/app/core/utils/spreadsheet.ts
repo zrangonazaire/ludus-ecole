@@ -255,6 +255,19 @@ export async function readXlsx(buffer: ArrayBuffer): Promise<string[][]> {
     }
     rows.push(cells);
   }
+
+  // Une cellule vide en fin de ligne n'est pas écrite du tout dans le XML. Sans
+  // ce comblement, `grid[i][j]` renvoie `undefined` alors que le type promet une
+  // chaîne — et le premier appelant qui fait confiance au type se casse.
+  const width = rows.reduce((max, row) => Math.max(max, row.length), 0);
+  rows.forEach((row) => {
+    for (let i = 0; i < width; i++) {
+      if (row[i] === undefined) {
+        row[i] = '';
+      }
+    }
+  });
+
   return rows.filter((r) => r.some((c) => c.trim() !== ''));
 }
 

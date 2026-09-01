@@ -14,4 +14,8 @@ public interface AppPermissionRepository extends JpaRepository<AppPermission, UU
     Optional<AppPermission> findByCode(String code);
 
     List<AppPermission> findByModule(String module);
+
+    List<AppPermission> findAllByOrderByModuleAscLabelAsc();
+
+    List<AppPermission> findByCodeIn(java.util.Collection<String> codes);
 }

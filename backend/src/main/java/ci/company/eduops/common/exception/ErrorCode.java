@@ -28,6 +28,9 @@ public enum ErrorCode {
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "The token has expired."),
     TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "The token is invalid."),
     PASSWORD_POLICY_VIOLATION(HttpStatus.BAD_REQUEST, "The password does not meet the policy."),
+    ACCESS_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Access profile not found."),
+    ACCESS_PROFILE_CODE_ALREADY_USED(HttpStatus.CONFLICT,
+            "Another access profile already uses this code."),
 
     // ---------- school / academic ----------
     SCHOOL_NOT_FOUND(HttpStatus.NOT_FOUND, "School not found."),
@@ -64,6 +67,17 @@ public enum ErrorCode {
             "Assessments already exist for this subject on this level."),
     COEFFICIENT_OUT_OF_RANGE(HttpStatus.BAD_REQUEST,
             "The coefficient must be strictly positive."),
+    OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Academic option not found."),
+    OPTION_CODE_ALREADY_USED(HttpStatus.CONFLICT,
+            "Another option already uses this code."),
+    OPTION_OFFERING_NOT_FOUND(HttpStatus.NOT_FOUND, "Option offering not found."),
+    OPTION_CHOICE_NOT_FOUND(HttpStatus.NOT_FOUND, "Student option choice not found."),
+    OPTION_CHOICE_ALREADY_EXISTS(HttpStatus.CONFLICT,
+            "The student already chose this option for this level."),
+    OPTION_CAPACITY_REACHED(HttpStatus.CONFLICT,
+            "The option capacity has been reached."),
+    OPTION_LEVEL_MISMATCH(HttpStatus.CONFLICT,
+            "The option is not offered for the student's level."),
 
     // ---------- student ----------
     STUDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Student not found."),
@@ -87,6 +101,21 @@ public enum ErrorCode {
     ENROLLMENT_INVALID_TRANSITION(HttpStatus.CONFLICT, "This enrollment status transition is not allowed."),
     ENROLLMENT_ALREADY_VALIDATED(HttpStatus.CONFLICT, "The enrollment is already validated."),
 
+    // ---------- transfers and departures ----------
+    TRANSFER_SAME_CLASSROOM(HttpStatus.BAD_REQUEST,
+            "The pupil is already in that class."),
+    TRANSFER_CLASSROOM_MISMATCH(HttpStatus.CONFLICT,
+            "The target class belongs to another academic year."),
+    DEPARTURE_NOT_FOUND(HttpStatus.NOT_FOUND, "Departure record not found."),
+    DEPARTURE_ALREADY_RECORDED(HttpStatus.CONFLICT,
+            "A departure is already recorded for this enrollment."),
+    DEPARTURE_NOT_EDITABLE(HttpStatus.CONFLICT,
+            "This departure is settled or cancelled and no longer changes."),
+    DEPARTURE_DOCUMENTS_INCOMPLETE(HttpStatus.CONFLICT,
+            "Some documents have not been handed over yet."),
+    DEPARTURE_DATE_BEFORE_ENROLLMENT(HttpStatus.BAD_REQUEST,
+            "The departure date precedes the enrollment date."),
+
     // ---------- teacher / timetable ----------
     TEACHER_NOT_FOUND(HttpStatus.NOT_FOUND, "Teacher not found."),
     TEACHER_NOT_ASSIGNED(HttpStatus.FORBIDDEN, "The teacher is not assigned to this class and subject."),
@@ -108,6 +137,8 @@ public enum ErrorCode {
     // ---------- assessment / grade ----------
     ASSESSMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Assessment not found."),
     ASSESSMENT_NOT_OPEN(HttpStatus.CONFLICT, "The assessment is not open for grading."),
+    ASSESSMENT_DATE_OUTSIDE_TERM(HttpStatus.BAD_REQUEST,
+            "The assessment date falls outside the selected term."),
     ASSESSMENT_INVALID_TRANSITION(HttpStatus.CONFLICT, "This assessment status transition is not allowed."),
     GRADE_NOT_FOUND(HttpStatus.NOT_FOUND, "Grade not found."),
     GRADE_NOT_ALLOWED(HttpStatus.FORBIDDEN, "You are not allowed to enter grades for this class or subject."),
@@ -167,7 +198,41 @@ public enum ErrorCode {
     DOCUMENT_REVOKED(HttpStatus.GONE, "This document has been revoked."),
     IMPORT_BATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "Import batch not found."),
     IMPORT_NOT_VALIDATED(HttpStatus.CONFLICT, "The import must be validated and previewed before confirmation."),
-    IMPORT_FILE_INVALID(HttpStatus.BAD_REQUEST, "The uploaded file cannot be read.");
+    IMPORT_FILE_INVALID(HttpStatus.BAD_REQUEST, "The uploaded file cannot be read."),
+
+    // ---------- school health ----------
+    HEALTH_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "This pupil has no health file yet."),
+    HEALTH_CONDITION_NOT_FOUND(HttpStatus.NOT_FOUND, "Health condition not found."),
+    HEALTH_ACTION_REQUIRED(HttpStatus.BAD_REQUEST,
+            "A condition raised as an alert must carry the action to take."),
+    HEALTH_CONSENT_REQUIRED(HttpStatus.CONFLICT,
+            "The family has not authorised care: only a call may be made."),
+    HEALTH_GUARDIAN_NOT_NOTIFIED(HttpStatus.CONFLICT,
+            "A pupil sent home or evacuated requires the family to have been reached."),
+    HEALTH_REFERRAL_REQUIRED(HttpStatus.BAD_REQUEST,
+            "A referral must name where the pupil was sent."),
+    HEALTH_VISIT_NOT_FOUND(HttpStatus.NOT_FOUND, "Infirmary visit not found."),
+    HEALTH_VISIT_IN_FUTURE(HttpStatus.BAD_REQUEST,
+            "An infirmary visit cannot be recorded for a time that has not come."),
+    VACCINE_NOT_FOUND(HttpStatus.NOT_FOUND, "Vaccine not found."),
+    VACCINATION_DOSES_EXCEEDED(HttpStatus.BAD_REQUEST,
+            "More doses recorded than the vaccine expects."),
+    EXAMINATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Medical examination not found."),
+    EXAMINATION_ALREADY_PLANNED(HttpStatus.CONFLICT,
+            "This examination is already planned for the pupil this year."),
+    EXAMINATION_RESTRICTION_REQUIRED(HttpStatus.BAD_REQUEST,
+            "Fit with reserve requires the restriction to be written down."),
+
+    // ---------- messaging ----------
+    MESSAGE_CAMPAIGN_NOT_FOUND(HttpStatus.NOT_FOUND, "Campaign not found."),
+    MESSAGE_ALREADY_SENT(HttpStatus.CONFLICT,
+            "This campaign has already left; messages cannot be recalled."),
+    MESSAGE_NO_RECIPIENT(HttpStatus.CONFLICT,
+            "No recipient: there is nothing to send."),
+    MESSAGE_DAILY_CAP_REACHED(HttpStatus.CONFLICT,
+            "The daily SMS allowance would be exceeded by this send."),
+    MESSAGE_UNKNOWN_PLACEHOLDER(HttpStatus.BAD_REQUEST,
+            "The message uses a placeholder nothing will fill.");
 
     private final HttpStatus status;
     private final String defaultMessage;

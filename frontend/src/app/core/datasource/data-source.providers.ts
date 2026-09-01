@@ -3,20 +3,28 @@ import { environment } from '@env/environment';
 import {
   ATTENDANCE_DATA_SOURCE, CLASSROOM_DATA_SOURCE, DASHBOARD_DATA_SOURCE,
   ENROLLMENT_DATA_SOURCE, FINANCE_DATA_SOURCE, GRADE_DATA_SOURCE,
-  REFERENCE_DATA_SOURCE, STUDENT_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE, CURRICULUM_DATA_SOURCE, FEE_DATA_SOURCE
+  OFFICIAL_DOCUMENT_DATA_SOURCE, OPTION_DATA_SOURCE, REFERENCE_DATA_SOURCE, TRANSFER_DATA_SOURCE, REPORT_CARD_DATA_SOURCE, HEALTH_DATA_SOURCE, FAMILY_REQUEST_DATA_SOURCE,
+  STUDENT_DATA_SOURCE, STUDENT_PORTAL_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE,
+  CURRICULUM_DATA_SOURCE, FEE_DATA_SOURCE, ACCESS_PROFILE_DATA_SOURCE
 } from './data-source';
 import {
   MockAttendanceDataSource, MockClassroomDataSource, MockDashboardDataSource,
   MockEnrollmentDataSource, MockFinanceDataSource, MockGradeDataSource,
-  MockReferenceDataSource, MockStudentDataSource, MockTeacherDataSource,
+  MockOptionDataSource, MockReferenceDataSource, MockTransferDataSource, MockHealthDataSource, MockFamilyRequestDataSource, MockReportCardDataSource, MockStudentDataSource, MockTeacherDataSource,
   MockTimetableDataSource, MockCurriculumDataSource, MockFeeDataSource
 } from './mock/mock-data-sources';
 import {
   ApiAttendanceDataSource, ApiClassroomDataSource, ApiDashboardDataSource,
   ApiEnrollmentDataSource, ApiFinanceDataSource, ApiGradeDataSource,
-  ApiReferenceDataSource, ApiStudentDataSource, ApiTeacherDataSource,
+  ApiOptionDataSource, ApiReferenceDataSource, ApiTransferDataSource, ApiHealthDataSource, ApiFamilyRequestDataSource, ApiReportCardDataSource, ApiStudentDataSource, ApiTeacherDataSource,
   ApiTimetableDataSource, ApiCurriculumDataSource, ApiFeeDataSource
 } from './api/api-data-sources';
+import { MockOfficialDocumentDataSource } from './mock/mock-official-document-data-source';
+import { ApiOfficialDocumentDataSource } from './api/api-official-document-data-source';
+import { MockStudentPortalDataSource } from './mock/mock-student-portal-data-source';
+import { ApiStudentPortalDataSource } from './api/api-student-portal-data-source';
+import { MockAccessProfileDataSource } from './mock/mock-access-profile-data-source';
+import { ApiAccessProfileDataSource } from './api/api-access-profile-data-source';
 
 /**
  * The single switch between demo mode and the real backend (section 78).
@@ -28,6 +36,8 @@ const useMock = environment.useMockData;
 
 export const dataSourceProviders: Provider[] = [
   { provide: STUDENT_DATA_SOURCE, useClass: useMock ? MockStudentDataSource : ApiStudentDataSource },
+  { provide: STUDENT_PORTAL_DATA_SOURCE,
+    useClass: useMock ? MockStudentPortalDataSource : ApiStudentPortalDataSource },
   { provide: ENROLLMENT_DATA_SOURCE, useClass: useMock ? MockEnrollmentDataSource : ApiEnrollmentDataSource },
   { provide: CLASSROOM_DATA_SOURCE, useClass: useMock ? MockClassroomDataSource : ApiClassroomDataSource },
   { provide: TEACHER_DATA_SOURCE, useClass: useMock ? MockTeacherDataSource : ApiTeacherDataSource },
@@ -38,5 +48,15 @@ export const dataSourceProviders: Provider[] = [
   { provide: TIMETABLE_DATA_SOURCE, useClass: useMock ? MockTimetableDataSource : ApiTimetableDataSource },
   { provide: CURRICULUM_DATA_SOURCE, useClass: useMock ? MockCurriculumDataSource : ApiCurriculumDataSource },
   { provide: FEE_DATA_SOURCE, useClass: useMock ? MockFeeDataSource : ApiFeeDataSource },
+  { provide: TRANSFER_DATA_SOURCE, useClass: useMock ? MockTransferDataSource : ApiTransferDataSource },
+  { provide: HEALTH_DATA_SOURCE, useClass: useMock ? MockHealthDataSource : ApiHealthDataSource },
+  { provide: FAMILY_REQUEST_DATA_SOURCE,
+    useClass: useMock ? MockFamilyRequestDataSource : ApiFamilyRequestDataSource },
+  { provide: OPTION_DATA_SOURCE, useClass: useMock ? MockOptionDataSource : ApiOptionDataSource },
+  { provide: REPORT_CARD_DATA_SOURCE, useClass: useMock ? MockReportCardDataSource : ApiReportCardDataSource },
+  { provide: OFFICIAL_DOCUMENT_DATA_SOURCE,
+    useClass: useMock ? MockOfficialDocumentDataSource : ApiOfficialDocumentDataSource },
+  { provide: ACCESS_PROFILE_DATA_SOURCE,
+    useClass: useMock ? MockAccessProfileDataSource : ApiAccessProfileDataSource },
   { provide: REFERENCE_DATA_SOURCE, useClass: useMock ? MockReferenceDataSource : ApiReferenceDataSource }
 ];

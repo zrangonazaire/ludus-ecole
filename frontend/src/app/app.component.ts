@@ -3,14 +3,16 @@ import { RouterOutlet } from '@angular/router';
 import { ToastHostComponent } from '@shared/ui/toast-host/toast-host.component';
 import { AuthService } from '@core/auth/auth.service';
 import { WebSocketService } from '@core/websocket/websocket.service';
+import { PageHelpComponent } from '@shared/ui/page-help/page-help.component';
 
 @Component({
   selector: 'eduops-root',
   standalone: true,
-  imports: [RouterOutlet, ToastHostComponent],
+  imports: [RouterOutlet, ToastHostComponent, PageHelpComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <router-outlet />
+    <eduops-page-help />
     <eduops-toast-host />
   `
 })

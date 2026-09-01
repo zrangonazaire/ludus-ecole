@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 import type { DemoPriority } from '@core/models/demo-setup.models';
 import { DemoSetupStore } from '@core/services/demo-setup.store';
+import { environment } from '@env/environment';
 
 interface SchoolPreview {
   id: 'primary' | 'secondary' | 'group';
@@ -166,5 +167,26 @@ export class LandingComponent {
   scrollTo(id: string): void {
     this.closeMenu();
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ─────────────────────────────────────────────────────────── tarif
+
+  /** Tarif d'entrée, lu depuis la configuration : une seule source. */
+  readonly pricing = environment.pricing;
+
+  /** Montant formaté à la française : 25 000, pas 25000 ni 25,000. */
+  get startingPrice(): string {
+    return new Intl.NumberFormat('fr-FR').format(this.pricing.startingFrom);
+  }
+
+  /**
+   * Le franc CFA s'écrit « FCFA » pour le public ivoirien.
+   *
+   * <p>Le code ISO XOF est juste, mais il ne se lit pas : sur une page d'accueil
+   * on affiche ce que les gens reconnaissent, et on garde le code pour les
+   * documents comptables.</p>
+   */
+  get currencyLabel(): string {
+    return environment.currency === 'XOF' ? 'FCFA' : environment.currency;
   }
 }
