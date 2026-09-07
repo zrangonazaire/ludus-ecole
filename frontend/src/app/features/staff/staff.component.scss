@@ -1,0 +1,203 @@
+.staff {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+
+  h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+  p { margin: 0; color: var(--text-muted); max-width: 58ch; }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+
+  .input { max-width: 22rem; }
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+
+  button {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    cursor: pointer;
+
+    &.is-active {
+      border-color: var(--brand);
+      color: var(--brand);
+      font-weight: 600;
+    }
+  }
+}
+
+.panel {
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.empty {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+
+  h2 { margin: 0; font-size: 1.05rem; }
+  p { margin: 0; color: var(--text-muted); max-width: 46ch; }
+}
+
+.table-wrap { overflow-x: auto; }
+
+.staff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+
+  th, td {
+    padding: 0.55rem 0.65rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-strong);
+    white-space: nowrap;
+  }
+
+  th {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+}
+
+.mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+}
+
+.sub {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+
+  /* La couleur double l'étiquette, elle ne la remplace pas. */
+  &--active { background: rgba(22, 163, 74, 0.14); color: #15803d; }
+  &--on_leave { background: rgba(37, 99, 235, 0.13); color: #1d4ed8; }
+  &--suspended { background: rgba(217, 119, 6, 0.16); color: #b45309; }
+  &--resigned { background: rgba(100, 116, 139, 0.18); color: #475569; }
+  &--archived { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
+}
+
+.flag {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  color: #b91c1c;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.notice {
+  margin: 0;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.87rem;
+
+  &--muted {
+    background: rgba(100, 116, 139, 0.08);
+    color: var(--text-muted);
+  }
+
+  &--warn {
+    background: rgba(217, 119, 6, 0.1);
+    color: #b45309;
+    border: 1px solid rgba(217, 119, 6, 0.25);
+  }
+}
+
+/* ───────────────────────────────────────────────── fenêtres */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 50;
+
+  &__panel {
+    width: min(44rem, 100%);
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--surface-card);
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+
+    &--narrow { width: min(30rem, 100%); }
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  h2 { margin: 0; font-size: 1.12rem; }
+  p { margin: 0; font-size: 0.9rem; }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0 1rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

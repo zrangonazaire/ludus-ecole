@@ -1,0 +1,85 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">Scolarité · Fin d'année</p>
+      <h1 class="page__title">Promotions et réinscriptions</h1>
+      <p class="page__meta">Préparez le passage des élèves vers leur classe de l'année suivante.</p>
+    </div>
+    <button class="btn btn--primary" type="button" [disabled]="!selectedCount() || saving()"
+            (click)="promoteSelected()">
+      Valider {{ selectedCount() }} réinscription(s)
+    </button>
+  </header>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des élèves à promouvoir..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    <section class="toolbar card">
+      <label class="field">
+        <span class="field__label">Année cible</span>
+        <select class="select" [value]="targetYearId()"
+                (change)="targetYearId.set($any($event.target).value)">
+          @for (year of years(); track year.id) {
+            <option [value]="year.id">{{ year.label }}</option>
+          }
+        </select>
+      </label>
+      <label class="field search-field">
+        <span class="field__label">Rechercher un élève</span>
+        <input class="input" type="search" placeholder="Nom ou matricule"
+               [value]="search()" (input)="search.set($any($event.target).value)" />
+      </label>
+      <div class="summary">
+        <strong>{{ visibleRows().length }}</strong>
+        <span>élève(s) à traiter</span>
+      </div>
+    </section>
+
+    <section class="card table-card">
+      <div class="table-wrapper">
+        <table class="table">
+          <caption class="visually-hidden">Élèves à réinscrire</caption>
+          <thead>
+            <tr>
+              <th>Élève</th>
+              <th>Classe actuelle</th>
+              <th>Décision</th>
+              <th>Classe cible</th>
+              <th class="cell-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of visibleRows(); track row.id) {
+              <tr>
+                <td>
+                  <strong>{{ row.studentName }}</strong>
+                  <small class="muted numeric">{{ row.studentNumber }}</small>
+                </td>
+                <td>{{ row.classroomName }}</td>
+                <td><span class="status-pill" data-status="ACTIVE">À décider</span></td>
+                <td>
+                  <select class="select" [value]="row.targetClassroomId"
+                          (change)="setTarget(row, $any($event.target).value)">
+                    <option value="">Choisir une classe</option>
+                    @for (classroom of classroomsForTarget(); track classroom.id) {
+                      <option [value]="classroom.id">{{ classroom.name }} · {{ classroom.levelName }}</option>
+                    }
+                  </select>
+                </td>
+                <td class="cell-actions">
+                  <button class="btn btn--secondary btn--sm" type="button"
+                          [disabled]="!row.targetClassroomId || saving()"
+                          (click)="promote(row)">Réinscrire</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5"><div class="empty">Aucun élève à promouvoir pour le moment.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

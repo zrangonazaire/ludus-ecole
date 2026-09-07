@@ -319,7 +319,7 @@ public class EnrollmentService {
         UUID yearId = academicYearId != null ? academicYearId : activeYearId();
         return PageResponse.from(
                 enrollmentRepository.search(yearId, classroomId, status,
-                        (search == null || search.isBlank()) ? null : search.trim(), pageable),
+                        search == null ? "" : search.trim(), pageable),
                 e -> toResponse(e, 0, null));
     }
 

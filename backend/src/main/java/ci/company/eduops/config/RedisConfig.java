@@ -36,8 +36,14 @@ public class RedisConfig {
     public static final String CACHE_STUDENT_SUMMARY = "studentSummary";
     public static final String CACHE_FINANCIAL_SUMMARY = "financialSummary";
 
-    @Bean
-    public ObjectMapper redisObjectMapper() {
+    /**
+     * Dedicated mapper for values stored in Redis.
+     *
+     * <p>This must not be a Spring bean: default typing is useful for rebuilding
+     * heterogeneous cached values, but exposing this mapper as the application's
+     * primary {@link ObjectMapper} also writes Java type metadata into HTTP JSON.</p>
+     */
+    private ObjectMapper redisObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);

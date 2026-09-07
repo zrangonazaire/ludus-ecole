@@ -54,12 +54,11 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
     @Query("""
            SELECT e FROM Enrollment e
            WHERE e.academicYear.id = :academicYearId
-             AND (:classroomId IS NULL OR e.classroom.id = :classroomId)
-             AND (:status IS NULL OR e.status = :status)
-             AND (:search IS NULL
-                  OR lower(e.student.firstName)     LIKE lower(concat('%', :search, '%'))
-                  OR lower(e.student.lastName)      LIKE lower(concat('%', :search, '%'))
-                  OR lower(e.student.studentNumber) LIKE lower(concat('%', :search, '%')))
+                 AND e.classroom.id = coalesce(:classroomId, e.classroom.id)
+                 AND e.status = coalesce(:status, e.status)
+                 AND (lower(e.student.firstName)     LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(e.student.lastName)      LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(e.student.studentNumber) LIKE lower(concat('%', coalesce(:search, ''), '%')))
            """)
     Page<Enrollment> search(@Param("academicYearId") UUID academicYearId,
                             @Param("classroomId") UUID classroomId,

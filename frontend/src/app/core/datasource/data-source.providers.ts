@@ -5,7 +5,8 @@ import {
   ENROLLMENT_DATA_SOURCE, FINANCE_DATA_SOURCE, GRADE_DATA_SOURCE,
   OFFICIAL_DOCUMENT_DATA_SOURCE, OPTION_DATA_SOURCE, REFERENCE_DATA_SOURCE, TRANSFER_DATA_SOURCE, REPORT_CARD_DATA_SOURCE, HEALTH_DATA_SOURCE, FAMILY_REQUEST_DATA_SOURCE,
   STUDENT_DATA_SOURCE, STUDENT_PORTAL_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE,
-  CURRICULUM_DATA_SOURCE, FEE_DATA_SOURCE, ACCESS_PROFILE_DATA_SOURCE
+  CURRICULUM_DATA_SOURCE, FEE_DATA_SOURCE, ACCESS_PROFILE_DATA_SOURCE, ADMISSION_DATA_SOURCE,
+  GUARDIAN_DATA_SOURCE
 } from './data-source';
 import {
   MockAttendanceDataSource, MockClassroomDataSource, MockDashboardDataSource,
@@ -25,6 +26,9 @@ import { MockStudentPortalDataSource } from './mock/mock-student-portal-data-sou
 import { ApiStudentPortalDataSource } from './api/api-student-portal-data-source';
 import { MockAccessProfileDataSource } from './mock/mock-access-profile-data-source';
 import { ApiAccessProfileDataSource } from './api/api-access-profile-data-source';
+import { MockAdmissionDataSource } from './mock/mock-admission-data-source';
+import { ApiAdmissionDataSource } from './api/api-admission-data-source';
+import { ApiGuardianDataSource } from './api/api-guardian-data-source';
 
 /**
  * The single switch between demo mode and the real backend (section 78).
@@ -58,5 +62,8 @@ export const dataSourceProviders: Provider[] = [
     useClass: useMock ? MockOfficialDocumentDataSource : ApiOfficialDocumentDataSource },
   { provide: ACCESS_PROFILE_DATA_SOURCE,
     useClass: useMock ? MockAccessProfileDataSource : ApiAccessProfileDataSource },
+  { provide: ADMISSION_DATA_SOURCE,
+    useClass: useMock ? MockAdmissionDataSource : ApiAdmissionDataSource },
+  { provide: GUARDIAN_DATA_SOURCE, useClass: ApiGuardianDataSource },
   { provide: REFERENCE_DATA_SOURCE, useClass: useMock ? MockReferenceDataSource : ApiReferenceDataSource }
 ];

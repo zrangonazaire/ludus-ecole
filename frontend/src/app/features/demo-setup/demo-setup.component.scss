@@ -356,3 +356,25 @@ form, .form-section { margin: 0; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/**
+ * Les deux nombres qui décident de la taille de l'école, côte à côte.
+ *
+ * Les séparer verticalement laissait croire qu'ils étaient indépendants ;
+ * c'est leur produit qui compte, et on le lit mieux d'un seul regard.
+ */
+.field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3, 12px);
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rule-hint {
+  margin: calc(var(--space-2, 8px) * -1) 0 var(--space-4, 16px);
+  font-size: 0.85rem;
+  color: var(--text-muted, #64748b);
+}

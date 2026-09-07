@@ -77,7 +77,7 @@ export class AdminLayoutComponent implements OnInit {
     { section: 'Scolarité', label: 'Documents officiels', route: '/student-files', icon: '▤',
       permissions: [PERMISSIONS.DOCUMENT_VIEW] },
     { section: 'Scolarité', label: 'Admissions', route: '/admissions', icon: '◐',
-      permissions: ['ADMISSION_VIEW'] },
+      permissions: [PERMISSIONS.ADMISSION_VIEW], ready: true },
     { section: 'Scolarité', label: 'Inscriptions', route: '/enrollments', icon: '✓',
       permissions: [PERMISSIONS.ENROLLMENT_VIEW], ready: true },
     // Le choix des enseignements à option : LV2, latin, série au lycée.
@@ -103,7 +103,7 @@ export class AdminLayoutComponent implements OnInit {
     { section: 'Scolarité', label: 'Demandes des familles', route: '/requests', icon: '◑',
       permissions: [PERMISSIONS.DOCUMENT_VIEW], ready: true },
     { section: 'Scolarité', label: 'Import de listes', route: '/imports', icon: '⇪',
-      permissions: ['IMPORT_EXECUTE'] },
+      permissions: [PERMISSIONS.IMPORT_EXECUTE], ready: true },
 
     // ────────────────────────────────────────────────────── Pédagogie
     { section: 'Pédagogie', label: 'Classes', route: '/classes', icon: '▦',
@@ -141,11 +141,11 @@ export class AdminLayoutComponent implements OnInit {
     { section: 'Personnel et accès', label: 'Enseignants', route: '/teachers', icon: '◍',
       permissions: [PERMISSIONS.TEACHER_VIEW] },
     { section: 'Personnel et accès', label: 'Personnel', route: '/staff', icon: '◌',
-      permissions: ['STAFF_VIEW'] },
+      permissions: [PERMISSIONS.STAFF_VIEW], ready: true },
     { section: 'Personnel et accès', label: 'Profils d’accès', route: '/users', icon: '◒',
       permissions: [PERMISSIONS.ROLE_MANAGE], ready: true },
     { section: 'Personnel et accès', label: 'Journal d\'audit', route: '/audit', icon: '▨',
-      permissions: ['AUDIT_VIEW'] },
+      permissions: [PERMISSIONS.AUDIT_VIEW], ready: true },
 
     // ─────────────────────────────────────────────────── Communication
     { section: 'Communication', label: 'Messages', route: '/notifications', icon: '✉',
@@ -157,7 +157,7 @@ export class AdminLayoutComponent implements OnInit {
     { section: 'Établissement', label: 'Paramètres', route: '/administration', icon: '◌',
       permissions: ['SCHOOL_VIEW'] },
     { section: 'Établissement', label: 'Années et périodes', route: '/academic-years',
-      icon: '◷', permissions: ['ACADEMIC_YEAR_VIEW'] },
+      icon: '◷', permissions: [PERMISSIONS.ACADEMIC_YEAR_VIEW], ready: true },
     { section: 'Établissement', label: 'Cycles et niveaux', route: '/levels', icon: '◱',
       permissions: ['SCHOOL_VIEW'] },
     { section: 'Établissement', label: 'Campus et salles', route: '/campus', icon: '⌂',

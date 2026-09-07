@@ -30,7 +30,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Query("""
            SELECT p FROM Payment p
            WHERE p.academicYear.id = :academicYearId
-             AND (:status IS NULL OR p.status = :status)
+             AND (:status = '' OR CAST(p.status AS String) = :status)
              AND (:from IS NULL OR p.paymentDate >= :from)
              AND (:to   IS NULL OR p.paymentDate <= :to)
              AND (:search IS NULL
@@ -40,7 +40,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
            ORDER BY p.paymentDate DESC, p.createdAt DESC
            """)
     Page<Payment> search(@Param("academicYearId") UUID academicYearId,
-                         @Param("status") PaymentStatus status,
+                         @Param("status") String status,
                          @Param("from") LocalDate from,
                          @Param("to") LocalDate to,
                          @Param("search") String search,

@@ -39,7 +39,7 @@ public interface ClassroomRepository extends JpaRepository<Classroom, UUID> {
            WHERE c.academicYear.id = :academicYearId
              AND (:campusId IS NULL OR c.campus.id = :campusId)
              AND (:levelId  IS NULL OR c.level.id  = :levelId)
-             AND (:status   IS NULL OR c.status    = :status)
+             AND (:status = '' OR CAST(c.status AS String) = :status)
              AND (:search IS NULL
                   OR lower(c.name) LIKE lower(concat('%', :search, '%'))
                   OR lower(c.code) LIKE lower(concat('%', :search, '%')))
@@ -47,7 +47,7 @@ public interface ClassroomRepository extends JpaRepository<Classroom, UUID> {
     Page<Classroom> search(@Param("academicYearId") UUID academicYearId,
                            @Param("campusId") UUID campusId,
                            @Param("levelId") UUID levelId,
-                           @Param("status") ClassroomStatus status,
+                           @Param("status") String status,
                            @Param("search") String search,
                            Pageable pageable);
 

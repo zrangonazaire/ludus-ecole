@@ -107,15 +107,17 @@ export const routes: Routes = [
       // placeholder that documents the endpoints it will consume.
       {
         path: 'admissions',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Admissions', endpoint: 'GET /api/v1/admissions' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.ADMISSION_VIEW], title: 'Admissions' },
+        loadComponent: () => import('./features/admissions/admissions.component')
+          .then((m) => m.AdmissionsComponent)
       },
       {
         path: 'guardians',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Responsables legaux', endpoint: 'GET /api/v1/guardians' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.STUDENT_VIEW], title: 'Responsables légaux' },
+        loadComponent: () => import('./features/guardians/guardians.component')
+          .then((m) => m.GuardiansComponent)
       },
       {
         path: 'subjects',
@@ -189,15 +191,16 @@ export const routes: Routes = [
       },
       {
         path: 'promotions',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Réinscriptions' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.ENROLLMENT_CREATE], title: 'Réinscriptions' },
+        loadComponent: () => import('./features/promotions/promotions.component')
+          .then((m) => m.PromotionsComponent)
       },
       {
         path: 'imports',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Imports' }
+        loadComponent: () => import('./features/imports/imports.component')
+          .then((m) => m.ImportsComponent),
+        data: { title: 'Import de listes' }
       },
       {
         path: 'pedagogical-enrollments',
@@ -282,8 +285,8 @@ export const routes: Routes = [
       },
       {
         path: 'staff',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
+        loadComponent: () => import('./features/staff/staff.component')
+          .then((m) => m.StaffComponent),
         data: { title: 'Personnel' }
       },
       {
@@ -295,9 +298,10 @@ export const routes: Routes = [
       },
       {
         path: 'audit',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: "Journal d'audit" }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.AUDIT_VIEW], title: "Journal d'audit" },
+        loadComponent: () => import('./features/audit/audit.component')
+          .then((m) => m.AuditComponent)
       },
       {
         path: 'notifications',
@@ -313,8 +317,8 @@ export const routes: Routes = [
       },
       {
         path: 'academic-years',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
+        loadComponent: () => import('./features/academic-years/academic-years.component')
+          .then((m) => m.AcademicYearsComponent),
         data: { title: 'Années et périodes' }
       },
       {

@@ -24,10 +24,9 @@ public interface EnrollmentTransferRepository extends JpaRepository<EnrollmentTr
     @Query("""
            SELECT t FROM EnrollmentTransfer t
            WHERE t.enrollment.academicYear.id = :academicYearId
-             AND (:search IS NULL
-                  OR lower(t.enrollment.student.firstName)     LIKE lower(concat('%', :search, '%'))
-                  OR lower(t.enrollment.student.lastName)      LIKE lower(concat('%', :search, '%'))
-                  OR lower(t.enrollment.student.studentNumber) LIKE lower(concat('%', :search, '%')))
+                 AND (lower(t.enrollment.student.firstName)     LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(t.enrollment.student.lastName)      LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(t.enrollment.student.studentNumber) LIKE lower(concat('%', coalesce(:search, ''), '%')))
            ORDER BY t.transferredAt DESC
            """)
     List<EnrollmentTransfer> findForYear(@Param("academicYearId") UUID academicYearId,

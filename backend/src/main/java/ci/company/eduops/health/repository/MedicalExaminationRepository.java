@@ -15,10 +15,9 @@ public interface MedicalExaminationRepository extends JpaRepository<MedicalExami
     @Query("""
             SELECT m FROM MedicalExamination m
             WHERE m.academicYear.id = :yearId
-              AND (:search IS NULL
-                   OR LOWER(m.student.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(m.student.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(m.student.studentNumber) LIKE LOWER(CONCAT('%', :search, '%')))
+                  AND (LOWER(m.student.firstName) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%'))
+                    OR LOWER(m.student.lastName) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%'))
+                    OR LOWER(m.student.studentNumber) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%')))
             ORDER BY m.scheduledOn ASC
             """)
     List<MedicalExamination> findForYear(@Param("yearId") UUID yearId,

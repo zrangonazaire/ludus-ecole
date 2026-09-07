@@ -284,6 +284,23 @@ public class ReportCardService {
     }
 
     /**
+     * Every report card of one pupil, newest first.
+     *
+     * <p>Drafts included, and deliberately: the file screen must show that a
+     * bulletin exists but has not been published, otherwise a family is told
+     * « il n'y en a pas » about a card sitting in the office.</p>
+     */
+    @Transactional(readOnly = true)
+    public java.util.List<ReportCardResponse> forStudent(UUID studentId) {
+        java.util.List<ReportCardResponse> rows = new java.util.ArrayList<>();
+        for (ReportCard card
+                : reportCardRepository.findByStudentIdOrderByCreatedAtDesc(studentId)) {
+            rows.add(toResponse(card));
+        }
+        return rows;
+    }
+
+    /**
      * Looks a card up by the code printed on it.
      *
      * <p>The point of the code is that a school can check a bulletin someone

@@ -29,12 +29,11 @@ public interface AdmissionApplicationRepository extends JpaRepository<AdmissionA
     @Query("""
            SELECT a FROM AdmissionApplication a
            WHERE a.academicYear.id = :academicYearId
-             AND (:status IS NULL OR a.status = :status)
-             AND (:levelId IS NULL OR a.requestedLevel.id = :levelId)
-             AND (:search IS NULL
-                  OR lower(a.firstName)         LIKE lower(concat('%', :search, '%'))
-                  OR lower(a.lastName)          LIKE lower(concat('%', :search, '%'))
-                  OR lower(a.applicationNumber) LIKE lower(concat('%', :search, '%')))
+             AND a.status = coalesce(:status, a.status)
+             AND a.requestedLevel.id = coalesce(:levelId, a.requestedLevel.id)
+                 AND (lower(a.firstName)         LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(a.lastName)          LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(a.applicationNumber) LIKE lower(concat('%', coalesce(:search, ''), '%')))
            """)
     Page<AdmissionApplication> search(@Param("academicYearId") UUID academicYearId,
                                       @Param("status") AdmissionStatus status,

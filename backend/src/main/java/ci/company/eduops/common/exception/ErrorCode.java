@@ -13,6 +13,18 @@ public enum ErrorCode {
     // ---------- generic ----------
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "The submitted data is invalid."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "Resource not found."),
+    /**
+     * No endpoint answers this address — distinct from a record that is absent.
+     *
+     * <p>Both are 404, but they send whoever is debugging to opposite places.
+     * « Record not found » points at the data; this one points at the running
+     * build, and the usual cause is that the server was started before the
+     * screen calling it was written. Java does not hot-reload, so a jar packaged
+     * an hour ago serves 404 for every route added since. Reporting the two the
+     * same way cost two rounds of investigation on {@code /api/v1/dashboard}
+     * and another on {@code /api/v1/family-requests}.</p>
+     */
+    ENDPOINT_NOT_FOUND(HttpStatus.NOT_FOUND, "No endpoint matches this address."),
     CONFLICT(HttpStatus.CONFLICT, "The operation conflicts with the current state."),
     CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "The record was modified by another user."),
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication is required."),
@@ -196,6 +208,7 @@ public enum ErrorCode {
     // ---------- documents / import ----------
     DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Document not found."),
     DOCUMENT_REVOKED(HttpStatus.GONE, "This document has been revoked."),
+    FAMILY_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Family request not found."),
     IMPORT_BATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "Import batch not found."),
     IMPORT_NOT_VALIDATED(HttpStatus.CONFLICT, "The import must be validated and previewed before confirmation."),
     IMPORT_FILE_INVALID(HttpStatus.BAD_REQUEST, "The uploaded file cannot be read."),

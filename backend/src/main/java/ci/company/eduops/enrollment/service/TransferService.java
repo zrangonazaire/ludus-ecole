@@ -110,7 +110,7 @@ public class TransferService {
     @Transactional(readOnly = true)
     public TransferBoardResponse board(UUID academicYearId, String search) {
         AcademicYear year = resolveYear(academicYearId);
-        String term = blankToNull(search);
+        String term = search == null ? "" : search.trim();
 
         List<ClassChangeResponse> changes = transferRepository
                 .findForYear(year.getId(), term).stream()

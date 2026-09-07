@@ -43,14 +43,29 @@ export class GuidedTourComponent implements AfterViewInit, OnDestroy {
   private readonly onReflow = () => this.reposition();
 
   constructor() {
-    // Re-measure whenever the step changes.
+    /*
+     * On remesure à chaque changement d'étape.
+     *
+     * Les deux branches passent par une micro-tâche, et pas seulement celle
+     * qui repositionne. Angular interdit d'écrire dans un signal depuis un
+     * `effect` — NG0600 — parce qu'une écriture immédiate peut relancer le
+     * même effet et boucler. La branche « pas d'étape » écrivait directement
+     * dans `spotlight`, ce qui faisait échouer le tout premier rendu de chaque
+     * page : le guide ne s'affichait pas et la console se remplissait.
+     *
+     * Différer l'écriture la sort du cycle de calcul : elle a lieu après, dans
+     * une tâche ordinaire, où écrire est légitime. C'est aussi ce que fait déjà
+     * l'autre branche, si bien que les deux se comportent enfin pareil.
+     */
     effect(() => {
       const step = this.tour.current();
-      if (step) {
-        queueMicrotask(() => this.reposition());
-      } else {
-        this.spotlight.set(null);
-      }
+      queueMicrotask(() => {
+        if (step) {
+          this.reposition();
+        } else {
+          this.spotlight.set(null);
+        }
+      });
     });
   }
 

@@ -219,6 +219,36 @@
     <build>
         <finalName>eduops</finalName>
         <plugins>
+            <!--
+                Un serveur qui tourne garde ses journaux ouverts, et Windows
+                refuse alors de les supprimer :
+
+                  Failed to delete target\local-backend.stderr.log :
+                  le processus ne peut pas accéder au fichier
+
+                `mvn clean install` echouait donc des qu'on avait oublie
+                d'arreter l'application. Ces fichiers ne sont pas un produit de
+                compilation ; les ignorer rend la commande utilisable sans
+                ceremonie prealable. `failOnError` couvre le meme cas pour tout
+                autre fichier verrouille : un nettoyage incomplet vaut mieux
+                qu'une compilation refusee.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <configuration>
+                    <failOnError>false</failOnError>
+                    <excludeDefaultDirectories>false</excludeDefaultDirectories>
+                    <filesets>
+                        <fileset>
+                            <directory>${project.build.directory}</directory>
+                            <excludes>
+                                <exclude>*.log</exclude>
+                            </excludes>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

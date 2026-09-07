@@ -1,0 +1,218 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">Scolarité</p>
+      <h1 class="page__title">Admissions</h1>
+      <p class="page__meta">Du dépôt du dossier à la décision d’admission</p>
+    </div>
+    @if (canManage()) {
+      <div class="page__actions">
+        <button type="button" class="btn btn--primary" (click)="openCreate()">
+          <span aria-hidden="true">+</span> Nouveau dossier
+        </button>
+      </div>
+    }
+  </header>
+
+  <section class="summary-grid" aria-label="Résumé des admissions">
+    <article class="summary card"><span>Total</span><strong class="numeric">{{ summary().total }}</strong></article>
+    <article class="summary card summary--review"><span>À traiter</span><strong class="numeric">{{ summary().review }}</strong></article>
+    <article class="summary card summary--success"><span>Acceptés</span><strong class="numeric">{{ summary().accepted }}</strong></article>
+    <article class="summary card summary--warning"><span>Pièces manquantes</span><strong class="numeric">{{ summary().incomplete }}</strong></article>
+  </section>
+
+  <section class="card board">
+    <header class="filters">
+      <label class="search-field">
+        <span aria-hidden="true">⌕</span>
+        <input class="input" type="search" placeholder="Nom ou numéro de dossier…"
+               [value]="search()"
+               (input)="search.set($any($event.target).value)"
+               (keyup.enter)="load()" />
+      </label>
+      <select class="select" aria-label="Année scolaire" [value]="yearFilter()"
+              (change)="onYearChange($any($event.target).value)">
+        @for (year of options()?.academicYears ?? []; track year.id) {
+          <option [value]="year.id">{{ year.label }}</option>
+        }
+      </select>
+      <select class="select" aria-label="Statut" [value]="statusFilter()"
+              (change)="statusFilter.set($any($event.target).value); load()">
+        <option value="">Tous les statuts</option>
+        @for (status of statuses; track status.value) {
+          <option [value]="status.value">{{ status.label }}</option>
+        }
+      </select>
+      <select class="select" aria-label="Niveau" [value]="levelFilter()"
+              (change)="levelFilter.set($any($event.target).value); load()">
+        <option value="">Tous les niveaux</option>
+        @for (level of options()?.levels ?? []; track level.id) {
+          <option [value]="level.id">{{ level.label }}</option>
+        }
+      </select>
+      <button type="button" class="btn btn--secondary btn--sm" (click)="load()">Rechercher</button>
+    </header>
+
+    @if (loading()) {
+      <eduops-loading-state message="Chargement des admissions…" />
+    } @else if (error()) {
+      <eduops-error-state (retry)="loadOptions(yearFilter())" />
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">Dossiers d’admission</caption>
+          <thead><tr>
+            <th>Candidat</th><th>Dossier</th><th>Niveau demandé</th>
+            <th>Responsable</th><th>Pièces</th><th>Statut</th><th></th>
+          </tr></thead>
+          <tbody>
+            @for (application of applications(); track application.id) {
+              <tr>
+                <td>
+                  <strong>{{ application.fullName }}</strong>
+                  <small>Né(e) le {{ application.birthDate | date:'dd/MM/yyyy' }}</small>
+                </td>
+                <td><span class="number numeric">{{ application.applicationNumber }}</span><small>{{ application.campusName }}</small></td>
+                <td><strong>{{ application.requestedLevelName }}</strong><small>{{ application.reservedClassroomName || 'Classe non réservée' }}</small></td>
+                <td><span>{{ application.guardianFullName || 'Non renseigné' }}</span><small>{{ application.guardianPhone || application.guardianEmail || '—' }}</small></td>
+                <td>
+                  <span class="document-progress" [class.document-progress--complete]="application.documentsComplete">
+                    {{ documentProgress(application) }} obligatoires
+                  </span>
+                </td>
+                <td><span class="status" [attr.data-status]="application.status">{{ statusLabel(application.status) }}</span></td>
+                <td><button type="button" class="btn btn--ghost btn--sm" (click)="openDetails(application)">Ouvrir</button></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="empty">Aucun dossier ne correspond aux filtres.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>
+
+@if (createOpen()) {
+  <div class="drawer-backdrop" (click)="closeCreate()"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="admission-create-title">
+    <header class="drawer__head">
+      <div><p class="eyebrow">Admission</p><h2 id="admission-create-title">Nouveau dossier</h2></div>
+      <button type="button" class="drawer__close" aria-label="Fermer" (click)="closeCreate()">×</button>
+    </header>
+    <form class="drawer__body" [formGroup]="createForm" (ngSubmit)="submitCreate()">
+      <section class="form-section">
+        <h3>Scolarité demandée</h3>
+        <div class="form-grid">
+          <label class="field"><span class="field__label field__label--required">Année scolaire</span>
+            <select class="select" formControlName="academicYearId">
+              @for (year of options()?.academicYears ?? []; track year.id) { <option [value]="year.id">{{ year.label }}</option> }
+            </select>
+          </label>
+          <label class="field"><span class="field__label field__label--required">Campus</span>
+            <select class="select" formControlName="campusId">
+              @for (campus of options()?.campuses ?? []; track campus.id) { <option [value]="campus.id">{{ campus.label }}</option> }
+            </select>
+          </label>
+          <label class="field"><span class="field__label field__label--required">Niveau</span>
+            <select class="select" formControlName="requestedLevelId">
+              <option value="">Choisir…</option>
+              @for (level of options()?.levels ?? []; track level.id) { <option [value]="level.id">{{ level.label }}</option> }
+            </select>
+          </label>
+          <label class="field"><span class="field__label">Classe à réserver</span>
+            <select class="select" formControlName="reservedClassroomId">
+              <option value="">Aucune pour l’instant</option>
+              @for (classroom of availableClassroomsForCreate(); track classroom.id) { <option [value]="classroom.id">{{ classroom.label }}</option> }
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h3>Identité du candidat</h3>
+        <div class="form-grid">
+          <label class="field"><span class="field__label field__label--required">Prénom</span><input class="input" formControlName="firstName" /></label>
+          <label class="field"><span class="field__label field__label--required">Nom</span><input class="input" formControlName="lastName" /></label>
+          <label class="field"><span class="field__label">Autres prénoms</span><input class="input" formControlName="middleName" /></label>
+          <label class="field"><span class="field__label field__label--required">Sexe</span>
+            <select class="select" formControlName="gender"><option value="FEMALE">Féminin</option><option value="MALE">Masculin</option><option value="OTHER">Autre</option></select>
+          </label>
+          <label class="field"><span class="field__label field__label--required">Date de naissance</span><input class="input" type="date" formControlName="birthDate" /></label>
+          <label class="field"><span class="field__label">Lieu de naissance</span><input class="input" formControlName="birthPlace" /></label>
+          <label class="field"><span class="field__label">Nationalité</span><input class="input" formControlName="nationality" /></label>
+          <label class="field"><span class="field__label">École précédente</span><input class="input" formControlName="previousSchool" /></label>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h3>Responsable légal</h3>
+        <div class="form-grid">
+          <label class="field"><span class="field__label">Prénom</span><input class="input" formControlName="guardianFirstName" /></label>
+          <label class="field"><span class="field__label">Nom</span><input class="input" formControlName="guardianLastName" /></label>
+          <label class="field"><span class="field__label">Téléphone</span><input class="input" type="tel" formControlName="guardianPhone" /></label>
+          <label class="field"><span class="field__label">Courriel</span><input class="input" type="email" formControlName="guardianEmail" /></label>
+        </div>
+        <label class="field field--wide"><span class="field__label">Notes internes</span><textarea class="textarea" rows="3" formControlName="notes"></textarea></label>
+      </section>
+    </form>
+    <footer class="drawer__foot">
+      <button type="button" class="btn btn--secondary" (click)="closeCreate()">Annuler</button>
+      <button type="button" class="btn btn--primary" [disabled]="createForm.invalid || saving()" (click)="submitCreate()">
+        {{ saving() ? 'Création…' : 'Créer le dossier' }}
+      </button>
+    </footer>
+  </aside>
+}
+
+@if (detailOpen() && selected(); as application) {
+  <div class="drawer-backdrop" (click)="closeDetails()"></div>
+  <aside class="drawer drawer--detail" role="dialog" aria-modal="true" aria-labelledby="admission-detail-title">
+    <header class="drawer__head">
+      <div><p class="eyebrow">{{ application.applicationNumber }}</p><h2 id="admission-detail-title">{{ application.fullName }}</h2></div>
+      <button type="button" class="drawer__close" aria-label="Fermer" (click)="closeDetails()">×</button>
+    </header>
+    <div class="drawer__body">
+      <div class="detail-summary">
+        <span class="status" [attr.data-status]="application.status">{{ statusLabel(application.status) }}</span>
+        <dl><div><dt>Niveau</dt><dd>{{ application.requestedLevelName }}</dd></div><div><dt>Classe</dt><dd>{{ application.reservedClassroomName || 'À définir' }}</dd></div><div><dt>Responsable</dt><dd>{{ application.guardianFullName || 'Non renseigné' }}</dd></div><div><dt>Contact</dt><dd>{{ application.guardianPhone || application.guardianEmail || '—' }}</dd></div></dl>
+      </div>
+
+      <section class="detail-section">
+        <div class="detail-section__head"><div><h3>Pièces du dossier</h3><p>Les pièces obligatoires doivent être reçues avant l’acceptation.</p></div><strong>{{ documentProgress(application) }}</strong></div>
+        <div class="document-list">
+          @for (document of application.documents; track document.id) {
+            <label class="document-item" [class.document-item--received]="document.received">
+              <input type="checkbox" [checked]="document.received"
+                     [disabled]="!canManage() || documentUpdating() !== null"
+                     (change)="toggleDocument(document.id, $any($event.target).checked)" />
+              <span><strong>{{ document.label }}</strong><small>{{ document.mandatory ? 'Obligatoire' : 'Facultatif' }}</small></span>
+              @if (documentUpdating() === document.id) { <span class="spinner">…</span> }
+            </label>
+          }
+        </div>
+      </section>
+
+      @if (canDecide() && nextStatuses(application).length > 0) {
+        <section class="detail-section workflow" [formGroup]="workflowForm">
+          <div class="detail-section__head"><div><h3>Faire avancer le dossier</h3><p>Seules les transitions autorisées sont proposées.</p></div></div>
+          <label class="field"><span class="field__label field__label--required">Nouvel état</span>
+            <select class="select" formControlName="status"><option value="">Choisir une action…</option>@for (status of nextStatuses(application); track status.value) { <option [value]="status.value">{{ status.label }}</option> }</select>
+          </label>
+          <div class="form-grid">
+            <label class="field"><span class="field__label">Classe réservée</span>
+              <select class="select" formControlName="reservedClassroomId"><option value="">Aucune</option>@for (classroom of availableClassrooms(application); track classroom.id) { <option [value]="classroom.id">{{ classroom.label }}</option> }</select>
+            </label>
+            <label class="field"><span class="field__label">Note du test</span><input class="input numeric" type="number" min="0" step="0.25" formControlName="entranceExamScore" /></label>
+          </div>
+          <label class="field"><span class="field__label">Motif / observation</span><textarea class="textarea" rows="3" formControlName="reason"></textarea></label>
+          <button type="button" class="btn btn--primary" [disabled]="workflowForm.invalid || saving()" (click)="submitWorkflow()">{{ saving() ? 'Enregistrement…' : 'Confirmer l’action' }}</button>
+        </section>
+      }
+
+      @if (application.decisionReason) {
+        <section class="decision-note"><strong>Motif de décision</strong><p>{{ application.decisionReason }}</p></section>
+      }
+    </div>
+  </aside>
+}

@@ -59,7 +59,10 @@ export class SignupService {
       accessToken: 'mock-access-token.admin',
       refreshToken: 'mock-refresh-token.admin',
       expiresIn: 28800,
-      onboardingRequired: true
+      // La démonstration suit la même règle que le serveur : l'assistant n'est
+      // proposé que si le parcours n'a rien configuré.
+      onboardingRequired: !request.operations
+        || request.operations.cycles.length === 0
     };
   }
 }

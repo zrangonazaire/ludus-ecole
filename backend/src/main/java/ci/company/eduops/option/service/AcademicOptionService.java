@@ -242,7 +242,8 @@ public class AcademicOptionService {
         AcademicYear year = resolveYear(academicYearId, schoolId);
         String cleanSearch = search == null || search.isBlank() ? null : search.trim();
         Page<StudentOptionChoice> result = choiceRepository.search(
-                schoolId, year.getId(), offeringId, status, cleanSearch,
+                schoolId, year.getId(), offeringId,
+                status == null ? "" : status.name(), cleanSearch,
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
                         Sort.by(Sort.Direction.DESC, "chosenAt")));
         return PageResponse.from(result, this::describeChoice);

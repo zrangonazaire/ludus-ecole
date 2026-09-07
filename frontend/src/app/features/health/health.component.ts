@@ -277,9 +277,27 @@ export class HealthComponent implements OnInit {
           }
           this.loading.set(false);
         },
-        error: () => {
+        error: (err) => {
           this.loading.set(false);
-          this.error.set(true);
+          this.error.set(false);
+          this.board.set({
+            academicYearId: '',
+            academicYearCode: '',
+            fullAccess: false,
+            alerts: [],
+            records: [],
+            visits: [],
+            examinations: [],
+            alertCount: 0,
+            visitCountThisWeek: 0,
+            awaitingGuardianCount: 0,
+            missingVaccineCount: 0,
+            missingConsentCount: 0,
+            overdueExaminationCount: 0
+          });
+          this.notifications.error(
+            translateErrorCode(err?.error?.code ?? 'UNKNOWN'),
+            'Santé scolaire indisponible');
         }
       });
   }

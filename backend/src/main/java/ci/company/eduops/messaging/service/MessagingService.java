@@ -492,7 +492,8 @@ public class MessagingService {
     @Transactional(readOnly = true)
     public List<MessageCampaign> history(UUID academicYearId, CampaignStatus status) {
         currentUser.requirePermission("MESSAGE_VIEW");
-        return campaignRepository.findForYear(resolveYear(academicYearId).getId(), status);
+        return campaignRepository.findForYear(resolveYear(academicYearId).getId(),
+                status == null ? "" : status.name());
     }
 
     @Transactional(readOnly = true)

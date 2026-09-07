@@ -1,6 +1,7 @@
 package ci.company.eduops.school.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -67,6 +68,16 @@ public class SignupRequest {
 
     @Schema(description = "Acceptation des conditions d'utilisation")
     private boolean acceptedTerms;
+
+    /**
+     * Ce que le visiteur a decrit dans « Composer ma demo ».
+     *
+     * <p>Facultatif : on peut s'inscrire sans etre passe par ce parcours. Mais
+     * s'il est fourni, l'ecole est creee deja configuree — sinon le travail
+     * demande au visiteur pendant quatre etapes serait jete a l'arrivee.</p>
+     */
+    @Valid
+    private SignupOperationsRequest operations;
 
     public String getSchoolName() {
         return schoolName;
@@ -162,5 +173,13 @@ public class SignupRequest {
 
     public void setAcceptedTerms(boolean acceptedTerms) {
         this.acceptedTerms = acceptedTerms;
+    }
+
+    public SignupOperationsRequest getOperations() {
+        return operations;
+    }
+
+    public void setOperations(SignupOperationsRequest operations) {
+        this.operations = operations;
     }
 }

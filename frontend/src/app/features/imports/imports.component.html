@@ -1,0 +1,328 @@
+<section class="imports">
+
+  <eduops-step-coachmark
+    flow="imports"
+    [stepKey]="step()"
+    [stepNumber]="helpCopy().step"
+    [totalSteps]="totalSteps"
+    eyebrow="Conseil pour cette étape"
+    [title]="helpCopy().title"
+    [description]="helpCopy().description"
+    [points]="helpCopy().points" />
+
+  <header class="page-head">
+    <div>
+      <h1>Import de listes</h1>
+      <p>Reprenez vos listes existantes sans les ressaisir. Rien n’est
+        enregistré avant que vous ayez vu ce que le fichier contient.</p>
+    </div>
+  </header>
+
+  <nav class="steps" aria-label="Étapes de l’import">
+    <button type="button" class="steps__item"
+            [class.is-active]="step() === 'DEPOT'"
+            (click)="goTo('DEPOT')">
+      <span class="steps__num">1</span> Déposer un fichier
+    </button>
+    <button type="button" class="steps__item"
+            [class.is-active]="step() === 'APERCU'"
+            [disabled]="!preview() && !report()"
+            (click)="goTo('APERCU')">
+      <span class="steps__num">2</span> Vérifier l’aperçu
+    </button>
+    <button type="button" class="steps__item"
+            [class.is-active]="step() === 'HISTORIQUE'"
+            (click)="goTo('HISTORIQUE')">
+      <span class="steps__num">3</span> Historique
+    </button>
+  </nav>
+
+  @if (!canImport()) {
+    <p class="notice notice--muted">
+      Vous pouvez consulter cet écran, mais l’import demande l’autorisation
+      « Exécuter les imports ». Demandez-la à la direction.
+    </p>
+  }
+
+  <!-- ─────────────────────────────────────────────── 1. Dépôt -->
+  @if (step() === 'DEPOT') {
+    <div class="panel">
+      <ol class="howto">
+        <li>
+          <strong>Téléchargez le modèle.</strong>
+          Il porte les douze colonnes attendues, dans l’ordre attendu.
+          <button type="button" class="btn btn--ghost" (click)="downloadTemplate()">
+            Télécharger le modèle
+          </button>
+        </li>
+        <li>
+          <strong>Recopiez-y vos listes.</strong>
+          Passez la colonne « Téléphone du responsable » au format Texte
+          avant de saisir : sinon le tableur réécrit +225 07 11 22 33 en
+          nombre, et le numéro d’origine est perdu.
+        </li>
+        <li><strong>Déposez le fichier ci-dessous.</strong> Vous verrez un
+          aperçu avant toute écriture.</li>
+      </ol>
+
+      <div class="dropzone"
+           [class.is-dragging]="dragging()"
+           (dragover)="onDragOver($event)"
+           (dragleave)="onDragLeave()"
+           (drop)="onDrop($event)">
+        @if (analysing()) {
+          <eduops-loading-state message="Lecture du fichier…" />
+        } @else {
+          <p class="dropzone__hint">Glissez votre classeur ici</p>
+          <p class="dropzone__or">ou</p>
+          <label class="btn btn--primary" [class.is-disabled]="!canImport()">
+            Choisir un fichier
+            <input type="file" hidden
+                   accept=".xlsx,.csv,.tsv"
+                   [disabled]="!canImport()"
+                   (change)="onFileSelected($event)" />
+          </label>
+          <p class="dropzone__formats">Formats acceptés : .xlsx, .csv</p>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ─────────────────────────────────────────── 2. Aperçu -->
+  @if (step() === 'APERCU') {
+
+    @if (report(); as done) {
+      <div class="panel panel--done">
+        <h2>Import terminé</h2>
+        <p>
+          {{ done.rows.length }} ligne(s) traitée(s) depuis
+          <strong>{{ done.fileName }}</strong>.
+        </p>
+        @if (done.rows.length > 0) {
+          <ul class="refused">
+            @for (row of done.rows; track row.rowNumber) {
+              @if (row.errors.length > 0) {
+                <li>
+                  Ligne {{ row.rowNumber }} refusée :
+                  {{ row.errors.join(' ; ') }}
+                </li>
+              }
+            }
+          </ul>
+        }
+        <div class="actions">
+          <button type="button" class="btn btn--primary" (click)="discard()">
+            Importer un autre fichier
+          </button>
+          <button type="button" class="btn btn--ghost" (click)="goTo('HISTORIQUE')">
+            Voir l’historique
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (preview(); as data) {
+      <div class="panel">
+        <div class="summary">
+          <p class="summary__file">{{ data.fileName }}</p>
+          <ul class="summary__counts">
+            <li class="count count--valid">{{ data.validRows }} prête(s)</li>
+            <li class="count count--warning">{{ data.warningRows }} à vérifier</li>
+            <li class="count count--duplicate">{{ data.duplicateRows }} doublon(s)</li>
+            <li class="count count--invalid">{{ data.invalidRows }} en erreur</li>
+          </ul>
+        </div>
+
+        @if (data.alreadyImportedAt) {
+          <p class="notice notice--danger">
+            Ce fichier a déjà été importé le
+            {{ data.alreadyImportedAt | date:'dd/MM/yyyy à HH:mm' }}
+            ({{ data.alreadyImportedRows }} élève(s) créés).
+            Confirmer une seconde fois créera chaque élève en double.
+          </p>
+        }
+
+        @if (!data.importable) {
+          <p class="notice notice--danger">
+            Aucune ligne n’est importable en l’état. Corrigez le fichier
+            et redéposez-le.
+          </p>
+        }
+
+        <div class="filters" role="group" aria-label="Filtrer les lignes">
+          <button type="button" [class.is-active]="rowFilter() === 'A_CORRIGER'"
+                  (click)="filterRows('A_CORRIGER')">
+            À corriger ({{ toFixCount() }})
+          </button>
+          <button type="button" [class.is-active]="rowFilter() === 'TOUT'"
+                  (click)="filterRows('TOUT')">
+            Toutes ({{ data.totalRows }})
+          </button>
+          <button type="button" [class.is-active]="rowFilter() === 'INVALID'"
+                  (click)="filterRows('INVALID')">
+            En erreur ({{ data.invalidRows }})
+          </button>
+          <button type="button" [class.is-active]="rowFilter() === 'DUPLICATE'"
+                  (click)="filterRows('DUPLICATE')">
+            Doublons ({{ data.duplicateRows }})
+          </button>
+        </div>
+
+        @if (visibleRows().length === 0) {
+          <p class="notice notice--muted">
+            Aucune ligne dans ce filtre — c’est plutôt bon signe.
+          </p>
+        } @else {
+          <div class="table-wrap">
+            <table class="preview">
+              <thead>
+                <tr>
+                  <th scope="col">Ligne</th>
+                  <th scope="col">État</th>
+                  @for (column of columns(); track column) {
+                    <th scope="col">{{ column }}</th>
+                  }
+                  <th scope="col">Remarques</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of visibleRows(); track row.rowNumber) {
+                  <tr [class]="'row row--' + statusTone(row.status)">
+                    <td>{{ row.rowNumber }}</td>
+                    <td>
+                      <span [class]="'badge badge--' + statusTone(row.status)">
+                        {{ statusLabel(row.status) }}
+                      </span>
+                    </td>
+                    @for (column of columns(); track column) {
+                      <td>{{ row.values[column] }}</td>
+                    }
+                    <td class="remarks">
+                      @for (error of row.errors; track error) {
+                        <span class="remark remark--error">{{ error }}</span>
+                      }
+                      @for (warning of row.warnings; track warning) {
+                        <span class="remark remark--warning">{{ warning }}</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <div class="actions">
+          <button type="button" class="btn btn--primary"
+                  [disabled]="!data.importable || confirming() || !canImport()"
+                  (click)="confirm()">
+            {{ confirming()
+              ? 'Import en cours…'
+              : 'Créer ' + willCreate() + ' élève(s)' }}
+          </button>
+          <button type="button" class="btn btn--ghost" (click)="discard()">
+            Abandonner
+          </button>
+          <p class="actions__note">
+            Abandonner n’écrit rien : le fichier n’a pas encore été appliqué.
+          </p>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ─────────────────────────────────────── 3. Historique -->
+  @if (step() === 'HISTORIQUE') {
+    <div class="panel">
+      @if (loadingHistory()) {
+        <eduops-loading-state message="Chargement de l’historique…" />
+      } @else if (historyFailed()) {
+        <eduops-error-state
+          title="Historique indisponible"
+          message="Les imports passés n’ont pas pu être chargés."
+          (retry)="loadHistory()" />
+      } @else if (history().length === 0) {
+        <p class="notice notice--muted">
+          Aucun import pour l’instant. Le premier que vous confirmerez
+          apparaîtra ici, avec son auteur et son résultat.
+        </p>
+      } @else {
+        <div class="table-wrap">
+          <table class="history">
+            <thead>
+              <tr>
+                <th scope="col">Fichier</th>
+                <th scope="col">Type</th>
+                <th scope="col">Déposé par</th>
+                <th scope="col">Le</th>
+                <th scope="col">Créés</th>
+                <th scope="col">Ignorés</th>
+                <th scope="col">État</th>
+                <th scope="col"><span class="sr-only">Détail</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (batch of history(); track batch.id) {
+                <tr>
+                  <td>{{ batch.fileName }}</td>
+                  <td>{{ batch.importTypeLabel }}</td>
+                  <td>{{ batch.uploadedByName ?? '—' }}</td>
+                  <td>{{ batch.uploadedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td>{{ batch.importedRows }}</td>
+                  <td>{{ batch.invalidRows + batch.duplicateRows }}</td>
+                  <td>
+                    <span [class]="'badge badge--' + batch.status.toLowerCase()">
+                      {{ batch.statusLabel }}
+                    </span>
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn--link"
+                            (click)="openBatch(batch)">
+                      Détail
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  @if (openedBatch(); as batch) {
+    <div class="drawer" role="dialog" aria-modal="true"
+         aria-labelledby="batch-title">
+      <div class="drawer__panel">
+        <header class="drawer__head">
+          <h2 id="batch-title">{{ batch.fileName }}</h2>
+          <button type="button" class="btn btn--ghost" (click)="closeBatch()">
+            Fermer
+          </button>
+        </header>
+        <dl class="drawer__facts">
+          <dt>Déposé par</dt><dd>{{ batch.uploadedByName ?? '—' }}</dd>
+          <dt>Le</dt><dd>{{ batch.uploadedAt | date:'dd/MM/yyyy à HH:mm' }}</dd>
+          <dt>Confirmé par</dt><dd>{{ batch.confirmedByName ?? '—' }}</dd>
+          <dt>Lignes lues</dt><dd>{{ batch.totalRows }}</dd>
+          <dt>Élèves créés</dt><dd>{{ batch.importedRows }}</dd>
+          <dt>Doublons ignorés</dt><dd>{{ batch.duplicateRows }}</dd>
+          <dt>Lignes en erreur</dt><dd>{{ batch.invalidRows }}</dd>
+        </dl>
+        @if (batch.refusedRows.length > 0) {
+          <h3>Lignes refusées à l’écriture</h3>
+          <ul class="refused">
+            @for (row of batch.refusedRows; track row.rowNumber) {
+              <li>Ligne {{ row.rowNumber }} : {{ row.errors.join(' ; ') }}</li>
+            }
+          </ul>
+        } @else {
+          <p class="notice notice--muted">
+            Aucune ligne refusée à l’écriture.
+          </p>
+        }
+      </div>
+    </div>
+  }
+
+</section>

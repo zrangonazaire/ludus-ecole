@@ -1,0 +1,155 @@
+<section class="audit">
+
+  <eduops-step-coachmark
+    flow="audit"
+    stepKey="overview"
+    [stepNumber]="1"
+    [totalSteps]="1"
+    eyebrow="À savoir sur cet écran"
+    [title]="helpCopy.title"
+    [description]="helpCopy.description"
+    [points]="helpCopy.points" />
+
+  <header class="page-head">
+    <div>
+      <h1>Journal d’audit</h1>
+      <p>Qui a fait quoi, et quand. Le journal ne peut pas être modifié.</p>
+    </div>
+  </header>
+
+  <!--
+    Dit une fois, clairement, plutôt que de laisser chercher pourquoi les
+    valeurs n'apparaissent pas.
+  -->
+  <p class="notice notice--muted">
+    Les champs modifiés sont nommés, leur contenu n’est pas affiché — le
+    journal ne doit pas permettre de lire des dossiers qu’on n’a pas le droit
+    d’ouvrir.
+  </p>
+
+  @if (failedLogins() > 0) {
+    <p class="notice notice--warn">
+      {{ failedLogins() }} échec(s) de connexion sur cette page. Des échecs
+      répétés sur un même compte méritent un coup d’œil.
+    </p>
+  }
+
+  <div class="toolbar">
+    <div class="filters" role="group" aria-label="Filtrer par action">
+      <button type="button" [class.is-active]="actionFilter() === ''"
+              (click)="filterAction('')">Toutes les actions</button>
+      @for (action of actions; track action.code) {
+        <button type="button" [class.is-active]="actionFilter() === action.code"
+                (click)="filterAction(action.code)">{{ action.label }}</button>
+      }
+    </div>
+
+    <div class="range">
+      @if (entityTypes().length > 0) {
+        <label class="range__field">
+          <span>Objet</span>
+          <select class="select" [value]="typeFilter()"
+                  (change)="filterType($any($event.target).value)">
+            <option value="">Tous</option>
+            @for (type of entityTypes(); track type) {
+              <option [value]="type">{{ type }}</option>
+            }
+          </select>
+        </label>
+      }
+      <label class="range__field">
+        <span>Du</span>
+        <input class="input" type="date" [value]="from()"
+               (change)="setFrom($any($event.target).value)" />
+      </label>
+      <label class="range__field">
+        <span>Au</span>
+        <input class="input" type="date" [value]="to()"
+               (change)="setTo($any($event.target).value)" />
+      </label>
+      @if (hasFilters()) {
+        <button type="button" class="btn btn--ghost btn--sm"
+                (click)="clearFilters()">Effacer</button>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <eduops-loading-state message="Lecture du journal…" />
+  } @else if (failed()) {
+    <eduops-error-state
+      title="Journal indisponible"
+      message="Le journal d’audit n’a pas pu être chargé."
+      (retry)="load()" />
+  } @else if (entries().length === 0) {
+    <div class="panel empty">
+      @if (hasFilters()) {
+        <h2>Aucune entrée</h2>
+        <p>Aucune opération ne correspond à ces filtres.</p>
+        <button type="button" class="btn btn--ghost" (click)="clearFilters()">
+          Effacer les filtres
+        </button>
+      } @else {
+        <h2>Le journal est vide</h2>
+        <p>Les opérations sensibles y apparaîtront au fur et à mesure :
+          connexions, créations, modifications, validations.</p>
+      }
+    </div>
+  } @else {
+    <ol class="trail">
+      @for (entry of entries(); track entry.id) {
+        <li class="entry" [class.is-failure]="!entry.success">
+          <div class="entry__mark" [class]="'entry__mark--' + toneOf(entry.action)"
+               aria-hidden="true"></div>
+
+          <div class="entry__body">
+            <p class="entry__summary">{{ summaryOf(entry) }}</p>
+
+            @if (entry.changedFields.length > 0) {
+              <p class="entry__fields">
+                Champs modifiés : {{ entry.changedFields.join(', ') }}
+              </p>
+            }
+
+            @if (entry.reason) {
+              <p class="entry__reason">Motif : {{ entry.reason }}</p>
+            }
+
+            @if (!entry.success && entry.errorCode) {
+              <p class="entry__error">Refusé — {{ entry.errorCode }}</p>
+            }
+
+            <p class="entry__meta">
+              {{ entry.occurredAt | date:'dd/MM/yyyy à HH:mm:ss' }}
+              @if (entry.ipAddress) {
+                · depuis {{ entry.ipAddress }}
+              }
+              @if (entry.correlationId) {
+                · réf. {{ entry.correlationId }}
+              }
+            </p>
+          </div>
+
+          <span [class]="'badge badge--' + toneOf(entry.action)">
+            {{ entry.actionLabel }}
+          </span>
+        </li>
+      }
+    </ol>
+
+    <nav class="pager" aria-label="Pagination du journal">
+      <button type="button" class="btn btn--ghost btn--sm"
+              [disabled]="!canGoBack()" (click)="previousPage()">
+        Plus récent
+      </button>
+      <span class="pager__state">
+        Page {{ page() + 1 }} sur {{ totalPages() }} — {{ total() }} entrée(s)
+      </span>
+      <button type="button" class="btn btn--ghost btn--sm"
+              [disabled]="!canGoForward()" (click)="nextPage()">
+        Plus ancien
+      </button>
+    </nav>
+  }
+
+</section>

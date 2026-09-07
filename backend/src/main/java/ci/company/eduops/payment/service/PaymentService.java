@@ -309,7 +309,7 @@ public class PaymentService {
             org.springframework.data.domain.Pageable pageable) {
         UUID yearId = academicYearId != null ? academicYearId : activeAcademicYearId();
         return ci.company.eduops.common.dto.PageResponse.from(
-                paymentRepository.search(yearId, status, from, to,
+                paymentRepository.search(yearId, status == null ? "" : status.name(), from, to,
                         (search == null || search.isBlank()) ? null : search.trim(), pageable),
                 this::toResponse);
     }

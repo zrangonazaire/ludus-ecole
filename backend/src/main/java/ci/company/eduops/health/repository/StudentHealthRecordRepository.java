@@ -24,10 +24,9 @@ public interface StudentHealthRecordRepository extends JpaRepository<StudentHeal
               LEFT JOIN FETCH r.conditions
               JOIN Enrollment e ON e.student = r.student
             WHERE e.academicYear.id = :yearId
-              AND (:search IS NULL
-                   OR LOWER(r.student.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(r.student.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(r.student.studentNumber) LIKE LOWER(CONCAT('%', :search, '%')))
+                  AND (LOWER(r.student.firstName) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%'))
+                    OR LOWER(r.student.lastName) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%'))
+                    OR LOWER(r.student.studentNumber) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%')))
             """)
     List<StudentHealthRecord> findForYear(@Param("yearId") UUID yearId,
                                           @Param("search") String search);

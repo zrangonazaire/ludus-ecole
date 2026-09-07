@@ -13,7 +13,7 @@ import {
   SchoolPreset,
   StudentBand
 } from '@core/models/demo-setup.models';
-import { DemoSetupStore } from '@core/services/demo-setup.store';
+import { LEVELS_PER_PRESET, DemoSetupStore } from '@core/services/demo-setup.store';
 import { StepCoachmarkComponent } from '@shared/ui/step-coachmark/step-coachmark.component';
 
 type SetupStep = 1 | 2 | 3 | 4;
@@ -66,9 +66,27 @@ export class DemoSetupComponent {
     periodScheme: [this.initialDraft.rules.periodScheme, Validators.required],
     gradingScale: [this.initialDraft.rules.gradingScale, Validators.required],
     rankingEnabled: [this.initialDraft.rules.rankingEnabled],
+    classesPerLevel: [this.initialDraft.rules.classesPerLevel,
+                      [Validators.required, Validators.min(1), Validators.max(12)]],
     classCapacity: [this.initialDraft.rules.classCapacity, [Validators.required, Validators.min(10), Validators.max(100)]],
     currency: [this.initialDraft.rules.currency, Validators.required]
   });
+
+  /**
+   * Combien de classes le profil choisi produira.
+   *
+   * <p>Les niveaux ne sont pas saisis ici : ils découlent du profil — primaire,
+   * secondaire, groupe scolaire. Le total se lit donc de la même table que
+   * celle qui sert à créer l'école, et non d'un compte tenu à part qui
+   * finirait par diverger.</p>
+   */
+  readonly plannedClassCount = computed(() => {
+    const levels = LEVELS_PER_PRESET[this.profileForm.controls.preset.value] ?? 0;
+    return levels * (this.rulesForm.controls.classesPerLevel.value || 0);
+  });
+
+  readonly plannedSeatCount = computed(() =>
+    this.plannedClassCount() * (this.rulesForm.controls.classCapacity.value || 0));
 
   readonly presets: readonly Choice<SchoolPreset>[] = [
     { id: 'primary', label: 'Primaire', description: 'Cycles, classes et suivi adaptés aux plus jeunes.' },

@@ -1,0 +1,52 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">Scolarité · Familles</p>
+      <h1 class="page__title">Responsables légaux</h1>
+      <p class="page__meta">Retrouvez les contacts des familles et les élèves rattachés.</p>
+    </div>
+    <a class="btn btn--primary" routerLink="/students">Voir les élèves</a>
+  </header>
+
+  <section class="toolbar card">
+    <label class="search-field">
+      <span class="visually-hidden">Rechercher un responsable</span>
+      <input class="input" type="search" placeholder="Nom, téléphone ou email"
+             [value]="search()" (input)="updateSearch($any($event.target).value)" />
+    </label>
+    @if (page(); as result) {
+      <span class="result-count numeric">{{ result.totalElements }} responsable(s)</span>
+    }
+  </section>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des responsables légaux..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="reload()" />
+  } @else {
+    <section class="card table-card">
+      <div class="table-wrapper">
+        <table class="table">
+          <caption class="visually-hidden">Liste des responsables légaux</caption>
+          <thead><tr><th>Responsable</th><th>Contact</th><th>Élève(s) rattaché(s)</th><th>Canal préféré</th></tr></thead>
+          <tbody>
+            @for (guardian of page()?.content ?? []; track guardian.id) {
+              <tr>
+                <td><strong>{{ guardian.fullName }}</strong><small>{{ guardian.profession || 'Responsable légal' }}</small></td>
+                <td><strong>{{ guardian.phone }}</strong><small>{{ guardian.email || 'Email non renseigné' }}</small></td>
+                <td>
+                  @for (student of guardian.students; track student.id) {
+                    <a class="student-link" [routerLink]="['/students', student.id]">{{ student.name }} <small>{{ student.studentNumber }}</small></a>
+                  } @empty { <span class="muted">Aucun élève lié</span> }
+                </td>
+                <td>{{ guardian.preferredChannel === 'SMS' ? 'SMS' : guardian.preferredChannel === 'PHONE' ? 'Téléphone' : 'Email' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4"><div class="empty">Aucun responsable trouvé.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

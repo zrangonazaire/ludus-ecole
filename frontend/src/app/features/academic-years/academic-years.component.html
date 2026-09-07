@@ -1,0 +1,278 @@
+<section class="years">
+
+  <eduops-step-coachmark
+    flow="academic-years"
+    stepKey="overview"
+    [stepNumber]="1"
+    [totalSteps]="1"
+    eyebrow="À savoir sur cet écran"
+    [title]="helpCopy.title"
+    [description]="helpCopy.description"
+    [points]="helpCopy.points" />
+
+  <header class="page-head">
+    <div>
+      <h1>Années et périodes</h1>
+      <p>L’année porte les inscriptions et les classes ; ses périodes portent
+        les notes et les bulletins.</p>
+    </div>
+    @if (canManage()) {
+      <button type="button" class="btn btn--primary" (click)="openCreate()">
+        + Nouvelle année
+      </button>
+    }
+  </header>
+
+  @if (current(); as active) {
+    <p class="banner">
+      Tous les écrans travaillent actuellement sur
+      <strong>{{ active.code }}</strong>
+      ({{ active.enrollmentCount }} inscription(s), {{ active.classroomCount }} classe(s)).
+    </p>
+  } @else if (!loading() && list().length > 0) {
+    <p class="banner banner--warn">
+      Aucune année active. Les écrans qui dépendent de l’année de travail
+      resteront vides tant que vous n’en aurez pas activé une.
+    </p>
+  }
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des années…" />
+  } @else if (failed()) {
+    <eduops-error-state
+      title="Années indisponibles"
+      message="La liste des années n’a pas pu être chargée."
+      (retry)="load()" />
+  } @else if (list().length === 0) {
+    <div class="panel empty">
+      <h2>Aucune année scolaire</h2>
+      <p>Créez la première : sans année, aucune inscription ni aucune note ne
+        peut être rattachée à quoi que ce soit.</p>
+      @if (canManage()) {
+        <button type="button" class="btn btn--primary" (click)="openCreate()">
+          Créer une année
+        </button>
+      }
+    </div>
+  } @else {
+    <ul class="year-list">
+      @for (year of list(); track year.id) {
+        <li class="year" [class.is-active]="year.active">
+          <div class="year__head">
+            <div class="year__identity">
+              <h2>{{ year.code }}</h2>
+              @if (year.label !== year.code) {
+                <p class="year__label">{{ year.label }}</p>
+              }
+              <p class="year__dates">
+                du {{ year.startDate | date:'dd/MM/yyyy' }}
+                au {{ year.endDate | date:'dd/MM/yyyy' }}
+              </p>
+            </div>
+
+            <div class="year__meta">
+              <span [class]="'badge badge--' + statusTone(year)">
+                {{ year.statusLabel }}
+              </span>
+              <span class="year__counts">
+                {{ year.enrollmentCount }} inscrit(s) ·
+                {{ year.classroomCount }} classe(s) ·
+                {{ year.terms.length }} période(s)
+              </span>
+            </div>
+
+            <div class="year__actions">
+              <button type="button" class="btn btn--ghost btn--sm"
+                      (click)="toggleTerms(year.id)">
+                {{ expanded() === year.id ? 'Masquer les périodes' : 'Voir les périodes' }}
+              </button>
+              @if (canManage() && !year.active && year.editable) {
+                <button type="button" class="btn btn--secondary btn--sm"
+                        (click)="askSwitch(year)">
+                  Travailler sur cette année
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (expanded() === year.id) {
+            @if (year.terms.length === 0) {
+              <p class="notice notice--warn">
+                Cette année n’a aucune période. Elle ne peut pas être activée :
+                aucune note ne pourrait s’y rattacher.
+              </p>
+            } @else {
+              <table class="terms">
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Période</th>
+                    <th scope="col">Début</th>
+                    <th scope="col">Fin</th>
+                    <th scope="col">Poids</th>
+                    <th scope="col">État</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (term of year.terms; track term.id) {
+                    <tr>
+                      <td>{{ term.sequence }}</td>
+                      <td>{{ term.name }}</td>
+                      <td>{{ term.startDate | date:'dd/MM/yyyy' }}</td>
+                      <td>{{ term.endDate | date:'dd/MM/yyyy' }}</td>
+                      <td>{{ term.weight }}</td>
+                      <td>
+                        <span [class]="'badge badge--' + term.status.toLowerCase()">
+                          {{ term.statusLabel }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  <!-- ─────────────────────────────────────────── création -->
+  @if (creating()) {
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
+      <form class="modal__panel" [formGroup]="form" (ngSubmit)="submit()">
+        <header class="modal__head">
+          <h2 id="create-title">Nouvelle année scolaire</h2>
+          <button type="button" class="btn btn--ghost btn--sm" (click)="closeCreate()">
+            Fermer
+          </button>
+        </header>
+
+        <div class="grid">
+          <div class="field">
+            <label class="field__label" for="code">Code</label>
+            <input id="code" class="input" formControlName="code"
+                   placeholder="2026-2027" />
+            <span class="field__hint">Référence stable, reprise sur les bulletins.</span>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="label">Libellé (facultatif)</label>
+            <input id="label" class="input" formControlName="label"
+                   placeholder="Année scolaire 2026-2027" />
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="startDate">Début</label>
+            <input id="startDate" class="input" type="date" formControlName="startDate" />
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="endDate">Fin</label>
+            <input id="endDate" class="input" type="date" formControlName="endDate" />
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="termType">Découpage</label>
+            <select id="termType" class="select" formControlName="termType"
+                    (change)="onTermTypeChange($any($event.target).value)">
+              @for (type of termTypes; track type.code) {
+                <option [value]="type.code">{{ type.label }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="termCount">Nombre de périodes</label>
+            <input id="termCount" class="input" type="number" min="1" max="6"
+                   formControlName="termCount" />
+          </div>
+        </div>
+
+        <!--
+          L'aperçu est le cœur de ce formulaire : il montre exactement les
+          dates que le serveur créera, calculées avec la même règle.
+        -->
+        <section class="preview">
+          <h3>Périodes qui seront créées</h3>
+          @if (previewImpossible()) {
+            <p class="notice notice--warn">
+              Ces dates ne permettent pas ce découpage : vérifiez que la fin
+              suit le début et que la durée suffit.
+            </p>
+          } @else if (preview().length === 0) {
+            <p class="notice notice--muted">
+              Renseignez les dates pour voir le découpage.
+            </p>
+          } @else {
+            <ol class="preview__list">
+              @for (term of preview(); track term.sequence) {
+                <li>
+                  <span class="preview__name">{{ term.name }}</span>
+                  <span class="preview__span">
+                    {{ term.startDate | date:'dd/MM/yyyy' }} →
+                    {{ term.endDate | date:'dd/MM/yyyy' }}
+                  </span>
+                </li>
+              }
+            </ol>
+            <p class="preview__note">
+              Le découpage couvre l’année entière, sans trou entre les périodes.
+            </p>
+          }
+        </section>
+
+        <footer class="modal__actions">
+          <button type="submit" class="btn btn--primary"
+                  [disabled]="saving() || preview().length === 0">
+            {{ saving() ? 'Enregistrement…' : 'Créer l’année' }}
+          </button>
+          <button type="button" class="btn btn--ghost" (click)="closeCreate()">
+            Annuler
+          </button>
+        </footer>
+      </form>
+    </div>
+  }
+
+  <!-- ──────────────────────────────── confirmation de bascule -->
+  @if (switching(); as target) {
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="switch-title">
+      <div class="modal__panel modal__panel--narrow">
+        <h2 id="switch-title">Travailler sur {{ target.code }} ?</h2>
+
+        <p>
+          Tous les écrans — élèves, classes, notes, présences, paiements —
+          basculeront sur cette année.
+        </p>
+
+        @if (current(); as leaving) {
+          <p class="notice notice--warn">
+            {{ leaving.code }} passe en clôture en cours. Elle reste
+            consultable, avec ses {{ leaving.enrollmentCount }} inscription(s)
+            et ses {{ leaving.classroomCount }} classe(s), et vous pouvez y
+            revenir à tout moment.
+          </p>
+        }
+
+        @if (target.enrollmentCount === 0) {
+          <p class="notice notice--muted">
+            {{ target.code }} ne contient encore aucune inscription : les
+            listes d’élèves apparaîtront vides jusqu’à ce que vous en créiez.
+          </p>
+        }
+
+        <footer class="modal__actions">
+          <button type="button" class="btn btn--primary"
+                  [disabled]="saving()" (click)="confirmSwitch()">
+            {{ saving() ? 'Bascule…' : 'Oui, travailler sur ' + target.code }}
+          </button>
+          <button type="button" class="btn btn--ghost" (click)="cancelSwitch()">
+            Annuler
+          </button>
+        </footer>
+      </div>
+    </div>
+  }
+
+</section>
