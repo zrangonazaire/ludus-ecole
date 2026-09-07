@@ -31,7 +31,7 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
              AND (:termId IS NULL OR a.term.id = :termId)
              AND (:classroomId IS NULL OR a.classroom.id = :classroomId)
              AND (:subjectId IS NULL OR a.subject.id = :subjectId)
-             AND (:status IS NULL OR a.status = :status)
+             AND (:status = '' OR CAST(a.status AS String) = :status)
              AND (:includeCancelled = true OR a.status <> 'CANCELLED')
            ORDER BY a.assessmentDate DESC, a.classroom.name ASC
            """)
@@ -39,7 +39,7 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
                             @Param("termId") UUID termId,
                             @Param("classroomId") UUID classroomId,
                             @Param("subjectId") UUID subjectId,
-                            @Param("status") AssessmentStatus status,
+                            @Param("status") String status,
                             @Param("includeCancelled") boolean includeCancelled);
 
     List<Assessment> findByClassroomIdAndSubjectIdAndTermId(UUID classroomId, UUID subjectId, UUID termId);
@@ -78,11 +78,11 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
     @Query("""
            SELECT a FROM Assessment a
            WHERE a.teacher.id = :teacherId
-             AND (:status IS NULL OR a.status = :status)
+             AND (:status = '' OR CAST(a.status AS String) = :status)
            ORDER BY a.assessmentDate DESC
            """)
     Page<Assessment> findForTeacher(@Param("teacherId") UUID teacherId,
-                                    @Param("status") AssessmentStatus status,
+                                    @Param("status") String status,
                                     Pageable pageable);
 
     @Query("""

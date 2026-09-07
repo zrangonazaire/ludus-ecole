@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -179,11 +180,38 @@ public class GlobalExceptionHandler {
                         "The uploaded file is too large.", request));
     }
 
-    @ExceptionHandler({NoHandlerFoundException.class, HttpRequestMethodNotSupportedException.class})
+    /**
+     * A request that matches no endpoint is a 404, whichever way Spring says so.
+     *
+     * <p>{@code NoResourceFoundException} belongs here as much as
+     * {@code NoHandlerFoundException}: since Spring Boot 3 the dispatcher, when
+     * no controller matches, falls through to the static-resource handler and
+     * throws that instead. Without it in this list the request landed on the
+     * catch-all below and came back as <strong>500 Internal Server Error</strong>
+     * — which sends whoever is debugging looking for a broken service when the
+     * truth is simply « that route does not exist ». It cost two rounds of
+     * investigation on {@code /api/v1/dashboard} before the log made it plain.
+     */
+    @ExceptionHandler({NoHandlerFoundException.class,
+                       NoResourceFoundException.class,
+                       HttpRequestMethodNotSupportedException.class})
     public ResponseEntity<ApiError> handleNoHandler(Exception ex, HttpServletRequest request) {
+        // En journal d'information, pas d'erreur : une adresse inconnue est un
+        // fait courant — un signet perime, un ecran pas encore branche — et non
+        // une panne du serveur.
+        log.info("Aucun point d'entrée pour {} {}",
+                request.getMethod(), request.getRequestURI());
+        // Son propre code, pas RESOURCE_NOT_FOUND : l'ecran affichait « Element
+        // introuvable », qui se lit « cette fiche n'existe pas » alors que la
+        // fiche n'a jamais ete demandee. Le code distingue les deux, et le
+        // message nomme la cause la plus frequente.
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(build(HttpStatus.NOT_FOUND, ErrorCode.RESOURCE_NOT_FOUND.name(),
-                        "No endpoint matches this request.", request));
+                .body(build(HttpStatus.NOT_FOUND, ErrorCode.ENDPOINT_NOT_FOUND.name(),
+                        "Aucun point d'entrée ne correspond à cette adresse : "
+                                + request.getMethod() + " " + request.getRequestURI()
+                                + ". Le serveur en cours d'exécution est peut-être "
+                                + "antérieur à cet écran : reconstruisez-le et relancez-le.",
+                        request));
     }
 
     @ExceptionHandler(Exception.class)

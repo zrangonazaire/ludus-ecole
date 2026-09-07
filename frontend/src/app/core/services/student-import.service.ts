@@ -3,7 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from, of } from 'rxjs';
 import { delay, map } from 'rxjs/operators';
 import { environment } from '@env/environment';
-import { ImportPreview, ImportRow, ImportRowStatus } from '@core/models/import.models';
+import {
+  ImportBatch, ImportPreview, ImportRow, ImportRowStatus
+} from '@core/models/import.models';
 import { MOCK_CLASSROOMS, MOCK_STUDENTS } from '@core/datasource/mock/mock-data';
 import { SpreadsheetError, excelSerialToDate, readSpreadsheet } from '@core/utils/spreadsheet';
 
@@ -30,9 +32,19 @@ const REQUIRED = ['Nom', 'Prénoms', 'Sexe', 'Date de naissance'] as const;
 export class StudentImportService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiBaseUrl}/imports/students`;
+  private readonly historyBase = `${environment.apiBaseUrl}/imports/batches`;
 
   /** Le lot analysé, conservé le temps de la confirmation. */
   private pending: ImportPreview | null = null;
+
+  /**
+   * L'historique de démonstration.
+   *
+   * Vide au départ, et volontairement : inventer trois imports passés à une
+   * école qui n'en a fait aucun lui montrerait un écran qui ment. Il se
+   * remplit de ce que la personne importe vraiment pendant sa session.
+   */
+  private readonly mockHistory: ImportBatch[] = [];
 
   /** Déclenche le téléchargement du classeur modèle. */
   downloadTemplate(): void {
@@ -56,9 +68,26 @@ export class StudentImportService {
   confirm(batchId: string): Observable<ImportPreview> {
     if (environment.useMockData) {
       const report = this.buildReport();
+      this.recordMockBatch(report);
       return of(report).pipe(delay(700), map((r) => r));
     }
     return this.http.post<ImportPreview>(`${this.base}/${batchId}/confirm`, {});
+  }
+
+  /** Les imports déjà effectués, du plus récent au plus ancien. */
+  history(): Observable<ImportBatch[]> {
+    if (environment.useMockData) {
+      return of([...this.mockHistory]).pipe(delay(250));
+    }
+    return this.http.get<ImportBatch[]>(`${this.historyBase}`);
+  }
+
+  detail(batchId: string): Observable<ImportBatch> {
+    if (environment.useMockData) {
+      const found = this.mockHistory.find((batch) => batch.id === batchId);
+      return of(found ?? this.mockHistory[0]).pipe(delay(200));
+    }
+    return this.http.get<ImportBatch>(`${this.historyBase}/${batchId}`);
   }
 
   // ──────────────────────────────────────────────── analyse locale
@@ -238,6 +267,32 @@ export class StudentImportService {
     };
     this.pending = null;
     return report;
+  }
+
+  /** Consigne l'import confirmé, pour que l'historique dise vrai en démonstration. */
+  private recordMockBatch(report: ImportPreview): void {
+    if (!report.fileName) {
+      return;
+    }
+    const now = new Date().toISOString();
+    this.mockHistory.unshift({
+      id: report.batchId || `local-${Date.now()}`,
+      importType: 'STUDENT',
+      importTypeLabel: 'Élèves',
+      fileName: report.fileName,
+      status: 'IMPORTED',
+      statusLabel: 'Importé',
+      totalRows: report.totalRows,
+      validRows: report.validRows,
+      invalidRows: report.invalidRows,
+      duplicateRows: report.duplicateRows,
+      importedRows: report.rows.filter((row) => row.errors.length === 0).length,
+      uploadedByName: 'Vous',
+      uploadedAt: now,
+      confirmedByName: 'Vous',
+      confirmedAt: now,
+      refusedRows: report.rows.filter((row) => row.errors.length > 0)
+    });
   }
 
   private unreadable(fileName: string, error: unknown): ImportPreview {

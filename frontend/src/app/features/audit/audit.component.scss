@@ -1,0 +1,194 @@
+.audit {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.page-head {
+  h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+  p { margin: 0; color: var(--text-muted); }
+}
+
+.notice {
+  margin: 0;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.87rem;
+
+  &--muted {
+    background: rgba(100, 116, 139, 0.08);
+    color: var(--text-muted);
+  }
+
+  &--warn {
+    background: rgba(217, 119, 6, 0.1);
+    color: #b45309;
+    border: 1px solid rgba(217, 119, 6, 0.25);
+  }
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+
+  button {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+
+    &.is-active {
+      border-color: var(--brand);
+      color: var(--brand);
+      font-weight: 600;
+    }
+  }
+}
+
+.range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+
+    .input, .select { min-width: 9rem; }
+  }
+}
+
+.panel {
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.empty {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+
+  h2 { margin: 0; font-size: 1.05rem; }
+  p { margin: 0; color: var(--text-muted); max-width: 46ch; }
+}
+
+/* ─────────────────────────────────────────────── la trace */
+
+.trail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: 4px 1fr auto;
+  gap: 0.75rem;
+  align-items: start;
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+
+  &.is-failure {
+    border-color: rgba(220, 38, 38, 0.35);
+    background: rgba(220, 38, 38, 0.03);
+  }
+
+  &__mark {
+    align-self: stretch;
+    border-radius: 999px;
+    background: var(--border-strong);
+
+    &--create { background: #16a34a; }
+    &--update { background: #2563eb; }
+    &--delete { background: #dc2626; }
+    &--validate { background: #0891b2; }
+    &--cancel { background: #d97706; }
+    &--login { background: #64748b; }
+    &--failed { background: #dc2626; }
+    &--permission { background: #7c3aed; }
+    &--transfer { background: #0d9488; }
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  &__summary {
+    margin: 0;
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+  }
+
+  &__fields,
+  &__reason,
+  &__meta {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  &__error {
+    margin: 0;
+    font-size: 0.78rem;
+    color: #b91c1c;
+    font-weight: 600;
+  }
+}
+
+.badge {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: rgba(100, 116, 139, 0.14);
+  color: #475569;
+
+  /* La couleur double l'étiquette, elle ne la remplace pas. */
+  &--create { background: rgba(22, 163, 74, 0.14); color: #15803d; }
+  &--update { background: rgba(37, 99, 235, 0.13); color: #1d4ed8; }
+  &--delete, &--failed { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
+  &--validate { background: rgba(8, 145, 178, 0.14); color: #0e7490; }
+  &--cancel { background: rgba(217, 119, 6, 0.16); color: #b45309; }
+  &--permission { background: rgba(124, 58, 237, 0.14); color: #6d28d9; }
+  &--transfer { background: rgba(13, 148, 136, 0.14); color: #0f766e; }
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+
+  &__state {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+}

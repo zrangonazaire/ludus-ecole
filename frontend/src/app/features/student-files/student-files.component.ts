@@ -4,7 +4,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import {
   CLASSROOM_DATA_SOURCE, OFFICIAL_DOCUMENT_DATA_SOURCE, REFERENCE_DATA_SOURCE,
   STUDENT_DATA_SOURCE
@@ -201,18 +202,22 @@ export class StudentFilesComponent implements OnInit {
     this.loading.set(true);
     this.error.set(false);
     forkJoin({
-      students: this.studentsSource.search({ page: 0, size: 300, status: 'ACTIVE' }),
-      classrooms: this.classroomsSource.list(),
-      years: this.referenceSource.academicYears(),
-      documents: this.documentsSource.search({ page: 0, size: 100 }),
-      layout: this.documentsSource.layout()
+      students: this.studentsSource.search({ page: 0, size: 300, status: 'ACTIVE' })
+        .pipe(catchError(() => of({ content: [] as StudentSummary[] }))),
+      classrooms: this.classroomsSource.list().pipe(catchError(() => of([] as Classroom[]))),
+      years: this.referenceSource.academicYears().pipe(catchError(() => of([]))),
+      documents: this.documentsSource.search({ page: 0, size: 100 })
+        .pipe(catchError(() => of({ content: [] as OfficialDocument[] }))),
+      layout: this.documentsSource.layout().pipe(catchError(() => of(null)))
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (data) => {
         this.students.set(data.students.content);
         this.classrooms.set(data.classrooms);
         this.documents.set(data.documents.content);
-        this.layout.set(data.layout);
-        this.layoutForm.reset(data.layout);
+        if (data.layout) {
+          this.layout.set(data.layout);
+          this.layoutForm.reset(data.layout);
+        }
         const activeYear = data.years.find((year) => year.status === 'ACTIVE') ?? data.years[0];
         this.academicYearCode.set(activeYear?.code ?? '');
         this.selectedStudentId.set(data.students.content[0]?.id ?? '');
@@ -228,6 +233,26 @@ export class StudentFilesComponent implements OnInit {
 
   changeTab(tab: StudentFilesTab): void {
     this.tab.set(tab);
+    this.draftRevision.update((value) => value + 1);
+  }
+
+  /** Ouvre une nouvelle émission sans conserver les mentions précédentes. */
+  newDocument(): void {
+    this.issueForm.reset({
+      type: 'SCHOOL_CERTIFICATE',
+      issueDate: localIsoDate(),
+      validUntil: '',
+      purpose: '',
+      recipient: '',
+      additionalMention: '',
+      meetingDate: '',
+      meetingTime: '',
+      meetingPlace: ''
+    });
+    this.studentSearch.set('');
+    this.classroomFilter.set('');
+    this.selectedStudentId.set(this.students()[0]?.id ?? '');
+    this.tab.set('CREATE');
     this.draftRevision.update((value) => value + 1);
   }
 

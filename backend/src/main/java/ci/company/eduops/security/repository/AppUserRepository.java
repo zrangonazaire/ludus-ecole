@@ -38,10 +38,10 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
                   OR lower(u.lastName)  LIKE lower(concat('%', :search, '%'))
                   OR lower(u.email)     LIKE lower(concat('%', :search, '%'))
                   OR lower(u.username)  LIKE lower(concat('%', :search, '%')))
-             AND (:status IS NULL OR u.status = :status)
+             AND (:status = '' OR CAST(u.status AS String) = :status)
            """)
     Page<AppUser> search(@Param("search") String search,
-                         @Param("status") UserStatus status,
+                         @Param("status") String status,
                          Pageable pageable);
 
     @Query(value = """

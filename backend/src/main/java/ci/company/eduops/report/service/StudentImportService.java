@@ -17,9 +17,14 @@ import ci.company.eduops.guardian.domain.GuardianRelationship;
 import ci.company.eduops.guardian.domain.StudentGuardian;
 import ci.company.eduops.guardian.repository.GuardianRepository;
 import ci.company.eduops.guardian.repository.StudentGuardianRepository;
+import ci.company.eduops.report.domain.ImportBatch;
+import ci.company.eduops.report.domain.ImportBatchStatus;
 import ci.company.eduops.report.dto.ImportPreviewResponse;
 import ci.company.eduops.report.dto.ImportRowResponse;
+import ci.company.eduops.report.repository.ImportBatchRepository;
 import ci.company.eduops.school.domain.School;
+import ci.company.eduops.security.service.CurrentUser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import ci.company.eduops.school.repository.SchoolRepository;
 import ci.company.eduops.student.domain.Student;
 import ci.company.eduops.student.domain.StudentStatus;
@@ -32,9 +37,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
@@ -60,8 +70,14 @@ public class StudentImportService {
             DateTimeFormatter.ofPattern("dd-MM-yyyy")
     };
 
-    /** Les aperçus vivent en mémoire entre l'analyse et la confirmation. */
-    private final Map<UUID, List<ParsedRow>> pendingBatches = new HashMap<>();
+    private static final DateTimeFormatter FRENCH_DATE =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    /** Sous quelle clé les lignes analysées dorment dans la colonne JSONB. */
+    private static final String PREVIEW_ROWS = "rows";
+
+    /** Ce que la colonne import_type porte pour ce module. */
+    private static final String IMPORT_TYPE = "STUDENT";
 
     private final SchoolRepository schoolRepository;
     private final StudentRepository studentRepository;
@@ -71,6 +87,9 @@ public class StudentImportService {
     private final AcademicYearRepository academicYearRepository;
     private final StudentService studentService;
     private final EnrollmentService enrollmentService;
+    private final ImportBatchRepository batchRepository;
+    private final ObjectMapper objectMapper;
+    private final CurrentUser currentUser;
 
     public StudentImportService(SchoolRepository schoolRepository,
                                 StudentRepository studentRepository,
@@ -79,7 +98,10 @@ public class StudentImportService {
                                 ClassroomRepository classroomRepository,
                                 AcademicYearRepository academicYearRepository,
                                 StudentService studentService,
-                                EnrollmentService enrollmentService) {
+                                EnrollmentService enrollmentService,
+                                ImportBatchRepository batchRepository,
+                                ObjectMapper objectMapper,
+                                CurrentUser currentUser) {
         this.schoolRepository = schoolRepository;
         this.studentRepository = studentRepository;
         this.guardianRepository = guardianRepository;
@@ -88,26 +110,163 @@ public class StudentImportService {
         this.academicYearRepository = academicYearRepository;
         this.studentService = studentService;
         this.enrollmentService = enrollmentService;
+        this.batchRepository = batchRepository;
+        this.objectMapper = objectMapper;
+        this.currentUser = currentUser;
     }
 
-    /** Une ligne analysée, conservée jusqu'à la confirmation. */
-    private record ParsedRow(int rowNumber, String lastName, String firstName, Gender gender,
-                             LocalDate birthDate, String birthPlace, String nationality,
-                             UUID classroomId, String guardianName, String guardianPhone,
-                             String guardianEmail, String relationship, String previousSchool,
-                             ImportRowResponse.Status status) {
+    /**
+     * Une ligne analysée, conservée jusqu'à la confirmation.
+     *
+     * <p>Classe et non {@code record} : cet objet fait un aller-retour par la
+     * colonne JSONB, et une classe à accesseurs est ce que Jackson relit sans
+     * dépendre des noms de paramètres conservés à la compilation.</p>
+     */
+    public static class ParsedRow {
+
+        private int rowNumber;
+        private String lastName;
+        private String firstName;
+        private Gender gender;
+        private LocalDate birthDate;
+        private String birthPlace;
+        private String nationality;
+        private UUID classroomId;
+        private String guardianName;
+        private String guardianPhone;
+        private String guardianEmail;
+        private String relationship;
+        private String previousSchool;
+        private ImportRowResponse.Status status;
+
+        public int getRowNumber() {
+            return rowNumber;
+        }
+
+        public void setRowNumber(int rowNumber) {
+            this.rowNumber = rowNumber;
+        }
+
+        public String getLastName() {
+            return lastName;
+        }
+
+        public void setLastName(String lastName) {
+            this.lastName = lastName;
+        }
+
+        public String getFirstName() {
+            return firstName;
+        }
+
+        public void setFirstName(String firstName) {
+            this.firstName = firstName;
+        }
+
+        public Gender getGender() {
+            return gender;
+        }
+
+        public void setGender(Gender gender) {
+            this.gender = gender;
+        }
+
+        public LocalDate getBirthDate() {
+            return birthDate;
+        }
+
+        public void setBirthDate(LocalDate birthDate) {
+            this.birthDate = birthDate;
+        }
+
+        public String getBirthPlace() {
+            return birthPlace;
+        }
+
+        public void setBirthPlace(String birthPlace) {
+            this.birthPlace = birthPlace;
+        }
+
+        public String getNationality() {
+            return nationality;
+        }
+
+        public void setNationality(String nationality) {
+            this.nationality = nationality;
+        }
+
+        public UUID getClassroomId() {
+            return classroomId;
+        }
+
+        public void setClassroomId(UUID classroomId) {
+            this.classroomId = classroomId;
+        }
+
+        public String getGuardianName() {
+            return guardianName;
+        }
+
+        public void setGuardianName(String guardianName) {
+            this.guardianName = guardianName;
+        }
+
+        public String getGuardianPhone() {
+            return guardianPhone;
+        }
+
+        public void setGuardianPhone(String guardianPhone) {
+            this.guardianPhone = guardianPhone;
+        }
+
+        public String getGuardianEmail() {
+            return guardianEmail;
+        }
+
+        public void setGuardianEmail(String guardianEmail) {
+            this.guardianEmail = guardianEmail;
+        }
+
+        public String getRelationship() {
+            return relationship;
+        }
+
+        public void setRelationship(String relationship) {
+            this.relationship = relationship;
+        }
+
+        public String getPreviousSchool() {
+            return previousSchool;
+        }
+
+        public void setPreviousSchool(String previousSchool) {
+            this.previousSchool = previousSchool;
+        }
+
+        public ImportRowResponse.Status getStatus() {
+            return status;
+        }
+
+        public void setStatus(ImportRowResponse.Status status) {
+            this.status = status;
+        }
     }
 
     // ------------------------------------------------------------------
     // 1. Analyse : rien n'est écrit
     // ------------------------------------------------------------------
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ImportPreviewResponse analyse(MultipartFile file) {
         UUID schoolId = TenantContext.getSchoolId();
         AcademicYear year = academicYearRepository
                 .findBySchoolIdAndStatus(schoolId, AcademicYearStatus.ACTIVE)
                 .orElseThrow(() -> BusinessException.of(ErrorCode.ACADEMIC_YEAR_NOT_ACTIVE));
+
+        // Les octets sont lus une fois : le flux d'un MultipartFile ne se
+        // rembobine pas, et il faut a la fois le hacher et le passer a POI.
+        byte[] content = readBytes(file);
+        String fileHash = sha256(content);
 
         Map<String, Classroom> classesByName = new HashMap<>();
         for (Classroom c : classroomRepository
@@ -119,7 +278,7 @@ public class StudentImportService {
         ImportPreviewResponse preview = new ImportPreviewResponse();
         preview.setFileName(file.getOriginalFilename());
 
-        try (InputStream in = file.getInputStream();
+        try (InputStream in = new ByteArrayInputStream(content);
              Workbook workbook = WorkbookFactory.create(in)) {
 
             Sheet sheet = workbook.getSheetAt(0);
@@ -143,15 +302,54 @@ public class StudentImportService {
         }
 
         summarise(preview);
+        warnIfAlreadyImported(schoolId, fileHash, preview);
 
-        UUID batchId = UUID.randomUUID();
-        pendingBatches.put(batchId, parsed);
-        preview.setBatchId(batchId);
+        ImportBatch batch = new ImportBatch();
+        batch.setSchoolId(schoolId);
+        batch.setImportType(IMPORT_TYPE);
+        batch.setFileName(shorten(file.getOriginalFilename()));
+        batch.setFileHash(fileHash);
+        batch.setTotalRows(preview.getTotalRows());
+        batch.setValidRows(preview.getValidRows() + preview.getWarningRows());
+        batch.setInvalidRows(preview.getInvalidRows());
+        batch.setDuplicateRows(preview.getDuplicateRows());
+        batch.setStatus(preview.isImportable()
+                ? ImportBatchStatus.PREVIEWED : ImportBatchStatus.REJECTED);
+        batch.setUploadedBy(currentUser.id().orElse(null));
+        batch.setUploadedAt(OffsetDateTime.now());
+        batch.setPreview(Map.of(PREVIEW_ROWS,
+                objectMapper.convertValue(parsed, List.class)));
+
+        preview.setBatchId(batchRepository.save(batch).getId());
 
         log.info("Import analysé : {} ligne(s), {} valide(s), {} doublon(s), {} en erreur",
                 preview.getTotalRows(), preview.getValidRows(),
                 preview.getDuplicateRows(), preview.getInvalidRows());
         return preview;
+    }
+
+    /**
+     * Signale que ce fichier exact a déjà été importé.
+     *
+     * <p>Avertit, sans bloquer : une école peut légitimement redéposer une
+     * liste corrigée sous le même nom, et seul le contenu identique au bit
+     * près déclenche ce message. Mais réimporter deux fois la même liste crée
+     * chaque élève en double, et c'est la faute la plus coûteuse à défaire
+     * ici — mieux vaut la dire avant la confirmation qu'après.</p>
+     */
+    private void warnIfAlreadyImported(UUID schoolId, String fileHash,
+                                       ImportPreviewResponse preview) {
+        if (fileHash == null) {
+            return;
+        }
+        List<ImportBatch> previous = batchRepository.findImportedWithHash(schoolId, fileHash);
+        if (previous.isEmpty()) {
+            return;
+        }
+        ImportBatch last = previous.get(0);
+        preview.setAlreadyImportedAt(last.getConfirmedAt() != null
+                ? last.getConfirmedAt() : last.getUploadedAt());
+        preview.setAlreadyImportedRows(last.getImportedRows());
     }
 
     private ParsedRow readRow(Row row, ImportRowResponse dto,
@@ -211,10 +409,22 @@ public class StudentImportService {
             dto.getWarnings().add("Un élève identique existe déjà : la ligne sera ignorée");
         }
 
-        return new ParsedRow(dto.getRowNumber(), lastName, firstName, gender, birthDate,
-                birthPlace, nationality, classroom == null ? null : classroom.getId(),
-                guardianName, guardianPhone, guardianEmail, relationship, previousSchool,
-                dto.getStatus());
+        ParsedRow parsed = new ParsedRow();
+        parsed.setRowNumber(dto.getRowNumber());
+        parsed.setLastName(lastName);
+        parsed.setFirstName(firstName);
+        parsed.setGender(gender);
+        parsed.setBirthDate(birthDate);
+        parsed.setBirthPlace(birthPlace);
+        parsed.setNationality(nationality);
+        parsed.setClassroomId(classroom == null ? null : classroom.getId());
+        parsed.setGuardianName(guardianName);
+        parsed.setGuardianPhone(guardianPhone);
+        parsed.setGuardianEmail(guardianEmail);
+        parsed.setRelationship(relationship);
+        parsed.setPreviousSchool(previousSchool);
+        parsed.setStatus(dto.getStatus());
+        return parsed;
     }
 
     private void summarise(ImportPreviewResponse preview) {
@@ -243,13 +453,24 @@ public class StudentImportService {
      */
     @Transactional
     public ImportPreviewResponse confirm(UUID batchId) {
-        List<ParsedRow> rows = pendingBatches.get(batchId);
-        if (rows == null) {
-            throw BusinessException.of(ErrorCode.IMPORT_BATCH_NOT_FOUND,
-                    "Cet aperçu a expiré. Redéposez le fichier.");
+        UUID schoolId = TenantContext.getSchoolId();
+        // L'ecole est dans la requete, jamais dans l'identifiant fourni : un
+        // lot appartenant a un autre etablissement est introuvable, pas refuse.
+        ImportBatch batch = batchRepository.findByIdAndSchoolId(batchId, schoolId)
+                .orElseThrow(() -> BusinessException.of(ErrorCode.IMPORT_BATCH_NOT_FOUND,
+                        "Cet aperçu est introuvable. Redéposez le fichier."));
+
+        if (batch.getStatus() == ImportBatchStatus.IMPORTED) {
+            // Sans ce garde-fou, un double-clic sur « Confirmer » creerait
+            // chaque eleve deux fois.
+            throw BusinessException.of(ErrorCode.CONFLICT,
+                    "Ce fichier a déjà été importé le "
+                            + FRENCH_DATE.format(batch.getConfirmedAt())
+                            + " : " + batch.getImportedRows() + " élève(s) créé(s).");
         }
 
-        UUID schoolId = TenantContext.getSchoolId();
+        List<ParsedRow> rows = readRows(batch);
+
         School school = schoolRepository.findById(schoolId)
                 .orElseThrow(() -> BusinessException.of(ErrorCode.SCHOOL_NOT_FOUND));
 
@@ -258,18 +479,18 @@ public class StudentImportService {
         int imported = 0;
 
         for (ParsedRow row : rows) {
-            if (row.status() == ImportRowResponse.Status.INVALID
-                    || row.status() == ImportRowResponse.Status.DUPLICATE) {
+            if (row.getStatus() == ImportRowResponse.Status.INVALID
+                    || row.getStatus() == ImportRowResponse.Status.DUPLICATE) {
                 continue;
             }
             ImportRowResponse result = new ImportRowResponse();
-            result.setRowNumber(row.rowNumber());
+            result.setRowNumber(row.getRowNumber());
             result.setStatus(ImportRowResponse.Status.VALID);
             try {
                 Student student = createStudent(row, school);
                 attachGuardian(row, student, school);
-                if (row.classroomId() != null) {
-                    enrol(student, row.classroomId());
+                if (row.getClassroomId() != null) {
+                    enrol(student, row.getClassroomId());
                 }
                 result.setPreviewStudentNumber(student.getStudentNumber());
                 imported++;
@@ -280,24 +501,64 @@ public class StudentImportService {
             report.getRows().add(result);
         }
 
-        pendingBatches.remove(batchId);
         summarise(report);
+
+        batch.setStatus(ImportBatchStatus.IMPORTED);
+        batch.setImportedRows(imported);
+        batch.setConfirmedBy(currentUser.id().orElse(null));
+        batch.setConfirmedAt(OffsetDateTime.now());
+        // Les lignes analysees ne servent plus : l'historique garde les
+        // compteurs et le sort de chaque ligne, pas le fichier entier.
+        batch.setPreview(null);
+        batch.setErrors(refusedRows(report));
+        batchRepository.save(batch);
+
         log.info("Import confirmé : {} élève(s) créé(s) sur {} ligne(s) retenues",
                 imported, rows.size());
         return report;
+    }
+
+    /** Les lignes refusées à l'écriture, gardées pour que l'historique s'explique. */
+    private Map<String, Object> refusedRows(ImportPreviewResponse report) {
+        List<Map<String, Object>> refused = new ArrayList<>();
+        for (ImportRowResponse row : report.getRows()) {
+            if (row.getErrors().isEmpty()) {
+                continue;
+            }
+            refused.add(Map.of("rowNumber", row.getRowNumber(),
+                    "errors", List.copyOf(row.getErrors())));
+        }
+        return refused.isEmpty() ? null : Map.of("refused", refused);
+    }
+
+    /** Relit les lignes analysées depuis la colonne JSONB. */
+    @SuppressWarnings("unchecked")
+    private List<ParsedRow> readRows(ImportBatch batch) {
+        Map<String, Object> preview = batch.getPreview();
+        Object stored = preview == null ? null : preview.get(PREVIEW_ROWS);
+        if (!(stored instanceof List<?> list) || list.isEmpty()) {
+            throw BusinessException.of(ErrorCode.IMPORT_BATCH_NOT_FOUND,
+                    "Cet aperçu ne contient plus de lignes à importer. "
+                            + "Redéposez le fichier.");
+        }
+        List<ParsedRow> rows = new ArrayList<>();
+        for (Object item : (List<Object>) list) {
+            rows.add(objectMapper.convertValue(item, ParsedRow.class));
+        }
+        return rows;
     }
 
     private Student createStudent(ParsedRow row, School school) {
         Student student = new Student();
         student.setSchool(school);
         student.setStudentNumber(studentService.generateStudentNumber(school));
-        student.setLastName(row.lastName().trim());
-        student.setFirstName(row.firstName().trim());
-        student.setGender(row.gender());
-        student.setBirthDate(row.birthDate());
-        student.setBirthPlace(blankToNull(row.birthPlace()));
-        student.setNationality(blankToNull(row.nationality()));
-        student.setPreviousSchool(blankToNull(row.previousSchool()));
+        student.setLastName(row.getLastName().trim());
+        student.setFirstName(row.getFirstName().trim());
+        student.setGender(row.getGender());
+        student.setBirthDate(row.getBirthDate());
+        student.setBirthPlace(blankToNull(row.getBirthPlace()));
+        student.setNationality(blankToNull(row.getNationality()));
+        student.setPreviousSchool(blankToNull(row.getPreviousSchool()));
         student.setAdmissionDate(LocalDate.now());
         student.setStatus(StudentStatus.ADMITTED);
         return studentRepository.save(student);
@@ -305,19 +566,19 @@ public class StudentImportService {
 
     /** Réutilise un responsable déjà connu au même numéro, plutôt que d'en créer un doublon. */
     private void attachGuardian(ParsedRow row, Student student, School school) {
-        if (row.guardianName().isBlank() || row.guardianPhone().isBlank()) {
+        if (row.getGuardianName().isBlank() || row.getGuardianPhone().isBlank()) {
             return;
         }
         Guardian guardian = guardianRepository
-                .findBySchoolIdAndPhone(school.getId(), row.guardianPhone().trim())
+                .findBySchoolIdAndPhone(school.getId(), row.getGuardianPhone().trim())
                 .orElseGet(() -> {
                     Guardian created = new Guardian();
                     created.setSchool(school);
-                    String[] parts = row.guardianName().trim().split("\\s+", 2);
+                    String[] parts = row.getGuardianName().trim().split("\\s+", 2);
                     created.setLastName(parts[0]);
                     created.setFirstName(parts.length > 1 ? parts[1] : parts[0]);
-                    created.setPhone(row.guardianPhone().trim());
-                    created.setEmail(blankToNull(row.guardianEmail()));
+                    created.setPhone(row.getGuardianPhone().trim());
+                    created.setEmail(blankToNull(row.getGuardianEmail()));
                     return guardianRepository.save(created);
                 });
 
@@ -328,7 +589,7 @@ public class StudentImportService {
         StudentGuardian link = new StudentGuardian();
         link.setStudent(student);
         link.setGuardian(guardian);
-        link.setRelationship(parseRelationship(row.relationship()));
+        link.setRelationship(parseRelationship(row.getRelationship()));
         link.setPrimary(true);
         link.setFinancialResponsibility(true);
         studentGuardianRepository.save(link);
@@ -436,5 +697,45 @@ public class StudentImportService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException ex) {
+            log.warn("Fichier d'import illisible : {}", ex.getMessage());
+            throw BusinessException.of(ErrorCode.IMPORT_FILE_INVALID,
+                    "Le fichier n'a pas pu être lu. Réessayez.");
+        }
+    }
+
+    /**
+     * Empreinte du contenu, pour reconnaître un fichier déjà importé.
+     *
+     * <p>Un défaut de hachage ne doit pas empêcher un import : sans empreinte,
+     * on perd l'avertissement, pas la fonction. D'où le {@code null} plutôt
+     * qu'une exception.</p>
+     */
+    private String sha256(byte[] content) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(content);
+            StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                hex.append(Character.forDigit((b >> 4) & 0xF, 16));
+                hex.append(Character.forDigit(b & 0xF, 16));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            log.warn("SHA-256 indisponible : l'import se poursuit sans empreinte");
+            return null;
+        }
+    }
+
+    /** Le nom de fichier tient dans 255 caractères, quoi qu'envoie le client. */
+    private String shorten(String fileName) {
+        String value = fileName == null || fileName.isBlank()
+                ? "classeur.xlsx" : fileName.trim();
+        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+        return bytes.length <= 255 ? value : value.substring(0, 200);
     }
 }

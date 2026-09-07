@@ -55,6 +55,10 @@ import { StudentDashboard } from '../models/student-portal.models';
 import {
   AccessProfile, AccessProfileOverview, AccessProfilePayload
 } from '../models/access-profile.models';
+import {
+  Admission, AdmissionCreatePayload, AdmissionOptions, AdmissionQuery, AdmissionStatusPayload
+} from '../models/admission.models';
+import { Guardian, GuardianQuery } from '../models/guardian.models';
 
 /**
  * The contract every screen depends on.
@@ -299,6 +303,20 @@ export interface AccessProfileDataSource {
   update(id: string, payload: AccessProfilePayload): Observable<AccessProfile>;
 }
 
+export interface AdmissionDataSource {
+  search(query: AdmissionQuery): Observable<PageResponse<Admission>>;
+  options(academicYearId?: string): Observable<AdmissionOptions>;
+  get(id: string): Observable<Admission>;
+  create(payload: AdmissionCreatePayload): Observable<Admission>;
+  changeStatus(id: string, payload: AdmissionStatusPayload): Observable<Admission>;
+  updateDocument(admissionId: string, documentId: string,
+                 received: boolean): Observable<Admission>;
+}
+
+export interface GuardianDataSource {
+  search(query: GuardianQuery): Observable<PageResponse<Guardian>>;
+}
+
 export const STUDENT_DATA_SOURCE = new InjectionToken<StudentDataSource>('StudentDataSource');
 export const STUDENT_PORTAL_DATA_SOURCE =
   new InjectionToken<StudentPortalDataSource>('StudentPortalDataSource');
@@ -322,4 +340,8 @@ export const FAMILY_REQUEST_DATA_SOURCE =
   new InjectionToken<FamilyRequestDataSource>('FamilyRequestDataSource');
 export const ACCESS_PROFILE_DATA_SOURCE =
   new InjectionToken<AccessProfileDataSource>('AccessProfileDataSource');
+export const ADMISSION_DATA_SOURCE =
+  new InjectionToken<AdmissionDataSource>('AdmissionDataSource');
+export const GUARDIAN_DATA_SOURCE =
+  new InjectionToken<GuardianDataSource>('GuardianDataSource');
 export const REFERENCE_DATA_SOURCE = new InjectionToken<ReferenceDataSource>('ReferenceDataSource');

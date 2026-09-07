@@ -3,6 +3,7 @@ package ci.company.eduops.audit.service;
 import ci.company.eduops.audit.domain.AuditAction;
 import ci.company.eduops.audit.domain.AuditLog;
 import ci.company.eduops.audit.repository.AuditLogRepository;
+import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.common.web.CorrelationIdFilter;
 import ci.company.eduops.security.service.CurrentUser;
 import jakarta.servlet.http.HttpServletRequest;
@@ -66,7 +67,17 @@ public class AuditService {
         record(AuditAction.CANCEL, entityType, entityId).label(label).reason(reason).save();
     }
 
-    public void logLogin(UUID userId, String username, boolean success, String errorCode) {
+    /**
+     * Consigne une tentative de connexion, reussie ou non.
+     *
+     * <p>L'etablissement est passe explicitement : au moment ou l'on
+     * authentifie, aucun locataire n'est encore etabli dans le contexte, et
+     * une ligne sans ecole reste invisible de tous. Or les tentatives
+     * echouees sont precisement ce qu'une direction veut voir dans son
+     * journal.</p>
+     */
+    public void logLogin(UUID userId, UUID schoolId, String username,
+                         boolean success, String errorCode) {
         AuditLog entry = new AuditLog();
         entry.setAction(success ? AuditAction.LOGIN : AuditAction.LOGIN_FAILED);
         entry.setEntityType("AppUser");
@@ -74,6 +85,7 @@ public class AuditService {
         entry.setEntityLabel(username);
         entry.setUserId(userId);
         entry.setUsername(username);
+        entry.setSchoolId(schoolId);
         entry.setSuccess(success);
         entry.setErrorCode(errorCode);
         fillContext(entry);
@@ -104,6 +116,16 @@ public class AuditService {
     private void fillContext(AuditLog entry) {
         entry.setCorrelationId(CorrelationIdFilter.currentCorrelationId());
         entry.setRequestId(CorrelationIdFilter.currentRequestId());
+        // L'etablissement, sinon rien n'est attribuable.
+        //
+        // Douze appels sur soixante-six le precisaient ; les cinquante-quatre
+        // autres ecrivaient une ligne sans ecole. Un journal dont on ne sait
+        // pas de quel etablissement il parle ne peut pas etre montre : ou il
+        // fuit chez le voisin, ou il reste invisible. Le contexte de la
+        // requete le sait deja, il suffisait de le lire.
+        if (entry.getSchoolId() == null) {
+            entry.setSchoolId(TenantContext.getSchoolId());
+        }
         if (entry.getUserId() == null) {
             currentUser.id().ifPresent(entry::setUserId);
             entry.setUsername(currentUser.username());

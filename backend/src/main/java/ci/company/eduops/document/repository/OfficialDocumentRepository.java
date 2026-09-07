@@ -19,20 +19,19 @@ public interface OfficialDocumentRepository extends JpaRepository<OfficialDocume
     @Query("""
            SELECT d FROM OfficialDocument d
            WHERE d.school.id = :schoolId
-             AND (:type IS NULL OR d.type = :type)
-             AND (:status IS NULL OR d.status = :status)
+             AND (:type = '' OR CAST(d.type AS String) = :type)
+             AND (:status = '' OR CAST(d.status AS String) = :status)
              AND (:studentId IS NULL OR d.student.id = :studentId)
-             AND (:search IS NULL
-                  OR lower(d.documentNumber) LIKE lower(concat('%', :search, '%'))
-                  OR lower(d.title) LIKE lower(concat('%', :search, '%'))
-                  OR lower(d.student.firstName) LIKE lower(concat('%', :search, '%'))
-                  OR lower(d.student.lastName) LIKE lower(concat('%', :search, '%'))
-                  OR lower(d.student.studentNumber) LIKE lower(concat('%', :search, '%')))
+                 AND (lower(d.documentNumber) LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(d.title) LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(d.student.firstName) LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(d.student.lastName) LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(d.student.studentNumber) LIKE lower(concat('%', coalesce(:search, ''), '%')))
            ORDER BY d.issuedAt DESC, d.createdAt DESC
            """)
     Page<OfficialDocument> search(@Param("schoolId") UUID schoolId,
-                                  @Param("type") DocumentType type,
-                                  @Param("status") DocumentStatus status,
+                                  @Param("type") String type,
+                                  @Param("status") String status,
                                   @Param("studentId") UUID studentId,
                                   @Param("search") String search,
                                   Pageable pageable);

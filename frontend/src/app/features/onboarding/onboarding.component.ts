@@ -1,9 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 import { NotificationService } from '@core/services/notification.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { translateErrorCode } from '@core/services/error-messages';
+import {
+  OnboardingCyclePayload, OnboardingLevelPayload, OnboardingPayload, OnboardingService
+} from '@core/services/onboarding.service';
 
 /** How the classes of a level are named. */
 export type ClassNaming = 'LETTER' | 'NUMBER' | 'CUSTOM';
@@ -58,6 +65,8 @@ export class OnboardingComponent {
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
   private readonly router = inject(Router);
+  private readonly onboarding = inject(OnboardingService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly step = signal<1 | 2 | 3 | 4>(1);
   readonly saving = signal(false);
@@ -312,18 +321,100 @@ export class OnboardingComponent {
     void this.router.navigate(['/dashboard']);
   }
 
+  /**
+   * Envoie la configuration au serveur, et n'annonce que ce qui a été créé.
+   *
+   * <p>Cette méthode se contentait d'un `setTimeout` de 900 ms suivi d'un
+   * message « Établissement configuré » énonçant les chiffres saisis. Rien
+   * n'était enregistré — le composant n'injectait même pas de source de
+   * données. Le directeur ne s'en apercevait que des semaines plus tard,
+   * devant un écran Classes vide.</p>
+   *
+   * <p>Le message final reprend maintenant les compteurs renvoyés par le
+   * serveur, pas les nôtres. S'il en crée quatre là où l'écran en montrait
+   * quatorze, c'est quatre qui s'affichent.</p>
+   */
   finish(): void {
+    if (this.saving()) {
+      return;
+    }
     this.saving.set(true);
-    // Each level produces: POST /levels, then one POST /classes per class name,
-    // then one POST /fees/schedules scoped to that level (fee_schedule.level_id).
-    setTimeout(() => {
-      this.saving.set(false);
-      this.notifications.success(
-        `${this.activeLevels().length} niveaux, ${this.totalClasses()} classes et `
-        + `${this.selectedSubjectCount()} matieres prets, avec une scolarite propre a chaque niveau.`,
-        'Établissement configure');
-      void this.router.navigate(['/dashboard']);
-    }, 900);
+    this.onboarding.apply(this.buildPayload())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.saving.set(false);
+          this.notifications.success(
+            `${result.levels} niveau(x), ${result.classrooms} classe(s), `
+            + `${result.subjects} matière(s) et ${result.feeSchedules} barème(s) `
+            + 'créés, avec une scolarité propre à chaque niveau.',
+            'Établissement configuré');
+          // Ce qui a été écarté se dit à part : l'école voit quoi reprendre
+          // plutôt que de découvrir un niveau manquant dans trois semaines.
+          if (result.skipped.length > 0) {
+            this.notifications.warning(result.skipped.join(' '),
+              `${result.skipped.length} élément(s) ignoré(s)`);
+          }
+          void this.router.navigate(['/dashboard']);
+        },
+        error: (err) => {
+          this.saving.set(false);
+          // On reste sur l'assistant : rien n'a été créé côté serveur, la
+          // saisie est intacte, et l'utilisateur peut réessayer sans tout
+          // ressaisir. L'envoyer au tableau de bord lui ferait croire que
+          // c'est passé.
+          // Le serveur écrit souvent mieux que le catalogue de codes : il sait
+          // que « l'établissement a déjà des cycles » et dit quoi faire à la
+          // place. Le remplacer par « L'opération est en conflit avec l'état
+          // actuel » perdrait tout ce qui est utile.
+          const failure = (err as { error?: { code?: string; message?: string } })?.error;
+          const message = failure?.message?.trim()
+            || translateErrorCode(failure?.code ?? 'UNKNOWN');
+          this.notifications.error(message,
+            'La configuration n’a pas été enregistrée');
+        }
+      });
+  }
+
+  /** Traduit l'état de l'assistant en ce que le serveur attend. */
+  private buildPayload(): OnboardingPayload {
+    const levelsByCycle = new Map<string, OnboardingLevelPayload[]>();
+    for (const level of this.activeLevels()) {
+      const rows = levelsByCycle.get(level.cycleCode) ?? [];
+      rows.push({
+        code: level.code,
+        name: level.name,
+        // Les noms sont résolus ici, pas sur le serveur : l'école recevra
+        // exactement ceux que l'aperçu lui a montrés, y compris les siens.
+        classNames: this.classNamesFor(level),
+        capacity: level.capacity,
+        registrationFee: level.registrationFee,
+        tuitionTotal: level.tuitionTotal,
+        instalments: level.instalments
+      });
+      levelsByCycle.set(level.cycleCode, rows);
+    }
+
+    const cycles: OnboardingCyclePayload[] = [];
+    for (const cycle of this.cycles()) {
+      const levels = levelsByCycle.get(cycle.code);
+      // Un cycle dont aucun niveau n'est retenu n'a rien à ouvrir.
+      if (!levels || levels.length === 0) {
+        continue;
+      }
+      cycles.push({ code: cycle.code, name: cycle.name, levels });
+    }
+
+    return {
+      cycles,
+      subjects: this.subjects()
+        .filter((subject) => subject.selected)
+        .map((subject) => ({
+          code: subject.code,
+          name: subject.name,
+          coefficient: subject.coefficient
+        }))
+    };
   }
 
   firstName(): string {

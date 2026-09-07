@@ -173,7 +173,8 @@ public class HealthService {
         }
 
         OffsetDateTime from = OffsetDateTime.now().minusDays(REGISTER_DAYS);
-        List<InfirmaryVisit> visits = visitRepository.findRegister(year.getId(), from, search);
+        String term = search == null ? "" : search.trim();
+        List<InfirmaryVisit> visits = visitRepository.findRegister(year.getId(), from, term);
         List<InfirmaryVisitResponse> visitRows = new ArrayList<>();
         for (InfirmaryVisit visit : visits) {
             visitRows.add(toVisit(visit, enrollments));
@@ -183,7 +184,7 @@ public class HealthService {
         board.setAwaitingGuardianCount(visitRepository.findUnnotified(year.getId()).size());
 
         Map<UUID, List<StudentVaccination>> vaccinations = vaccinationsByRecord(year.getId());
-        List<StudentHealthRecord> records = recordRepository.findForYear(year.getId(), blankToNull(search));
+        List<StudentHealthRecord> records = recordRepository.findForYear(year.getId(), term);
         List<HealthRecordResponse> recordRows = new ArrayList<>();
         int missingVaccines = 0;
         for (StudentHealthRecord record : records) {
@@ -202,7 +203,7 @@ public class HealthService {
 
         LocalDate today = LocalDate.now();
         List<MedicalExamination> examinations =
-                examinationRepository.findForYear(year.getId(), blankToNull(search));
+                examinationRepository.findForYear(year.getId(), term);
         List<ExaminationResponse> examRows = new ArrayList<>();
         int overdue = 0;
         for (MedicalExamination examination : examinations) {

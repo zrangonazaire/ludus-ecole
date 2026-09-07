@@ -10,6 +10,14 @@ const MESSAGES: Record<string, string> = {
   // generic
   VALIDATION_ERROR: 'Les données saisies sont invalides.',
   RESOURCE_NOT_FOUND: 'Élément introuvable.',
+  // Émis par le proxy du serveur de développement, pas par le backend :
+  // personne n'écoute à l'adresse visée.
+  BACKEND_UNREACHABLE: 'Le serveur ne répond pas. Vérifiez qu’il est bien '
+    + 'démarré, puis réessayez.',
+  // Repli seulement : le serveur nomme l'adresse manquante, et cette précision
+  // vaut mieux que la phrase générique. Voir translateErrorCode.
+  ENDPOINT_NOT_FOUND: "Cette fonction n'est pas disponible sur le serveur en "
+    + 'cours d’exécution. Reconstruisez-le et relancez-le.',
   CONFLICT: "L'opération est en conflit avec l'état actuel.",
   CONCURRENT_MODIFICATION: 'Cet enregistrement a été modifié par un autre utilisateur. Rechargez la page.',
   ACCESS_DENIED: "Vous n'avez pas les droits nécessaires pour cette opération.",
@@ -61,7 +69,10 @@ const MESSAGES: Record<string, string> = {
   ENROLLMENT_WINDOW_CLOSED: 'La période des inscriptions est fermee.',
   ENROLLMENT_DOCUMENTS_INCOMPLETE: 'Des pieces obligatoires sont manquantes.',
   ENROLLMENT_ALREADY_VALIDATED: "L'inscription est déjà validee.",
+  ADMISSION_NOT_FOUND: "Ce dossier d'admission est introuvable.",
   ADMISSION_NOT_ACCEPTED: "La candidature n'a pas été acceptée.",
+  ADMISSION_INVALID_TRANSITION: "Ce changement d'état du dossier n'est pas autorisé.",
+  ADMISSION_DOCUMENTS_INCOMPLETE: 'Les pièces obligatoires doivent être reçues avant l’acceptation.',
   GUARDIAN_PRIMARY_REQUIRED: 'Un élève doit conserver un responsable principal.',
 
   // transferts et départs
@@ -157,8 +168,21 @@ const MESSAGES: Record<string, string> = {
  * Returns the localised message, enriched with the server-supplied détails
  * where they help the user act (remaining seats, allowed range...).
  */
+/**
+ * Codes dont le serveur écrit un message plus précis que la table.
+ *
+ * La règle générale est que la table gagne : les messages par défaut du
+ * serveur sont en anglais et ne doivent jamais atteindre l'utilisateur. Mais
+ * pour une adresse inconnue, le serveur écrit une phrase française qui nomme
+ * la route manquante — « GET /api/v1/family-requests » — et cette phrase
+ * désigne le problème, là où « Élément introuvable » envoie chercher une
+ * fiche qui n'a jamais été demandée.
+ */
+const SERVER_MESSAGE_WINS = new Set(['ENDPOINT_NOT_FOUND']);
+
 export function translateErrorCode(code: string, error?: ApiError): string {
-  const base = MESSAGES[code] ?? error?.message ?? 'Une erreur est survenue.';
+  const preferred = SERVER_MESSAGE_WINS.has(code) ? error?.message?.trim() : undefined;
+  const base = preferred || MESSAGES[code] || error?.message || 'Une erreur est survenue.';
   const details = error?.details;
   if (!details) {
     return base;

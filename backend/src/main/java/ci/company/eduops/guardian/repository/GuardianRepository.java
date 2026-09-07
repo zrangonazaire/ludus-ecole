@@ -24,10 +24,9 @@ public interface GuardianRepository extends JpaRepository<Guardian, UUID> {
     @Query("""
            SELECT g FROM Guardian g
            WHERE g.school.id = :schoolId
-             AND (:search IS NULL
-                  OR lower(g.firstName) LIKE lower(concat('%', :search, '%'))
-                  OR lower(g.lastName)  LIKE lower(concat('%', :search, '%'))
-                  OR g.phone            LIKE concat('%', :search, '%'))
+                 AND (lower(g.firstName) LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(g.lastName)  LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR g.phone            LIKE concat('%', coalesce(:search, ''), '%'))
            """)
     Page<Guardian> search(@Param("schoolId") UUID schoolId,
                           @Param("search") String search,

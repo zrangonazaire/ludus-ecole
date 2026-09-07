@@ -15,10 +15,9 @@ public interface InfirmaryVisitRepository extends JpaRepository<InfirmaryVisit, 
             SELECT v FROM InfirmaryVisit v
             WHERE v.academicYear.id = :yearId
               AND v.occurredAt >= :from
-              AND (:search IS NULL
-                   OR LOWER(v.student.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(v.student.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(v.student.studentNumber) LIKE LOWER(CONCAT('%', :search, '%')))
+                    AND (LOWER(v.student.firstName) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%'))
+                            OR LOWER(v.student.lastName) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%'))
+                            OR LOWER(v.student.studentNumber) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%')))
             ORDER BY v.occurredAt DESC
             """)
     List<InfirmaryVisit> findRegister(@Param("yearId") UUID yearId,

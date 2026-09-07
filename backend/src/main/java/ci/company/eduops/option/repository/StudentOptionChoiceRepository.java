@@ -36,7 +36,7 @@ public interface StudentOptionChoiceRepository extends JpaRepository<StudentOpti
            WHERE c.offering.academicYear.id = :yearId
              AND c.offering.option.school.id = :schoolId
              AND (:offeringId IS NULL OR c.offering.id = :offeringId)
-             AND (:status IS NULL OR c.status = :status)
+             AND (:status = '' OR CAST(c.status AS String) = :status)
              AND (:search IS NULL
                   OR lower(c.student.firstName) LIKE lower(concat('%', :search, '%'))
                   OR lower(c.student.lastName) LIKE lower(concat('%', :search, '%'))
@@ -45,7 +45,7 @@ public interface StudentOptionChoiceRepository extends JpaRepository<StudentOpti
     Page<StudentOptionChoice> search(@Param("schoolId") UUID schoolId,
                                      @Param("yearId") UUID yearId,
                                      @Param("offeringId") UUID offeringId,
-                                     @Param("status") OptionChoiceStatus status,
+                                     @Param("status") String status,
                                      @Param("search") String search,
                                      Pageable pageable);
 }

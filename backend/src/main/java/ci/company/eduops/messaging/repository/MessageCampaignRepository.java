@@ -16,11 +16,11 @@ public interface MessageCampaignRepository extends JpaRepository<MessageCampaign
     @Query("""
             SELECT c FROM MessageCampaign c
             WHERE c.academicYear.id = :yearId
-              AND (:status IS NULL OR c.status = :status)
+              AND (:status = '' OR CAST(c.status AS String) = :status)
             ORDER BY c.createdAt DESC
             """)
     List<MessageCampaign> findForYear(@Param("yearId") UUID yearId,
-                                      @Param("status") CampaignStatus status);
+                                      @Param("status") String status);
 
     @Query("""
             SELECT c FROM MessageCampaign c

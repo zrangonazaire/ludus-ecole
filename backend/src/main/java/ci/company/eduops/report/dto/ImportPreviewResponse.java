@@ -2,6 +2,7 @@ package ci.company.eduops.report.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +26,20 @@ public class ImportPreviewResponse {
     private int invalidRows;
     /** Vrai si au moins une ligne est importable. */
     private boolean importable;
+
+    /**
+     * Quand ce fichier exact a déjà été importé, s'il l'a été.
+     *
+     * <p>Nul dans le cas ordinaire. Renseigné quand le contenu est identique
+     * au bit près à un import déjà confirmé — l'avertissement le plus utile
+     * de cet écran, parce que réimporter une liste crée chaque élève une
+     * seconde fois et que rien ne le défait ensuite.</p>
+     */
+    private OffsetDateTime alreadyImportedAt;
+
+    /** Combien d'élèves ce précédent import avait créés. */
+    private int alreadyImportedRows;
+
     private List<ImportRowResponse> rows = new ArrayList<>();
 
     public UUID getBatchId() {
@@ -89,6 +104,22 @@ public class ImportPreviewResponse {
 
     public void setImportable(boolean importable) {
         this.importable = importable;
+    }
+
+    public OffsetDateTime getAlreadyImportedAt() {
+        return alreadyImportedAt;
+    }
+
+    public void setAlreadyImportedAt(OffsetDateTime alreadyImportedAt) {
+        this.alreadyImportedAt = alreadyImportedAt;
+    }
+
+    public int getAlreadyImportedRows() {
+        return alreadyImportedRows;
+    }
+
+    public void setAlreadyImportedRows(int alreadyImportedRows) {
+        this.alreadyImportedRows = alreadyImportedRows;
     }
 
     public List<ImportRowResponse> getRows() {

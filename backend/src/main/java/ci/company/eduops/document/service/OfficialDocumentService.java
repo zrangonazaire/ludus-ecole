@@ -86,7 +86,9 @@ public class OfficialDocumentService {
         UUID schoolId = TenantContext.getSchoolId();
         String needle = search == null || search.isBlank() ? null : search.trim();
         return PageResponse.from(documentRepository.search(
-                schoolId, type, status, studentId, needle, pageable), this::toResponse);
+                schoolId, type == null ? "" : type.name(),
+                status == null ? "" : status.name(),
+                studentId, needle, pageable), this::toResponse);
     }
 
     @Transactional

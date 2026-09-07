@@ -26,19 +26,43 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
 
     boolean existsBySchoolIdAndEmail(UUID schoolId, String email);
 
+    /**
+     * Le corps enseignant, filtré et cherché.
+     *
+     * <p>Aucun paramètre ne vaut {@code null} : un filtre absent arrive en
+     * chaîne vide, et le statut est comparé sous sa forme texte. La colonne
+     * {@code teacher_status} est un type énuméré natif de PostgreSQL — lier
+     * {@code null} sur un tel paramètre laisse le serveur sans type à
+     * inférer, et le comparer à un paramètre lié réclame une conversion
+     * explicite.</p>
+     */
     @Query("""
            SELECT t FROM Teacher t
            WHERE t.school.id = :schoolId
-             AND (:status IS NULL OR t.status = :status)
-             AND (:search IS NULL
+             AND (:status = '' OR CAST(t.status AS String) = :status)
+             AND (:search = ''
                   OR lower(t.firstName)      LIKE lower(concat('%', :search, '%'))
                   OR lower(t.lastName)       LIKE lower(concat('%', :search, '%'))
                   OR lower(t.employeeNumber) LIKE lower(concat('%', :search, '%')))
            """)
     Page<Teacher> search(@Param("schoolId") UUID schoolId,
-                         @Param("status") TeacherStatus status,
+                         @Param("status") String status,
                          @Param("search") String search,
                          Pageable pageable);
+
+    /**
+     * How many classes each teacher is form tutor of, in one query.
+     *
+     * <p>Counted once for the whole page rather than per row: a list of forty
+     * teachers would otherwise fire forty extra queries to fill one column.</p>
+     */
+    @Query("""
+           SELECT c.mainTeacher.id, COUNT(c) FROM Classroom c
+           WHERE c.mainTeacher IS NOT NULL
+             AND c.academicYear.id = :academicYearId
+           GROUP BY c.mainTeacher.id
+           """)
+    List<Object[]> countClassesByTeacher(@Param("academicYearId") UUID academicYearId);
 
     long countBySchoolIdAndStatus(UUID schoolId, TeacherStatus status);
 }

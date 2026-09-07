@@ -242,13 +242,40 @@
                   <span class="switch"><input type="checkbox" formControlName="rankingEnabled" /><i aria-hidden="true"></i></span>
                 </label>
 
-                <label class="field compact-field">
-                  <span>Capacité indicative par classe</span>
-                  <div class="input-suffix"><input type="number" formControlName="classCapacity" min="10" max="100" inputmode="numeric" /><span>élèves</span></div>
-                  @if (rulesForm.controls.classCapacity.invalid && (formAttempted() || rulesForm.controls.classCapacity.touched)) {
-                    <small class="field-error">Choisissez une valeur entre 10 et 100.</small>
-                  }
-                </label>
+                <!--
+                  Deux nombres distincts, volontairement côte à côte : combien
+                  de classes accueillent un même niveau, et combien d'élèves
+                  tiennent dans chacune. Les confondre donnerait une école de
+                  40 élèves là où on en attend 240.
+                -->
+                <div class="field-pair">
+                  <label class="field compact-field">
+                    <span>Classes par niveau</span>
+                    <div class="input-suffix"><input type="number" formControlName="classesPerLevel" min="1" max="12" inputmode="numeric" /><span>classes</span></div>
+                    @if (rulesForm.controls.classesPerLevel.invalid && (formAttempted() || rulesForm.controls.classesPerLevel.touched)) {
+                      <small class="field-error">Choisissez une valeur entre 1 et 12.</small>
+                    }
+                  </label>
+
+                  <label class="field compact-field">
+                    <span>Capacité indicative par classe</span>
+                    <div class="input-suffix"><input type="number" formControlName="classCapacity" min="10" max="100" inputmode="numeric" /><span>élèves</span></div>
+                    @if (rulesForm.controls.classCapacity.invalid && (formAttempted() || rulesForm.controls.classCapacity.touched)) {
+                      <small class="field-error">Choisissez une valeur entre 10 et 100.</small>
+                    }
+                  </label>
+                </div>
+
+                <!--
+                  Le total dit ce que les deux nombres produisent ensemble. Une
+                  école qui vise 300 élèves et lit « 96 places » corrige avant
+                  de créer, pas après.
+                -->
+                <p class="rule-hint">
+                  {{ plannedClassCount() }} classes au total,
+                  {{ plannedSeatCount() }} places — créées dès la validation de
+                  votre compte.
+                </p>
 
                 <label class="field compact-field">
                   <span>Devise de référence</span>

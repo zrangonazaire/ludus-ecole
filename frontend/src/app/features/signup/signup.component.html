@@ -175,8 +175,33 @@
 
           <div class="field">
             <label class="field__label field__label--required" for="password">Mot de passe</label>
-            <input id="password" class="input" type="password" formControlName="password"
-                   autocomplete="new-password" />
+            <div class="field__control">
+              <input id="password" class="input input--with-action"
+                     [type]="passwordVisible() ? 'text' : 'password'"
+                     formControlName="password" autocomplete="new-password" />
+              <!-- type="button" : sans lui, ce bouton soumettrait l'étape. -->
+              <button type="button" class="field__reveal"
+                      [attr.aria-label]="passwordVisible()
+                        ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                      [attr.aria-pressed]="passwordVisible()"
+                      (click)="togglePassword()">
+                @if (passwordVisible()) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                    <path d="M3 3l18 18" />
+                    <path d="M10.6 10.6a2 2 0 002.8 2.8" />
+                    <path d="M9.4 5.3A9.6 9.6 0 0112 5c5 0 9 4.5 9 7a11 11 0 01-2.6 3.6" />
+                    <path d="M6.3 6.9C3.9 8.4 3 10.6 3 12c0 2.5 4 7 9 7 1.3 0 2.5-.3 3.6-.8" />
+                  </svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                    <path d="M3 12c0-2.5 4-7 9-7s9 4.5 9 7-4 7-9 7-9-4.5-9-7z" />
+                    <circle cx="12" cy="12" r="2.6" />
+                  </svg>
+                }
+              </button>
+            </div>
 
             @if (adminForm.controls.password.value) {
               <div class="strength">

@@ -161,7 +161,8 @@ public class AssessmentService {
 
         List<Assessment> assessments = assessmentRepository.search(
                 year.getId(), term != null ? term.getId() : null,
-                classroomId, subjectId, status, includeCancelled);
+                classroomId, subjectId, status == null ? "" : status.name(),
+                includeCancelled);
 
         List<AssessmentResponse> lines = describe(assessments, year.getId());
 

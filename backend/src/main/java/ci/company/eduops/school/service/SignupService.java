@@ -66,6 +66,7 @@ public class SignupService {
     private final JwtTokenProvider tokenProvider;
     private final MailService mailService;
     private final AuditService auditService;
+    private final SignupProvisioningService provisioningService;
     private final EduOpsProperties properties;
 
     public SignupService(SchoolRepository schoolRepository,
@@ -78,6 +79,7 @@ public class SignupService {
                          JwtTokenProvider tokenProvider,
                          MailService mailService,
                          AuditService auditService,
+                         SignupProvisioningService provisioningService,
                          EduOpsProperties properties) {
         this.schoolRepository = schoolRepository;
         this.campusRepository = campusRepository;
@@ -89,6 +91,7 @@ public class SignupService {
         this.tokenProvider = tokenProvider;
         this.mailService = mailService;
         this.auditService = auditService;
+        this.provisioningService = provisioningService;
         this.properties = properties;
     }
 
@@ -121,6 +124,13 @@ public class SignupService {
         createTerms(year);
         AppUser admin = createAdministrator(request, school, email);
 
+        // Ce que le visiteur a decrit dans « Composer ma demo » devient reel.
+        // Dans la meme transaction : une ecole a moitie configuree est plus
+        // difficile a reparer qu'une ecole vide, parce que personne ne sait
+        // ce qui manque.
+        SignupProvisioningService.Provisioned provisioned =
+                provisioningService.provision(school, year, request.getOperations());
+
         auditService.record(AuditAction.CREATE, "School", school.getId())
                 .label(school.getName())
                 .school(school.getId())
@@ -128,13 +138,17 @@ public class SignupService {
                         "code", school.getCode(),
                         "admin", email,
                         "campus", campus.getCode(),
-                        "academicYear", year.getCode()))
+                        "academicYear", year.getCode(),
+                        "cycles", String.valueOf(provisioned.getCycles()),
+                        "levels", String.valueOf(provisioned.getLevels()),
+                        "classrooms", String.valueOf(provisioned.getClassrooms()),
+                        "subjects", String.valueOf(provisioned.getSubjects())))
                 .save();
 
         sendWelcomeEmail(admin, school);
 
         log.info("Nouvelle école '{}' ({}) créée par {}", school.getName(), code, email);
-        return buildResponse(school, admin, year);
+        return buildResponse(school, admin, year, provisioned);
     }
 
     private void validate(SignupRequest request) {
@@ -270,7 +284,8 @@ public class SignupService {
                 "appBaseUrl", properties.getApp().getBaseUrl()));
     }
 
-    private SignupResponse buildResponse(School school, AppUser admin, AcademicYear year) {
+    private SignupResponse buildResponse(School school, AppUser admin, AcademicYear year,
+                                         SignupProvisioningService.Provisioned provisioned) {
         EduOpsUserDetails principal = new EduOpsUserDetails(admin);
 
         SignupResponse response = new SignupResponse();
@@ -285,7 +300,13 @@ public class SignupService {
         response.setAccessToken(tokenProvider.generateAccessToken(principal));
         response.setRefreshToken(tokenProvider.generateRefreshToken(principal));
         response.setExpiresIn(tokenProvider.accessTokenValiditySeconds());
-        response.setOnboardingRequired(true);
+        // L'assistant n'a de sens que s'il reste quelque chose a poser. Quand
+        // le parcours « Composer ma demo » a deja cree cycles, niveaux et
+        // classes, l'y envoyer le ferait buter sur son propre refus : il
+        // s'interdit de tourner deux fois pour ne pas doubler les classes.
+        // C'est une friction que la creation a l'inscription a introduite ;
+        // elle se resout ici, en disant simplement la verite au client.
+        response.setOnboardingRequired(provisioned.isEmpty());
         return response;
     }
 }

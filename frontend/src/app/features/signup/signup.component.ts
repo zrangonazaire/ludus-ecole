@@ -37,6 +37,16 @@ export class SignupComponent {
 
   readonly step = signal<1 | 2>(1);
   readonly submitting = signal(false);
+
+  /**
+   * Le mot de passe est-il lisible à l'écran ?
+   *
+   * <p>Utile surtout ici : il faut satisfaire quatre règles de robustesse, et
+   * corriger à l'aveugle une majuscule manquante fait recommencer la saisie
+   * entière. Il redevient masqué à la soumission — un bureau d'école est un
+   * poste partagé.</p>
+   */
+  readonly passwordVisible = signal(false);
   readonly codeAvailable = signal<boolean | null>(null);
   readonly emailAvailable = signal<boolean | null>(null);
   readonly checkingCode = signal(false);
@@ -154,6 +164,10 @@ export class SignupComponent {
     this.step.set(1);
   }
 
+  togglePassword(): void {
+    this.passwordVisible.update((visible) => !visible);
+  }
+
   submit(): void {
     if (this.adminForm.invalid || !this.passwordStrength().valid
         || this.emailAvailable() === false || this.submitting()) {
@@ -162,8 +176,18 @@ export class SignupComponent {
     }
 
     this.submitting.set(true);
+    this.passwordVisible.set(false);
     this.signupService
-      .signup({ ...this.schoolForm.getRawValue(), ...this.adminForm.getRawValue() })
+      .signup({
+        ...this.schoolForm.getRawValue(),
+        ...this.adminForm.getRawValue(),
+        // Ce que le visiteur a composé dans « Composer ma démo » part enfin
+        // avec l'inscription. Sans cette ligne, les quatre étapes de saisie ne
+        // servaient qu'à pré-remplir le nom de l'école : le serveur créait un
+        // établissement vide, et le tableau de bord annonçait « 1 étape sur
+        // 10 » à quelqu'un qui venait d'en remplir quatre.
+        operations: this.demoSetup.operationsForSignup()
+      })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
@@ -181,7 +205,13 @@ export class SignupComponent {
             schoolId: response.schoolId,
             roles: ['SCHOOL_ADMIN']
           });
-          void this.router.navigate(['/onboarding']);
+          // Le serveur dit si l'assistant a encore quelque chose à poser.
+          // Y envoyer quelqu'un dont l'école vient d'être configurée par le
+          // parcours le ferait buter sur le refus de l'assistant, qui
+          // s'interdit de tourner deux fois pour ne pas doubler les classes.
+          // Il arrive donc directement sur son tableau de bord, déjà rempli.
+          void this.router.navigate(
+            [response.onboardingRequired ? '/onboarding' : '/dashboard']);
         },
         error: () => this.submitting.set(false)
       });

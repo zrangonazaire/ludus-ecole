@@ -33,6 +33,15 @@ export interface DemoRules {
   readonly periodScheme: PeriodScheme;
   readonly gradingScale: GradingScale;
   readonly rankingEnabled: boolean;
+  /**
+   * Combien de classes ouvrir par niveau.
+   *
+   * <p>Distinct de la capacité : l'un dit combien d'élèves tiennent dans une
+   * classe, l'autre combien de classes accueillent un même niveau. Une école
+   * de 300 élèves peut avoir deux classes de 40 par niveau ; une petite école
+   * de village en aura une seule.</p>
+   */
+  readonly classesPerLevel: number;
   readonly classCapacity: number;
   readonly currency: CurrencyCode;
   readonly paymentModes: readonly PaymentModeId[];
@@ -87,6 +96,7 @@ export const DEFAULT_DEMO_SETUP_DRAFT: DemoSetupDraft = {
     periodScheme: 'trimester',
     gradingScale: '20',
     rankingEnabled: true,
+    classesPerLevel: 1,
     classCapacity: 40,
     currency: 'XOF',
     paymentModes: ['cash', 'mobile-money']

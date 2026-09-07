@@ -36,9 +36,13 @@ import java.util.UUID;
 public class ClassroomController {
 
     private final ClassroomService classroomService;
+    private final ci.company.eduops.student.service.StudentQueryService studentQueryService;
 
-    public ClassroomController(ClassroomService classroomService) {
+    public ClassroomController(ClassroomService classroomService,
+                               ci.company.eduops.student.service.StudentQueryService
+                                       studentQueryService) {
         this.classroomService = classroomService;
+        this.studentQueryService = studentQueryService;
     }
 
     @GetMapping
@@ -70,6 +74,17 @@ public class ClassroomController {
     @Operation(summary = "Détail d'une classe")
     public ResponseEntity<ClassroomResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(classroomService.getById(id));
+    }
+
+    @GetMapping("/{id}/students")
+    @PreAuthorize("hasAuthority('" + Permissions.STUDENT_VIEW + "')")
+    @Operation(summary = "Les élèves de la classe",
+            description = "Résolus par leur inscription active, triés par nom. "
+                    + "C'est la liste d'appel, celle du conseil de classe et "
+                    + "celle qu'on imprime pour une sortie scolaire.")
+    public ResponseEntity<List<ci.company.eduops.student.dto.response
+            .StudentSummaryResponse>> students(@PathVariable UUID id) {
+        return ResponseEntity.ok(studentQueryService.byClassroom(id));
     }
 
     @PostMapping

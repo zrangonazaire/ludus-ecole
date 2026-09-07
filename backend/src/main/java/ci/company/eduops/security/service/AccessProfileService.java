@@ -2,6 +2,7 @@ package ci.company.eduops.security.service;
 
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.exception.ErrorCode;
+import ci.company.eduops.common.tenant.TenantBypass;
 import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.security.dto.AccessPermissionResponse;
 import ci.company.eduops.security.dto.AccessProfileOverviewResponse;
@@ -78,9 +79,13 @@ public class AccessProfileService {
         this.userRepository = userRepository;
     }
 
+    @TenantBypass
     @Transactional(readOnly = true)
     public AccessProfileOverviewResponse overview() {
-        UUID schoolId = requireSchool();
+        // The bootstrap SUPER_ADMIN has no school. It may inspect the protected
+        // built-in profiles, while tenant accounts additionally receive only
+        // their own school's profiles through the explicit repository filter.
+        UUID schoolId = TenantContext.getSchoolId();
         List<AccessProfileResponse> profiles = roleRepository.findVisible(schoolId).stream()
                 .map(role -> toResponse(role, schoolId))
                 .toList();

@@ -37,12 +37,11 @@ public interface StudentDepartureRepository extends JpaRepository<StudentDepartu
     @Query("""
            SELECT d FROM StudentDeparture d
            WHERE d.academicYear.id = :academicYearId
-             AND (:status IS NULL OR d.status = :status)
-             AND (:classroomId IS NULL OR d.classroom.id = :classroomId)
-             AND (:search IS NULL
-                  OR lower(d.student.firstName)     LIKE lower(concat('%', :search, '%'))
-                  OR lower(d.student.lastName)      LIKE lower(concat('%', :search, '%'))
-                  OR lower(d.student.studentNumber) LIKE lower(concat('%', :search, '%')))
+                 AND d.status = coalesce(:status, d.status)
+                 AND d.classroom.id = coalesce(:classroomId, d.classroom.id)
+                 AND (lower(d.student.firstName)     LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(d.student.lastName)      LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                        OR lower(d.student.studentNumber) LIKE lower(concat('%', coalesce(:search, ''), '%')))
            ORDER BY d.departureDate DESC, d.recordedAt DESC
            """)
     List<StudentDeparture> search(@Param("academicYearId") UUID academicYearId,

@@ -26,14 +26,13 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     @Query("""
            SELECT s FROM Student s
            WHERE s.school.id = :schoolId
-             AND (:status IS NULL OR s.status = :status)
-             AND (:search IS NULL
-                  OR lower(s.firstName)     LIKE lower(concat('%', :search, '%'))
-                  OR lower(s.lastName)      LIKE lower(concat('%', :search, '%'))
-                  OR lower(s.studentNumber) LIKE lower(concat('%', :search, '%')))
+             AND (:status = '' OR CAST(s.status AS String) = :status)
+                 AND (lower(s.firstName)     LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                  OR lower(s.lastName)      LIKE lower(concat('%', coalesce(:search, ''), '%'))
+                  OR lower(s.studentNumber) LIKE lower(concat('%', coalesce(:search, ''), '%')))
            """)
     Page<Student> search(@Param("schoolId") UUID schoolId,
-                         @Param("status") StudentStatus status,
+                         @Param("status") String status,
                          @Param("search") String search,
                          Pageable pageable);
 
