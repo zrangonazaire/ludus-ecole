@@ -260,9 +260,10 @@ export const routes: Routes = [
       },
       {
         path: 'councils',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Conseils de classe' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.COUNCIL_VIEW], title: 'Conseils de classe' },
+        loadComponent: () => import('./features/councils/councils.component')
+          .then((m) => m.CouncilsComponent)
       },
       {
         path: 'cash',

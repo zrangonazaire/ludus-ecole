@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, delay, of, throwError } from 'rxjs';
+import { Observable, defer, delay, of, throwError } from 'rxjs';
 import { PageQuery, PageResponse } from '@core/models/common.models';
 import {
   AcademicYear, Assessment, AttendanceSheet, Classroom, DashboardData, Enrollment,
@@ -30,6 +30,7 @@ import { MOCK_OPTIONS } from './mock-option-store';
 import { MOCK_TRANSFERS } from './mock-transfer-store';
 import { MOCK_HEALTH } from './mock-health-store';
 import { MOCK_FAMILY_REQUESTS } from './mock-family-request-store';
+import { MOCK_COUNCILS } from './mock-council-store';
 import { AuthService } from '@core/auth/auth.service';
 import { PERMISSIONS } from '@core/models/auth.models';
 import {
@@ -54,6 +55,10 @@ import {
   ReportCardRemarkPayload
 } from '@core/models/report-card.models';
 import {
+  Council, CouncilCreatePayload, CouncilDecisionPayload, CouncilParticipantPayload,
+  CouncilQuery, CouncilStudentDecision, CouncilSummary, CouncilUpdatePayload
+} from '@core/models/council.models';
+import {
   AssessmentBoard, AssessmentItem, AssessmentQuery, AssessmentStatus,
   AssessmentUpsertPayload, GradeCorrectionPayload, GradeEntryPayload, GradeSheet
 } from '@core/models/assessment.models';
@@ -64,7 +69,8 @@ import {
   ClassroomDataSource, DashboardDataSource, EnrollmentDataSource, FinanceDataSource,
   GradeDataSource, AttendanceDataSource, ReferenceDataSource, StudentDataSource, TeacherDataSource,
   TimetableDataSource, CurriculumDataSource, FeeDataSource, ReportCardDataSource,
-  OptionDataSource, TransferDataSource, HealthDataSource, FamilyRequestDataSource
+  OptionDataSource, TransferDataSource, HealthDataSource, FamilyRequestDataSource,
+  CouncilDataSource
 } from '../data-source';
 import {
   MOCK_ACADEMIC_YEAR, MOCK_CLASSROOMS, MOCK_DASHBOARD, MOCK_RECENT_ENROLLMENTS,
@@ -639,6 +645,53 @@ export class MockReportCardDataSource implements ReportCardDataSource {
 
   verify(code: string): Observable<ReportCard> {
     return of(MOCK_REPORT_CARDS.verify(code)).pipe(delay(LATENCY));
+  }
+}
+
+/** Councils in demonstration mode retain the same lifecycle as the API. */
+@Injectable()
+export class MockCouncilDataSource implements CouncilDataSource {
+  list(query: CouncilQuery = {}): Observable<CouncilSummary[]> {
+    return defer(() => of(MOCK_COUNCILS.list(query))).pipe(delay(LATENCY));
+  }
+
+  get(councilId: string): Observable<Council> {
+    return defer(() => of(MOCK_COUNCILS.get(councilId))).pipe(delay(LATENCY));
+  }
+
+  create(payload: CouncilCreatePayload): Observable<Council> {
+    return defer(() => of(MOCK_COUNCILS.create(payload))).pipe(delay(350));
+  }
+
+  update(councilId: string, payload: CouncilUpdatePayload): Observable<Council> {
+    return defer(() => of(MOCK_COUNCILS.update(councilId, payload))).pipe(delay(300));
+  }
+
+  start(councilId: string): Observable<Council> {
+    return defer(() => of(MOCK_COUNCILS.start(councilId))).pipe(delay(300));
+  }
+
+  close(councilId: string): Observable<Council> {
+    return defer(() => of(MOCK_COUNCILS.close(councilId))).pipe(delay(400));
+  }
+
+  addParticipant(councilId: string, payload: CouncilParticipantPayload): Observable<Council> {
+    return defer(() => of(MOCK_COUNCILS.addParticipant(councilId, payload))).pipe(delay(300));
+  }
+
+  removeParticipant(councilId: string, participantId: string): Observable<Council> {
+    return defer(() => of(MOCK_COUNCILS.removeParticipant(councilId, participantId))).pipe(delay(250));
+  }
+
+  setParticipantPresence(councilId: string, participantId: string,
+                         present: boolean): Observable<Council> {
+    return defer(() => of(MOCK_COUNCILS.setPresence(councilId, participantId, present)))
+      .pipe(delay(250));
+  }
+
+  recordDecision(councilId: string,
+                 payload: CouncilDecisionPayload): Observable<CouncilStudentDecision> {
+    return defer(() => of(MOCK_COUNCILS.recordDecision(councilId, payload))).pipe(delay(300));
   }
 }
 

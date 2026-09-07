@@ -51,7 +51,7 @@ public interface StaffRepository extends JpaRepository<Staff, UUID> {
      * deux difficultés d'un coup, au prix d'une comparaison de chaînes que
      * l'index de statut couvre de toute façon mal sur cinq valeurs.</p>
      */
-    @Query("""
+    @Query(value = """
             SELECT s FROM Staff s
               LEFT JOIN FETCH s.campus
             WHERE s.school.id = :schoolId

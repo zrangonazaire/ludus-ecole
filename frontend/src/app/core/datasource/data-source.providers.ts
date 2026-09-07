@@ -6,19 +6,19 @@ import {
   OFFICIAL_DOCUMENT_DATA_SOURCE, OPTION_DATA_SOURCE, REFERENCE_DATA_SOURCE, TRANSFER_DATA_SOURCE, REPORT_CARD_DATA_SOURCE, HEALTH_DATA_SOURCE, FAMILY_REQUEST_DATA_SOURCE,
   STUDENT_DATA_SOURCE, STUDENT_PORTAL_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE,
   CURRICULUM_DATA_SOURCE, FEE_DATA_SOURCE, ACCESS_PROFILE_DATA_SOURCE, ADMISSION_DATA_SOURCE,
-  GUARDIAN_DATA_SOURCE
+  GUARDIAN_DATA_SOURCE, COUNCIL_DATA_SOURCE
 } from './data-source';
 import {
   MockAttendanceDataSource, MockClassroomDataSource, MockDashboardDataSource,
   MockEnrollmentDataSource, MockFinanceDataSource, MockGradeDataSource,
   MockOptionDataSource, MockReferenceDataSource, MockTransferDataSource, MockHealthDataSource, MockFamilyRequestDataSource, MockReportCardDataSource, MockStudentDataSource, MockTeacherDataSource,
-  MockTimetableDataSource, MockCurriculumDataSource, MockFeeDataSource
+  MockTimetableDataSource, MockCurriculumDataSource, MockFeeDataSource, MockCouncilDataSource
 } from './mock/mock-data-sources';
 import {
   ApiAttendanceDataSource, ApiClassroomDataSource, ApiDashboardDataSource,
   ApiEnrollmentDataSource, ApiFinanceDataSource, ApiGradeDataSource,
   ApiOptionDataSource, ApiReferenceDataSource, ApiTransferDataSource, ApiHealthDataSource, ApiFamilyRequestDataSource, ApiReportCardDataSource, ApiStudentDataSource, ApiTeacherDataSource,
-  ApiTimetableDataSource, ApiCurriculumDataSource, ApiFeeDataSource
+  ApiTimetableDataSource, ApiCurriculumDataSource, ApiFeeDataSource, ApiCouncilDataSource
 } from './api/api-data-sources';
 import { MockOfficialDocumentDataSource } from './mock/mock-official-document-data-source';
 import { ApiOfficialDocumentDataSource } from './api/api-official-document-data-source';
@@ -58,6 +58,7 @@ export const dataSourceProviders: Provider[] = [
     useClass: useMock ? MockFamilyRequestDataSource : ApiFamilyRequestDataSource },
   { provide: OPTION_DATA_SOURCE, useClass: useMock ? MockOptionDataSource : ApiOptionDataSource },
   { provide: REPORT_CARD_DATA_SOURCE, useClass: useMock ? MockReportCardDataSource : ApiReportCardDataSource },
+  { provide: COUNCIL_DATA_SOURCE, useClass: useMock ? MockCouncilDataSource : ApiCouncilDataSource },
   { provide: OFFICIAL_DOCUMENT_DATA_SOURCE,
     useClass: useMock ? MockOfficialDocumentDataSource : ApiOfficialDocumentDataSource },
   { provide: ACCESS_PROFILE_DATA_SOURCE,

@@ -59,6 +59,10 @@ import {
   Admission, AdmissionCreatePayload, AdmissionOptions, AdmissionQuery, AdmissionStatusPayload
 } from '../models/admission.models';
 import { Guardian, GuardianQuery } from '../models/guardian.models';
+import {
+  Council, CouncilCreatePayload, CouncilDecisionPayload, CouncilParticipantPayload,
+  CouncilQuery, CouncilStudentDecision, CouncilSummary, CouncilUpdatePayload
+} from '../models/council.models';
 
 /**
  * The contract every screen depends on.
@@ -208,6 +212,22 @@ export interface ReportCardDataSource {
   verify(code: string): Observable<ReportCard>;
 }
 
+/** Planning, attendance sheet and decisions of the class council. */
+export interface CouncilDataSource {
+  list(query?: CouncilQuery): Observable<CouncilSummary[]>;
+  get(councilId: string): Observable<Council>;
+  create(payload: CouncilCreatePayload): Observable<Council>;
+  update(councilId: string, payload: CouncilUpdatePayload): Observable<Council>;
+  start(councilId: string): Observable<Council>;
+  close(councilId: string): Observable<Council>;
+  addParticipant(councilId: string, payload: CouncilParticipantPayload): Observable<Council>;
+  removeParticipant(councilId: string, participantId: string): Observable<Council>;
+  setParticipantPresence(councilId: string, participantId: string,
+                         present: boolean): Observable<Council>;
+  recordDecision(councilId: string,
+                 payload: CouncilDecisionPayload): Observable<CouncilStudentDecision>;
+}
+
 export interface OfficialDocumentDataSource {
   search(query: OfficialDocumentQuery): Observable<PageResponse<OfficialDocument>>;
   issue(payload: OfficialDocumentIssuePayload): Observable<OfficialDocument>;
@@ -334,6 +354,7 @@ export const TRANSFER_DATA_SOURCE = new InjectionToken<TransferDataSource>('Tran
 export const OPTION_DATA_SOURCE = new InjectionToken<OptionDataSource>('OptionDataSource');
 export const HEALTH_DATA_SOURCE = new InjectionToken<HealthDataSource>('HealthDataSource');
 export const REPORT_CARD_DATA_SOURCE = new InjectionToken<ReportCardDataSource>('ReportCardDataSource');
+export const COUNCIL_DATA_SOURCE = new InjectionToken<CouncilDataSource>('CouncilDataSource');
 export const OFFICIAL_DOCUMENT_DATA_SOURCE =
   new InjectionToken<OfficialDocumentDataSource>('OfficialDocumentDataSource');
 export const FAMILY_REQUEST_DATA_SOURCE =

@@ -48,12 +48,16 @@ import {
   FamilyRequest, FamilyRequestBoard, FamilyRequestCreatePayload,
   FamilyRequestQuery, FamilyRequestUpdatePayload
 } from '@core/models/family-request.models';
+import {
+  Council, CouncilCreatePayload, CouncilDecisionPayload, CouncilParticipantPayload,
+  CouncilQuery, CouncilStudentDecision, CouncilSummary, CouncilUpdatePayload
+} from '@core/models/council.models';
 import { OutstandingBoard, OutstandingQuery } from '@core/models/outstanding.models';
 import {
   AttendanceDataSource, ClassroomDataSource, TimetableDataSource, CurriculumDataSource, FeeDataSource, DashboardDataSource, EnrollmentDataSource,
   FinanceDataSource, GradeDataSource, ReferenceDataSource, StudentDataSource, TeacherDataSource,
   ReportCardDataSource, OptionDataSource, TransferDataSource, HealthDataSource,
-  FamilyRequestDataSource
+  FamilyRequestDataSource, CouncilDataSource
 } from '../data-source';
 
 /**
@@ -350,6 +354,55 @@ export class ApiReportCardDataSource implements ReportCardDataSource {
 
   verify(code: string): Observable<ReportCard> {
     return this.http.get<ReportCard>(`${API}/report-cards/verify`, { params: toParams({ code }) });
+  }
+}
+
+@Injectable()
+export class ApiCouncilDataSource implements CouncilDataSource {
+  private readonly http = inject(HttpClient);
+
+  list(query: CouncilQuery = {}): Observable<CouncilSummary[]> {
+    return this.http.get<CouncilSummary[]>(`${API}/councils`, { params: toParams(query) });
+  }
+
+  get(councilId: string): Observable<Council> {
+    return this.http.get<Council>(`${API}/councils/${councilId}`);
+  }
+
+  create(payload: CouncilCreatePayload): Observable<Council> {
+    return this.http.post<Council>(`${API}/councils`, payload);
+  }
+
+  update(councilId: string, payload: CouncilUpdatePayload): Observable<Council> {
+    return this.http.put<Council>(`${API}/councils/${councilId}`, payload);
+  }
+
+  start(councilId: string): Observable<Council> {
+    return this.http.post<Council>(`${API}/councils/${councilId}/start`, {});
+  }
+
+  close(councilId: string): Observable<Council> {
+    return this.http.post<Council>(`${API}/councils/${councilId}/close`, {});
+  }
+
+  addParticipant(councilId: string, payload: CouncilParticipantPayload): Observable<Council> {
+    return this.http.post<Council>(`${API}/councils/${councilId}/participants`, payload);
+  }
+
+  removeParticipant(councilId: string, participantId: string): Observable<Council> {
+    return this.http.delete<Council>(`${API}/councils/${councilId}/participants/${participantId}`);
+  }
+
+  setParticipantPresence(councilId: string, participantId: string,
+                         present: boolean): Observable<Council> {
+    return this.http.put<Council>(
+      `${API}/councils/${councilId}/participants/${participantId}/presence`, {},
+      { params: toParams({ present }) });
+  }
+
+  recordDecision(councilId: string,
+                 payload: CouncilDecisionPayload): Observable<CouncilStudentDecision> {
+    return this.http.post<CouncilStudentDecision>(`${API}/councils/${councilId}/decisions`, payload);
   }
 }
 

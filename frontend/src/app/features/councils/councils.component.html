@@ -1,0 +1,332 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">Pédagogie · Fin de période</p>
+      <h1 class="page__title">Conseils de classe</h1>
+      <p class="page__meta">Planifiez la réunion, consignez les décisions et gardez un procès-verbal lisible.</p>
+    </div>
+    @if (canManage()) {
+      <button type="button" class="btn btn--primary" (click)="openCreate()">
+        Planifier un conseil
+      </button>
+    }
+  </header>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des conseils de classe..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="initialize()" />
+  } @else {
+    <section class="filters card" aria-label="Filtres des conseils de classe">
+      <label class="field">
+        <span class="field__label">Année scolaire</span>
+        <select class="input" [value]="selectedYearId()"
+                (change)="changeYear($any($event.target).value)">
+          @for (year of years(); track year.id) {
+            <option [value]="year.id">{{ year.label }}</option>
+          }
+        </select>
+      </label>
+      <label class="field">
+        <span class="field__label">État</span>
+        <select class="input" [value]="selectedStatus()"
+                (change)="changeStatus($any($event.target).value)">
+          <option value="">Tous les états</option>
+          @for (state of states; track state.code) {
+            <option [value]="state.code">{{ state.label }}</option>
+          }
+        </select>
+      </label>
+      <p class="filters__hint">Un conseil est unique pour une classe et une période.</p>
+    </section>
+
+    <section class="metrics" aria-label="Synthèse des conseils">
+      <div class="metric card"><strong>{{ plannedCount() }}</strong><span>à venir</span></div>
+      <div class="metric card"><strong>{{ inProgressCount() }}</strong><span>en cours</span></div>
+      <div class="metric card"><strong>{{ closedCount() }}</strong><span>clos</span></div>
+    </section>
+
+    <section class="card table-card">
+      <div class="table-wrapper">
+        <table class="table">
+          <caption class="visually-hidden">Conseils de classe planifiés et clos</caption>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Classe</th>
+              <th>Période</th>
+              <th>État</th>
+              <th>Moyenne / réussite</th>
+              <th class="cell-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (council of councils(); track council.id) {
+              <tr>
+                <td class="numeric">{{ formatDate(council.meetingDate) }}</td>
+                <td><strong>{{ council.classroomName }}</strong></td>
+                <td>{{ council.termName }}</td>
+                <td>
+                  <span class="state" [attr.data-tone]="stateOf(council.status).tone">
+                    {{ stateOf(council.status).label }}
+                  </span>
+                </td>
+                <td class="numeric muted">
+                  @if (council.classAverage != null) {
+                    {{ council.classAverage.toLocaleString('fr-FR') }}/20
+                    <small>{{ council.successRate?.toLocaleString('fr-FR') ?? '—' }} % de réussite</small>
+                  } @else {
+                    —
+                  }
+                </td>
+                <td class="cell-actions">
+                  <button type="button" class="btn btn--secondary btn--sm" (click)="openDetail(council)">
+                    Ouvrir
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6">
+                  <div class="empty">
+                    <strong>Aucun conseil pour ces filtres.</strong>
+                    @if (canManage()) {
+                      <span>Planifiez le premier conseil de cette période pour commencer.</span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>
+
+@if (createOpen()) {
+  <div class="drawer-backdrop" (click)="closeCreate()"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="create-council-title">
+    <header class="drawer__head">
+      <div>
+        <h2 class="drawer__title" id="create-council-title">Planifier un conseil</h2>
+        <p class="drawer__meta">La classe et la période ne peuvent être choisies qu'une seule fois.</p>
+      </div>
+      <button type="button" class="drawer__close" aria-label="Fermer" (click)="closeCreate()">×</button>
+    </header>
+
+    <form class="drawer__body form-stack" [formGroup]="createForm" (ngSubmit)="submitCreate()">
+      <p class="hint-block">
+        Le conseil rassemble les décisions de la période. Il sera possible d'ajouter les
+        participants et de renseigner le procès-verbal avant sa clôture.
+      </p>
+      <div class="field">
+        <label class="field__label field__label--required" for="council-classroom">Classe</label>
+        <select id="council-classroom" class="input" formControlName="classroomId">
+          <option value="">Choisir une classe…</option>
+          @for (classroom of filteredClassrooms(); track classroom.id) {
+            <option [value]="classroom.id">{{ classroom.name }} · {{ classroom.levelName }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label class="field__label field__label--required" for="council-term">Période</label>
+        <select id="council-term" class="input" formControlName="termId">
+          <option value="">Choisir une période…</option>
+          @for (term of terms(); track term.id) {
+            <option [value]="term.id">{{ term.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label class="field__label field__label--required" for="council-date">Date</label>
+          <input id="council-date" type="date" class="input" formControlName="meetingDate" />
+        </div>
+        <div class="field">
+          <label class="field__label" for="council-start">Début</label>
+          <input id="council-start" type="time" class="input" formControlName="startTime" />
+        </div>
+        <div class="field">
+          <label class="field__label" for="council-end">Fin</label>
+          <input id="council-end" type="time" class="input" formControlName="endTime" />
+        </div>
+      </div>
+      <div class="field">
+        <label class="field__label" for="council-location">Lieu</label>
+        <input id="council-location" class="input" formControlName="location"
+               placeholder="Salle des professeurs" />
+      </div>
+    </form>
+    <footer class="drawer__foot">
+      <button type="button" class="btn btn--secondary" (click)="closeCreate()">Annuler</button>
+      <button type="button" class="btn btn--primary" [disabled]="createForm.invalid || saving()"
+              (click)="submitCreate()">Planifier</button>
+    </footer>
+  </aside>
+}
+
+@if (detailLoading() && !detail()) {
+  <div class="loading-overlay"><eduops-loading-state message="Ouverture du conseil..." /></div>
+}
+
+@if (detail(); as council) {
+  <div class="drawer-backdrop" (click)="closeDetail()"></div>
+  <aside class="drawer drawer--wide" role="dialog" aria-modal="true" aria-labelledby="council-detail-title">
+    <header class="drawer__head">
+      <div>
+        <div class="drawer__title-line">
+          <h2 class="drawer__title" id="council-detail-title">{{ council.classroomName }} · {{ council.termName }}</h2>
+          <span class="state" [attr.data-tone]="stateOf(council.status).tone">
+            {{ council.statusLabel }}
+          </span>
+        </div>
+        <p class="drawer__meta">Réunion du {{ formatDate(council.meetingDate) }} · {{ council.levelName }}</p>
+      </div>
+      <button type="button" class="drawer__close" aria-label="Fermer" (click)="closeDetail()">×</button>
+    </header>
+
+    <div class="council-stats numeric">
+      <span><strong>{{ decidedCount() }}</strong> / {{ council.students.length }} décisions</span>
+      <span><strong>{{ presentCount() }}</strong> / {{ council.participants.length }} participant(s) présent(s)</span>
+      @if (council.classAverage != null) {
+        <span>moyenne <strong>{{ council.classAverage.toLocaleString('fr-FR') }}/20</strong></span>
+        <span>réussite <strong>{{ council.successRate?.toLocaleString('fr-FR') ?? '—' }} %</strong></span>
+      }
+    </div>
+
+    <div class="drawer__body detail-body">
+      @if (council.editable && canManage()) {
+        <section class="detail-section">
+          <div class="detail-section__head">
+            <div><h3>Organisation</h3><p>Les informations pratiques restent modifiables jusqu'à la clôture.</p></div>
+            <button type="button" class="btn btn--secondary btn--sm" [disabled]="saving() || meetingForm.invalid"
+                    (click)="saveMeeting()">Enregistrer</button>
+          </div>
+          <form class="meeting-grid" [formGroup]="meetingForm">
+            <label class="field"><span class="field__label">Date</span><input type="date" class="input" formControlName="meetingDate" /></label>
+            <label class="field"><span class="field__label">Début</span><input type="time" class="input" formControlName="startTime" /></label>
+            <label class="field"><span class="field__label">Fin</span><input type="time" class="input" formControlName="endTime" /></label>
+            <label class="field meeting-grid__location"><span class="field__label">Lieu</span><input class="input" formControlName="location" /></label>
+            <label class="field meeting-grid__wide"><span class="field__label">Observations</span><textarea class="textarea" rows="2" formControlName="remarks" placeholder="Points retenus pendant la réunion"></textarea></label>
+            <label class="field meeting-grid__wide"><span class="field__label">Lien vers le procès-verbal</span><input type="url" class="input" formControlName="minutesUrl" placeholder="https://…" /></label>
+          </form>
+        </section>
+      } @else {
+        <section class="summary-card">
+          <dl>
+            <div><dt>Lieu</dt><dd>{{ council.location || 'Non renseigné' }}</dd></div>
+            <div><dt>Horaire</dt><dd>{{ council.startTime || '—' }} @if (council.endTime) { · {{ council.endTime }} }</dd></div>
+            <div><dt>Procès-verbal</dt><dd>@if (council.minutesUrl) { <a [href]="council.minutesUrl" target="_blank" rel="noopener">Consulter</a> } @else { Non joint }</dd></div>
+          </dl>
+          @if (council.remarks) { <p class="summary-card__remarks">{{ council.remarks }}</p> }
+        </section>
+      }
+
+      <section class="detail-section">
+        <div class="detail-section__head">
+          <div><h3>Participants</h3><p>La feuille de présence fait partie du compte rendu du conseil.</p></div>
+        </div>
+        <ul class="participants">
+          @for (participant of council.participants; track participant.id) {
+            <li class="participants__item">
+              <div><strong>{{ participant.name }}</strong><span>{{ participant.roleLabel }}</span></div>
+              @if (council.editable && canManage()) {
+                <label class="presence"><input type="checkbox" [checked]="participant.present"
+                  (change)="setPresence(participant.id, $any($event.target).checked)" /> Présent</label>
+                <button type="button" class="icon-button" [attr.aria-label]="'Retirer ' + participant.name"
+                        [disabled]="saving()" (click)="removeParticipant(participant.id)">×</button>
+              } @else {
+                <span class="state" [attr.data-tone]="participant.present ? 'done' : 'off'">
+                  {{ participant.present ? 'Présent' : 'Absent' }}
+                </span>
+              }
+            </li>
+          } @empty {
+            <li class="participants__empty">Aucun participant renseigné.</li>
+          }
+        </ul>
+        @if (council.editable && canManage()) {
+          <form class="participant-form" [formGroup]="participantForm" (ngSubmit)="addParticipant()">
+            <label class="field"><span class="field__label">Enseignant</span>
+              <select class="input" formControlName="teacherId"><option value="">Choisir…</option>
+                @for (teacher of teachers(); track teacher.id) { <option [value]="teacher.id">{{ teacher.fullName }} · {{ teacher.speciality }}</option> }
+              </select>
+            </label>
+            <label class="field"><span class="field__label">Rôle</span><input class="input" formControlName="roleLabel" /></label>
+            <label class="presence presence--form"><input type="checkbox" formControlName="present" /> Présent</label>
+            <button type="submit" class="btn btn--secondary btn--sm" [disabled]="participantForm.invalid || saving()">Ajouter</button>
+          </form>
+        }
+      </section>
+
+      <section class="detail-section detail-section--decisions">
+        <div class="detail-section__head">
+          <div>
+            <h3>Décisions des élèves</h3>
+            <p>@if (council.editable) { {{ pendingCount() }} décision(s) restent à consigner. } @else { Les décisions ont été figées à la clôture. }</p>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table class="table decision-table">
+            <caption class="visually-hidden">Décisions des élèves</caption>
+            <thead><tr><th>Élève</th><th>Moyenne annuelle</th><th>Décision</th><th>Orientation / observation</th><th class="cell-actions">Action</th></tr></thead>
+            <tbody>
+              @for (student of council.students; track student.enrollmentId) {
+                <tr [class.row--pending]="!student.decided">
+                  <td><strong>{{ student.studentName }}</strong><small class="muted numeric">{{ student.studentNumber }}</small></td>
+                  <td class="numeric">{{ student.annualAverage != null ? student.annualAverage.toLocaleString('fr-FR') + ' / 20' : '—' }}</td>
+                  <td><span class="state" [attr.data-tone]="decisionOf(student.decision).tone">{{ decisionOf(student.decision).label }}</span></td>
+                  <td class="decision-note">{{ student.orientationAdvice || student.justification || '—' }}</td>
+                  <td class="cell-actions">
+                    @if (council.editable && canDecide()) {
+                      <button type="button" class="btn btn--secondary btn--sm" (click)="openDecision(student)">
+                        {{ student.decided ? 'Modifier' : 'Décider' }}
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    @if (council.editable && canManage()) {
+      <footer class="drawer__foot">
+        @if (council.status === 'PLANNED') {
+          <button type="button" class="btn btn--secondary" [disabled]="saving()" (click)="startCouncil()">Démarrer le conseil</button>
+        }
+        <span class="drawer__warning">La clôture fige les décisions et les présences.</span>
+        <button type="button" class="btn btn--primary" [disabled]="saving()" (click)="askClose()">Clore le conseil</button>
+      </footer>
+    }
+  </aside>
+}
+
+@if (decisionOpen(); as open) {
+  <div class="drawer-backdrop drawer-backdrop--front" (click)="closeDecision()"></div>
+  @if (deciding(); as student) {
+    <aside class="drawer drawer--decision" role="dialog" aria-modal="true" aria-labelledby="decision-title">
+      <header class="drawer__head"><div><h2 class="drawer__title" id="decision-title">Décision pour {{ student.studentName }}</h2><p class="drawer__meta numeric">{{ student.studentNumber }} · {{ student.fromLevelName }}</p></div><button type="button" class="drawer__close" aria-label="Fermer" (click)="closeDecision()">×</button></header>
+      <form class="drawer__body form-stack" [formGroup]="decisionForm" (ngSubmit)="saveDecision()">
+        <p class="hint-block">Une décision reste rectifiable tant que le conseil n'est pas clos. La moyenne sert au bilan de la classe, pas à remplacer la décision du conseil.</p>
+        <label class="field"><span class="field__label field__label--required">Décision</span><select class="input" formControlName="decision">@for (decision of decisions; track decision.code) { <option [value]="decision.code">{{ decision.label }}</option> }</select></label>
+        <label class="field"><span class="field__label">Moyenne annuelle /20</span><input type="number" min="0" max="20" step="0.01" class="input" formControlName="annualAverage" placeholder="Ex. 12,5" /></label>
+        <label class="field"><span class="field__label">Justification</span><textarea rows="3" class="textarea" formControlName="justification" placeholder="Éléments examinés par le conseil"></textarea></label>
+        <label class="field"><span class="field__label">Conseil d'orientation</span><textarea rows="2" class="textarea" formControlName="orientationAdvice" placeholder="Entretien, filière ou établissement conseillé"></textarea></label>
+      </form>
+      <footer class="drawer__foot"><button type="button" class="btn btn--secondary" (click)="closeDecision()">Annuler</button><button type="button" class="btn btn--primary" [disabled]="decisionForm.invalid || saving()" (click)="saveDecision()">Enregistrer la décision</button></footer>
+    </aside>
+  }
+}
+
+@if (closeConfirmOpen()) {
+  <eduops-confirm-dialog
+    title="Clore ce conseil ?"
+    [message]="'Les ' + decidedCount() + ' décisions enregistrées, la feuille de présence et le procès-verbal ne pourront plus être modifiés.'"
+    confirmLabel="Clore définitivement"
+    (cancel)="closeConfirmOpen.set(false)"
+    (confirm)="closeCouncil()" />
+}

@@ -165,6 +165,12 @@ public enum ErrorCode {
     REPORT_CARD_ALREADY_PUBLISHED(HttpStatus.CONFLICT, "The report card is already published."),
     COUNCIL_NOT_FOUND(HttpStatus.NOT_FOUND, "Class council not found."),
     COUNCIL_CLOSED(HttpStatus.CONFLICT, "The class council is closed."),
+    COUNCIL_ALREADY_EXISTS(HttpStatus.CONFLICT,
+            "A class council already exists for this class and grading period."),
+    COUNCIL_INVALID_TRANSITION(HttpStatus.CONFLICT, "This council status transition is not allowed."),
+    COUNCIL_PARTICIPANT_NOT_FOUND(HttpStatus.NOT_FOUND, "Council participant not found."),
+    COUNCIL_PARTICIPANT_ALREADY_ADDED(HttpStatus.CONFLICT,
+            "This person is already listed on the council."),
     PROMOTION_DECISION_NOT_FOUND(HttpStatus.NOT_FOUND, "Promotion decision not found."),
 
     // ---------- discipline ----------

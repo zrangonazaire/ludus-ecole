@@ -133,6 +133,14 @@ const MESSAGES: Record<string, string> = {
     + 'appréciations font partie du document reçu et ne changent plus ; une note '
     + 'corrigée produira la révision suivante.',
 
+  // conseils de classe
+  COUNCIL_NOT_FOUND: 'Ce conseil de classe est introuvable.',
+  COUNCIL_CLOSED: 'Ce conseil est clos : son procès-verbal, ses présences et ses décisions sont figés.',
+  COUNCIL_ALREADY_EXISTS: 'Un conseil existe déjà pour cette classe et cette période.',
+  COUNCIL_INVALID_TRANSITION: 'Ce changement d’état du conseil n’est pas autorisé.',
+  COUNCIL_PARTICIPANT_NOT_FOUND: 'Ce participant ne figure plus sur la feuille de présence.',
+  COUNCIL_PARTICIPANT_ALREADY_ADDED: 'Cette personne figure déjà parmi les participants du conseil.',
+
   // options et langues
   OPTION_NOT_FOUND: 'Cette option est introuvable.',
   OPTION_CODE_ALREADY_USED: 'Une autre option utilise déjà ce code.',
