@@ -49,6 +49,10 @@ springdoc:
     enabled: false
 
 eduops:
+  diagnostics:
+    # Ecrit, pas laisse par defaut : le jour ou la valeur par defaut change,
+    # c'est la production qui se mettrait a decrire ses entrailles.
+    expose-internal-errors: false
   mail:
     provider: SMTP
   demo:

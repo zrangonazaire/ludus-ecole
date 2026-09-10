@@ -194,6 +194,27 @@ export interface AttendanceRecord {
   justified: boolean;
 }
 
+/**
+ * Un cours du jour, tel que l'appel le propose.
+ *
+ * Vient de l'emploi du temps : la liste est vide quand la classe n'en a pas,
+ * et l'écran retombe alors sur l'appel de la journée.
+ */
+export interface LessonSlot {
+  subjectId: string;
+  subjectName: string;
+  teacherId?: string;
+  teacherName?: string;
+  startTime?: string;
+  endTime?: string;
+  roomName?: string;
+  /** Une feuille existe déjà pour ce cours. */
+  sheetStarted: boolean;
+  /** L'appel a été enregistré : inutile de le refaire. */
+  done: boolean;
+  absentCount: number;
+}
+
 export interface AttendanceSheet {
   /** Nul tant que la feuille n'a jamais été enregistrée. */
   id?: string;

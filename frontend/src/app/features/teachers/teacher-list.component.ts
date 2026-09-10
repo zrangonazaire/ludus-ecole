@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, TemplateRef, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
+import { PERMISSIONS } from '@core/models/auth.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TEACHER_DATA_SOURCE } from '@core/datasource/data-source';
 import { PageResponse } from '@core/models/common.models';
@@ -11,7 +14,7 @@ import { AvatarComponent } from '@shared/ui/avatar/avatar.component';
 @Component({
   selector: 'eduops-teacher-list',
   standalone: true,
-  imports: [CommonModule, DataTableComponent, StatusBadgeComponent, AvatarComponent],
+  imports: [CommonModule, RouterLink, DataTableComponent, StatusBadgeComponent, AvatarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -23,9 +26,12 @@ import { AvatarComponent } from '@shared/ui/avatar/avatar.component';
           }
         </div>
         <div class="page__actions">
-          <button type="button" class="btn btn--primary">
+          @if (auth.has(permissions.TEACHER_MANAGE)) {
+          <a routerLink="/teacher-assignments" class="btn btn--secondary">Affecter aux classes</a>
+          <a routerLink="/teachers/new" class="btn btn--primary">
             <span aria-hidden="true">+</span> Nouvel enseignant
-          </button>
+          </a>
+          }
         </div>
       </header>
 
@@ -59,6 +65,8 @@ import { AvatarComponent } from '@shared/ui/avatar/avatar.component';
   `
 })
 export class TeacherListComponent implements OnInit {
+  readonly auth = inject(AuthService);
+  readonly permissions = PERMISSIONS;
   private readonly dataSource = inject(TEACHER_DATA_SOURCE);
   private readonly destroyRef = inject(DestroyRef);
 

@@ -13,6 +13,7 @@ import java.util.UUID;
 
 @Repository
 public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssignment, UUID> {
+    List<TeacherAssignment> findByAcademicYearIdAndStatus(UUID academicYearId, AssignmentStatus status);
 
     List<TeacherAssignment> findByTeacherIdAndAcademicYearIdAndStatus(UUID teacherId,
                                                                       UUID academicYearId,

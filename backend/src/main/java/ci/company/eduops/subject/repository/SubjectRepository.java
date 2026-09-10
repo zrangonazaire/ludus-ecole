@@ -26,7 +26,7 @@ public interface SubjectRepository extends JpaRepository<Subject, UUID> {
     @Query("""
            SELECT s FROM Subject s
            WHERE s.school.id = :schoolId
-             AND (:search IS NULL
+             AND (:search = ''
                   OR lower(s.name) LIKE lower(concat('%', :search, '%'))
                   OR lower(s.code) LIKE lower(concat('%', :search, '%')))
            """)

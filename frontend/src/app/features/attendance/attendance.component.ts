@@ -4,7 +4,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ATTENDANCE_DATA_SOURCE } from '@core/datasource/data-source';
 import { AttendanceStatus } from '@core/models/common.models';
-import { AttendanceSheet } from '@core/models/domain.models';
+import { AttendanceSheet, LessonSlot } from '@core/models/domain.models';
 import {
   ATTENDANCE_MARKS, Absence, AbsenceDigest, AbsenceFilter, AttendanceDay,
   AttendanceMark, ClassroomAttendance, QUICK_MARKS
@@ -78,6 +78,17 @@ export class AttendanceComponent implements OnInit {
   readonly day = signal<AttendanceDay | null>(null);
 
   /** La feuille ouverte dans le panneau ; nulle quand il est fermé. */
+  /**
+   * La classe dont on est en train de choisir le cours.
+   *
+   * <p>Étape intermédiaire, et seulement quand elle a un emploi du temps :
+   * au primaire un maître tient sa classe toute la journée, lui faire choisir
+   * une matière serait une question sans réponse.</p>
+   */
+  readonly pickingLesson = signal<ClassroomAttendance | null>(null);
+  readonly lessons = signal<LessonSlot[]>([]);
+  readonly loadingLessons = signal(false);
+
   readonly sheet = signal<AttendanceSheet | null>(null);
   readonly sheetDirty = signal(false);
 
@@ -239,16 +250,78 @@ export class AttendanceComponent implements OnInit {
 
   // -------------------------------------------------------------- feuille
 
+  /**
+   * Ouvre l'appel d'une classe.
+   *
+   * <p>Demande d'abord ses cours du jour. S'il y en a, on laisse choisir
+   * lequel : au collège l'absence se constate cours par cours, et un appel
+   * unique compterait présent tout le jour un élève parti après la récréation.
+   * S'il n'y en a pas, on ouvre directement l'appel de la journée.</p>
+   */
   openSheet(classroom: ClassroomAttendance): void {
+    this.loadingLessons.set(true);
+    this.lessons.set([]);
+    this.dataSource.lessons(classroom.classroomId, this.date())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (lessons) => {
+          this.loadingLessons.set(false);
+          if (lessons.length === 0) {
+            this.openDaySheet(classroom);
+            return;
+          }
+          this.lessons.set(lessons);
+          this.pickingLesson.set(classroom);
+        },
+        error: () => {
+          // L'emploi du temps indisponible ne doit pas empêcher l'appel :
+          // on retombe sur celui de la journée plutôt que de bloquer.
+          this.loadingLessons.set(false);
+          this.openDaySheet(classroom);
+        }
+      });
+  }
+
+  /** L'appel de la journée entière, sans matière. */
+  openDaySheet(classroom: ClassroomAttendance): void {
+    this.pickingLesson.set(null);
+    this.loadSheet(classroom.classroomId, undefined);
+  }
+
+  /** L'appel d'un cours précis. */
+  openLesson(lesson: LessonSlot): void {
+    const classroom = this.pickingLesson();
+    if (!classroom) {
+      return;
+    }
+    this.pickingLesson.set(null);
+    this.loadSheet(classroom.classroomId, lesson.subjectId);
+  }
+
+  cancelLessonPick(): void {
+    this.pickingLesson.set(null);
+    this.lessons.set([]);
+  }
+
+  private loadSheet(classroomId: string, subjectId?: string): void {
     this.saving.set(false);
     this.sheetDirty.set(false);
     this.idempotencyKey = newKey();
-    this.dataSource.openSheet(classroom.classroomId, this.date())
+    this.dataSource.openSheet(classroomId, this.date(), subjectId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (sheet) => this.sheet.set(sheet),
         error: (err) => this.explain(err)
       });
+  }
+
+  /** « 08:00 – 09:00 », ou la matière seule si l'horaire manque. */
+  lessonWhen(lesson: LessonSlot): string {
+    if (!lesson.startTime) {
+      return '';
+    }
+    const end = lesson.endTime ? ` – ${lesson.endTime.slice(0, 5)}` : '';
+    return `${lesson.startTime.slice(0, 5)}${end}`;
   }
 
   closeSheet(): void {

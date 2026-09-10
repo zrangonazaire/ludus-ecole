@@ -1,6 +1,10 @@
 # --- Secrets ---
 .env
 docker/.env
+.env.prod
+.env.prod.*
+!.env.prod.example
+backups/
 *.pem
 *.key
 *.p12

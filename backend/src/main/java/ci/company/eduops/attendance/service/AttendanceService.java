@@ -22,6 +22,7 @@ import ci.company.eduops.attendance.repository.StudentAttendanceRepository;
 import ci.company.eduops.classroom.domain.Classroom;
 import ci.company.eduops.classroom.domain.ClassroomStatus;
 import ci.company.eduops.classroom.repository.ClassroomRepository;
+import ci.company.eduops.common.domain.DayOfWeekEnum;
 import ci.company.eduops.common.event.DomainEventPublisher;
 import ci.company.eduops.common.event.DomainEventType;
 import ci.company.eduops.common.exception.BusinessException;
@@ -35,6 +36,9 @@ import ci.company.eduops.security.service.CurrentUser;
 import ci.company.eduops.student.domain.Student;
 import ci.company.eduops.subject.domain.Subject;
 import ci.company.eduops.subject.repository.SubjectRepository;
+import ci.company.eduops.timetable.domain.TimetableSlot;
+import ci.company.eduops.timetable.repository.TimetableSlotRepository;
+import ci.company.eduops.attendance.dto.response.LessonSlotResponse;
 import ci.company.eduops.teacher.domain.Teacher;
 import ci.company.eduops.term.domain.Term;
 import ci.company.eduops.term.repository.TermRepository;
@@ -117,6 +121,7 @@ public class AttendanceService {
     private final AcademicYearRepository academicYearRepository;
     private final TermRepository termRepository;
     private final SubjectRepository subjectRepository;
+    private final TimetableSlotRepository timetableSlotRepository;
     private final DomainEventPublisher eventPublisher;
     private final AuditService auditService;
     private final CurrentUser currentUser;
@@ -128,6 +133,7 @@ public class AttendanceService {
                              AcademicYearRepository academicYearRepository,
                              TermRepository termRepository,
                              SubjectRepository subjectRepository,
+                             TimetableSlotRepository timetableSlotRepository,
                              DomainEventPublisher eventPublisher,
                              AuditService auditService,
                              CurrentUser currentUser) {
@@ -138,6 +144,7 @@ public class AttendanceService {
         this.academicYearRepository = academicYearRepository;
         this.termRepository = termRepository;
         this.subjectRepository = subjectRepository;
+        this.timetableSlotRepository = timetableSlotRepository;
         this.eventPublisher = eventPublisher;
         this.auditService = auditService;
         this.currentUser = currentUser;
@@ -233,6 +240,64 @@ public class AttendanceService {
         // rate say something the register does not.
         response.setAttendanceRate(rate(present + late, expectedCalled));
         return response;
+    }
+
+    // --------------------------------------------------- the day's lessons
+
+    /**
+     * Les cours d'une classe pour ce jour-là, avec l'état de leur appel.
+     *
+     * <p>Vient de l'emploi du temps. Une école primaire n'en a pas — un maître,
+     * une classe, la journée entière — et reçoit donc une liste vide : l'écran
+     * lui laisse alors l'appel de la journée, sans lui imposer de choisir une
+     * matière qui n'a pas de sens chez elle.</p>
+     *
+     * <p>Au collège et au lycée, c'est l'inverse qui compte : un élève présent
+     * le matin et parti après la récréation est compté présent toute la journée
+     * tant qu'on ne fait qu'un appel quotidien, et rien ne révèle qu'il manque
+     * systématiquement le même cours.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<LessonSlotResponse> lessons(UUID classroomId, LocalDate date,
+                                            UUID academicYearId) {
+        AcademicYear year = resolveYear(academicYearId);
+        LocalDate when = date == null ? LocalDate.now() : date;
+        DayOfWeekEnum day = DayOfWeekEnum.valueOf(when.getDayOfWeek().name());
+
+        List<LessonSlotResponse> lessons = new ArrayList<>();
+        for (TimetableSlot slot
+                : timetableSlotRepository.findGridByClassroom(classroomId, year.getId())) {
+            if (slot.getDayOfWeek() != day) {
+                continue;
+            }
+            lessons.add(describeLesson(slot, classroomId, when));
+        }
+        return lessons;
+    }
+
+    private LessonSlotResponse describeLesson(TimetableSlot slot, UUID classroomId,
+                                              LocalDate when) {
+        LessonSlotResponse lesson = new LessonSlotResponse();
+        lesson.setSubjectId(slot.getSubject().getId());
+        lesson.setSubjectName(slot.getSubject().getName());
+        lesson.setTeacherId(slot.getTeacher().getId());
+        lesson.setTeacherName(slot.getTeacher().fullName());
+        lesson.setStartTime(slot.getStartTime());
+        lesson.setEndTime(slot.getEndTime());
+        if (slot.getRoom() != null) {
+            lesson.setRoomName(slot.getRoom().getName());
+        }
+
+        // L'appel de ce cours a-t-il deja ete fait ? Sans cette information,
+        // un enseignant qui reprend la classe apres un collegue ne sait pas
+        // s'il doit refaire l'appel, et le refait « au cas ou ».
+        sessionRepository.findLessonSheet(classroomId, when, slot.getSubject().getId())
+                .ifPresent(session -> {
+                    lesson.setSheetStarted(true);
+                    lesson.setDone(session.getStatus() != AttendanceSessionStatus.OPEN);
+                    lesson.setAbsentCount(session.getAbsentCount());
+                });
+        return lesson;
     }
 
     // ----------------------------------------------------------- the sheet
@@ -720,7 +785,7 @@ public class AttendanceService {
         if (subjectId == null) {
             return sessionRepository.findDailyRegister(classroomId, date);
         }
-        return sessionRepository.findExisting(classroomId, date, null, subjectId);
+        return sessionRepository.findLessonSheet(classroomId, date, subjectId);
     }
 
     private List<Enrollment> liveEnrollments(UUID classroomId) {

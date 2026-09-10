@@ -15,7 +15,14 @@ import java.util.UUID;
 @Repository
 public interface CashSessionRepository extends JpaRepository<CashSession, UUID> {
 
+    java.util.List<CashSession> findBySchoolIdAndCashierUserIdOrderByOpenedAtDesc(UUID schoolId, UUID cashierUserId);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM CashSession s WHERE s.id = :id")
+    Optional<CashSession> lockById(@Param("id") UUID id);
+
     /** A cashier may only hold one open session at a time. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM CashSession s WHERE s.cashierUserId = :userId AND s.status = 'OPEN'")
     Optional<CashSession> findOpenForCashier(@Param("userId") UUID userId);
 

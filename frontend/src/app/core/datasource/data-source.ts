@@ -48,7 +48,7 @@ import {
 import { OutstandingBoard, OutstandingQuery } from '../models/outstanding.models';
 import {
   AcademicYear, Assessment, AttendanceSheet, Classroom, DashboardData, Enrollment,
-  EnrollmentCheckResult, FinancialSummary, Grade, GlobalSearchResult, Payment,
+  EnrollmentCheckResult, FinancialSummary, Grade, GlobalSearchResult, LessonSlot, Payment,
   ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term
 } from '../models/domain.models';
 import { StudentDashboard } from '../models/student-portal.models';
@@ -109,6 +109,7 @@ export interface ClassroomDataSource {
 }
 
 export interface TeacherDataSource {
+  create(payload: import('../models/teacher.models').TeacherCreatePayload): Observable<Teacher>;
   search(query: PageQuery): Observable<PageResponse<Teacher>>;
   getById(id: string): Observable<Teacher>;
   myClasses(): Observable<Classroom[]>;
@@ -117,6 +118,13 @@ export interface TeacherDataSource {
 export interface AttendanceDataSource {
   /** Toutes les classes actives d'une journée, appelées ou non. */
   day(date: string): Observable<AttendanceDay>;
+  /**
+   * Les cours de cette classe ce jour-là, lus dans l'emploi du temps.
+   *
+   * Liste vide au primaire, où un maître tient sa classe toute la journée :
+   * l'écran propose alors l'appel journalier, sans friction ajoutée.
+   */
+  lessons(classroomId: string, date: string): Observable<LessonSlot[]>;
   openSheet(classroomId: string, date: string, subjectId?: string): Observable<AttendanceSheet>;
   submitSheet(sheet: AttendanceSheet, idempotencyKey: string): Observable<AttendanceSheet>;
 

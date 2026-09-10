@@ -153,6 +153,9 @@ public class PaymentService {
                     .detail("amount", amount);
         }
 
+        // Use the same lock order as cancellation: till first, then fee lines.
+        CashSession cashSession = resolveCashSession(request);
+
         // 3 - identify the fee lines to settle, locking them against concurrency
         List<StudentFee> targetFees = resolveTargetFees(request, student, academicYear);
 
@@ -164,8 +167,6 @@ public class PaymentService {
                     .detail("amount", amount)
                     .detail("outstanding", totalOutstanding);
         }
-
-        CashSession cashSession = resolveCashSession(request);
 
         // 6 - create the payment
         Payment payment = new Payment();
@@ -254,6 +255,12 @@ public class PaymentService {
             throw BusinessException.of(ErrorCode.PAYMENT_ALREADY_CANCELLED);
         }
 
+        if (payment.getCashSession() != null) {
+            CashSession session = cashSessionRepository.lockById(payment.getCashSession().getId())
+                    .orElseThrow(() -> BusinessException.of(ErrorCode.CASH_SESSION_NOT_FOUND));
+            if (!session.isOpen()) throw BusinessException.of(ErrorCode.CASH_SESSION_CLOSED);
+        }
+
         List<PaymentAllocation> allocations =
                 allocationRepository.findByPaymentIdAndReversedFalse(paymentId);
         for (PaymentAllocation allocation : allocations) {
@@ -309,8 +316,15 @@ public class PaymentService {
             org.springframework.data.domain.Pageable pageable) {
         UUID yearId = academicYearId != null ? academicYearId : activeAcademicYearId();
         return ci.company.eduops.common.dto.PageResponse.from(
+                // La chaine vide, jamais null : `lower(concat('%', :search, '%'))`
+                // avec un parametre nul ne donne a PostgreSQL aucun type pour
+                // choisir la surcharge de lower(). Il lit bytea et refuse la
+                // requete entiere — « function lower(bytea) does not exist » —
+                // alors meme que le garde `:search = ''` l'aurait court-circuitee.
+                // La resolution des fonctions se fait a l'analyse, avant toute
+                // evaluation : un OR ne protege rien.
                 paymentRepository.search(yearId, status == null ? "" : status.name(), from, to,
-                        (search == null || search.isBlank()) ? null : search.trim(), pageable),
+                        (search == null || search.isBlank()) ? "" : search.trim(), pageable),
                 this::toResponse);
     }
 
@@ -340,18 +354,23 @@ public class PaymentService {
 
     private CashSession resolveCashSession(PaymentCreateRequest request) {
         if (request.getCashSessionId() != null) {
-            CashSession session = cashSessionRepository.findById(request.getCashSessionId())
+            CashSession session = cashSessionRepository.lockById(request.getCashSessionId())
                     .orElseThrow(() -> BusinessException.of(ErrorCode.CASH_SESSION_NOT_FOUND));
+            if (!session.getCashierUserId().equals(currentUser.requireId())
+                    || !session.getSchool().getId().equals(ci.company.eduops.common.tenant.TenantContext.getSchoolId())) {
+                throw BusinessException.of(ErrorCode.CASH_SESSION_NOT_FOUND);
+            }
             if (!session.isOpen()) {
                 throw BusinessException.of(ErrorCode.CASH_SESSION_CLOSED);
             }
             return session;
         }
         if (request.getPaymentMethod() != null && request.getPaymentMethod().requiresCashSession()) {
-            // Cash must land in the cashier's own open till when they have one.
+            // Lock the till until the payment commits, so closing cannot miss this payment.
             return currentUser.id()
                     .flatMap(cashSessionRepository::findOpenForCashier)
-                    .orElse(null);
+                    .orElseThrow(() -> BusinessException.of(ErrorCode.CASH_SESSION_NOT_FOUND,
+                            "Ouvrez votre caisse avant d’enregistrer un paiement en espèces."));
         }
         return null;
     }

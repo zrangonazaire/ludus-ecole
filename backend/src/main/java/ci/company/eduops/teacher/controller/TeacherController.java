@@ -20,10 +20,22 @@ import java.util.UUID;
 @Tag(name = "Teachers", description = "Le personnel enseignant")
 public class TeacherController {
 
+    private final ci.company.eduops.teacher.service.TeacherCreateService teacherCreateService;
+
     private final TeacherQueryService teacherQueryService;
 
-    public TeacherController(TeacherQueryService teacherQueryService) {
+    public TeacherController(TeacherQueryService teacherQueryService,
+            ci.company.eduops.teacher.service.TeacherCreateService teacherCreateService) {
         this.teacherQueryService = teacherQueryService;
+        this.teacherCreateService = teacherCreateService;
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('" + Permissions.TEACHER_MANAGE + "')")
+    public TeacherResponse create(@jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody
+            ci.company.eduops.teacher.dto.TeacherCreateRequest request) {
+        return teacherCreateService.create(request);
     }
 
     @GetMapping

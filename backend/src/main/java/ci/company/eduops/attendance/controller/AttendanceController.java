@@ -7,6 +7,7 @@ import ci.company.eduops.attendance.dto.response.AbsenceDigestResponse;
 import ci.company.eduops.attendance.dto.response.AbsenceResponse;
 import ci.company.eduops.attendance.dto.response.AttendanceDayResponse;
 import ci.company.eduops.attendance.dto.response.AttendanceSheetResponse;
+import ci.company.eduops.attendance.dto.response.LessonSlotResponse;
 import ci.company.eduops.attendance.service.AttendanceService;
 import ci.company.eduops.common.exception.ApiError;
 import ci.company.eduops.security.service.Permissions;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -59,6 +61,26 @@ public class AttendanceController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) UUID academicYearId) {
         return ResponseEntity.ok(attendanceService.day(date, academicYearId));
+    }
+
+    @GetMapping("/lessons")
+    @PreAuthorize("hasAuthority('" + Permissions.ATTENDANCE_VIEW + "')")
+    @Operation(summary = "Les cours d'une classe ce jour-là",
+            description = """
+                    Lus dans l'emploi du temps, avec l'état de l'appel de chacun.
+
+                    Liste vide quand la classe n'a pas d'emploi du temps : au primaire,
+                    un maître tient sa classe toute la journée et l'appel quotidien
+                    suffit. Au collège, chaque cours a le sien — sans quoi un élève parti
+                    après la récréation reste compté présent jusqu'au soir.
+                    """)
+    public ResponseEntity<List<LessonSlotResponse>> lessons(
+            @RequestParam UUID classroomId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) UUID academicYearId) {
+        return ResponseEntity.ok(
+                attendanceService.lessons(classroomId, date, academicYearId));
     }
 
     @GetMapping("/sheet")

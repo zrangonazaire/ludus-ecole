@@ -1,0 +1,114 @@
+# Standalone production stack; do not merge with docker-compose.yml.
+name: ${COMPOSE_PROJECT_NAME:-eduops-prod}
+
+x-service: &service
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  postgres:
+    <<: *service
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eduops}
+      POSTGRES_USER: ${POSTGRES_USER:-eduops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      TZ: ${SCHOOL_TIMEZONE:-Africa/Abidjan}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    <<: *service
+    image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    command: [redis-server, /usr/local/etc/redis/redis.conf, --requirepass, '${REDIS_PASSWORD:?Set REDIS_PASSWORD}']
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    <<: *service
+    image: eduops-backend:${IMAGE_TAG:-production}
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-eduops}
+      POSTGRES_USER: ${POSTGRES_USER:-eduops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      APP_BASE_URL: ${APP_BASE_URL:?Set HTTPS APP_BASE_URL}
+      API_BASE_URL: ${APP_BASE_URL:?Set HTTPS APP_BASE_URL}
+      EDUOPS_ADMIN_EMAIL: ${EDUOPS_ADMIN_EMAIL:?Set EDUOPS_ADMIN_EMAIL}
+      EDUOPS_ADMIN_PASSWORD: ${EDUOPS_ADMIN_PASSWORD:?Set EDUOPS_ADMIN_PASSWORD}
+      MAIL_HOST: ${MAIL_HOST:?Set MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:?Set MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?Set MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM}
+      SCHOOL_NAME: ${SCHOOL_NAME:-Mon Ecole}
+      SCHOOL_CODE: ${SCHOOL_CODE:-ECOLE}
+      SCHOOL_CURRENCY: ${SCHOOL_CURRENCY:-XOF}
+      SCHOOL_TIMEZONE: ${SCHOOL_TIMEZONE:-Africa/Abidjan}
+      STORAGE_LOCATION: /app/storage
+      SPRINGDOC_API_DOCS_ENABLED: "false"
+      SPRINGDOC_SWAGGER_UI_ENABLED: "false"
+      EDUOPS_DEMO_ENABLED: "false"
+    ports:
+      - "127.0.0.1:58080:8080"
+    volumes:
+      - backend_storage:/app/storage
+    healthcheck:
+      test: [CMD, wget, -qO-, 'http://localhost:8080/actuator/health']
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  frontend:
+    <<: *service
+    image: eduops-frontend:${IMAGE_TAG:-production}
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile
+    depends_on:
+      backend: {condition: service_healthy}
+    ports:
+      - "127.0.0.1:4200:80"
+    healthcheck:
+      test: [CMD, wget, -qO-, 'http://localhost/healthz']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_storage:

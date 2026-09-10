@@ -57,6 +57,7 @@ export class SetupComponent implements OnInit {
       case 'SUBJECTS': return `${count} matiere${count > 1 ? 's' : ''}`;
       case 'FEES': return `${count} grille${count > 1 ? 's' : ''} de frais`;
       case 'TEACHERS': return `${count} enseignant${count > 1 ? 's' : ''} actif${count > 1 ? 's' : ''}`;
+      case 'ASSIGNMENTS': return `${count} affectation${count > 1 ? 's' : ''} active${count > 1 ? 's' : ''}`;
       case 'STUDENTS': return `${count} eleve${count > 1 ? 's' : ''} inscrit${count > 1 ? 's' : ''}`;
       default: return `${count}`;
     }

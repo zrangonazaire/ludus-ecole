@@ -1,0 +1,41 @@
+<div class="heading"><div><span class="eyebrow">FINANCE · MES SESSIONS</span><h1>Caisse</h1><p>Ouvrez votre caisse, suivez les espèces et contrôlez le solde en fin de journée.</p></div><button class="btn" [disabled]="loading()" (click)="load()">Actualiser</button></div>
+@if (loading()) { <div class="empty" role="status">Chargement de la caisse…</div> }
+@else if (error()) { <section class="card empty" role="alert"><h2>La caisse est indisponible</h2><p>Impossible de charger vos sessions.</p><button class="btn btn--primary" (click)="load()">Réessayer</button></section> }
+@else {
+  @if (current(); as s) {
+    <section class="active-session"><div><span class="badge open">Session ouverte</span><h2>Votre caisse est en service</h2><p>Ouverte le {{ s.openedAt | date:'dd/MM/yyyy à HH:mm' }}</p></div><div class="buttons">@if (auth.has('PAYMENT_VIEW')) { <a class="btn" routerLink="/payments">Accéder aux paiements</a> }<button class="btn btn--primary" (click)="startClose(s)">Clôturer la caisse</button></div></section>
+    <div class="metrics"><article><span>Fond de caisse initial</span><strong>{{ s.openingBalance | money }}</strong><small>Montant déclaré à l’ouverture</small></article><article><span>Espèces encaissées</span><strong>{{ s.cashReceived | money }}</strong><small>Paiements validés de la session</small></article><article class="expected"><span>Solde attendu en caisse</span><strong>{{ s.expectedBalance | money }}</strong><small>Fond initial + encaissements en espèces</small></article></div>
+  } @else {
+    <section class="active-session"><div><span class="badge">Caisse fermée</span><h2>Prêt pour une nouvelle session ?</h2><p>Déclarez le fond de caisse disponible avant de commencer vos encaissements.</p></div><button class="btn btn--primary" (click)="startOpen()">+ Ouvrir ma caisse</button></section>
+  }
+  <section class="card"><div class="section-heading"><div><h2>Historique de mes sessions</h2><p>Retrouvez les soldes et les écarts de vos clôtures.</p></div><span>{{ history().length }} session(s)</span></div>
+    <div class="filters"><label>Référence<input type="search" class="input" placeholder="Rechercher une session…" [ngModel]="search()" (ngModelChange)="search.set($event); page.set(1)"></label><label>Statut<select class="input" [ngModel]="status()" (ngModelChange)="status.set($event); page.set(1)"><option value="">Tous les statuts</option><option value="OPEN">Ouverte</option><option value="CLOSED">Clôturée</option><option value="RECONCILED">Rapprochée</option></select></label></div>
+    <div class="table-wrap"><table><thead><tr><th>Session</th><th>Ouverture</th><th>Statut</th><th>Solde attendu</th><th>Montant compté</th><th>Écart</th><th>Actions</th></tr></thead><tbody>@for (s of visible(); track s.id) {
+      <tr><td class="reference" [title]="s.reference">{{ s.reference }}</td><td>{{ s.openedAt | date:'dd/MM/yyyy' }}<small>{{ s.openedAt | date:'HH:mm' }}</small></td><td><span class="badge" [class.open]="s.status === 'OPEN'">{{ labels[s.status] }}</span></td><td>{{ s.expectedBalance | money }}</td><td>{{ s.actualBalance | money }}</td><td [class.discrepancy]="s.difference !== null && s.difference !== 0">{{ s.difference | money }}</td><td><button class="btn" (click)="inspect(s)" [attr.aria-label]="'Consulter la session du ' + (s.openedAt | date:'dd/MM/yyyy HH:mm')">Consulter →</button></td></tr>
+    }</tbody></table></div>
+    @if (!history().length) { <div class="empty"><h3>{{ sessions().length ? 'Aucune session correspondante' : 'Votre historique commence ici' }}</h3><p>{{ sessions().length ? 'Modifiez la recherche ou le statut sélectionné.' : 'Vos sessions apparaîtront dès la première ouverture de caisse.' }}</p></div> }
+    @if (history().length) { <footer><span>Page {{ page() }} sur {{ pages() }}</span><div class="buttons"><button class="btn" [disabled]="page() === 1" (click)="page.set(page()-1)">Précédent</button><button class="btn" [disabled]="page() === pages()" (click)="page.set(page()+1)">Suivant</button></div></footer> }
+  </section>
+}
+@if (modal(); as mode) {
+  <div class="overlay"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="cash-title"><header><h2 id="cash-title">{{ mode === 'open' ? 'Ouvrir ma caisse' : 'Clôturer ma caisse' }}</h2><button class="btn" aria-label="Fermer" [disabled]="saving()" (click)="modal.set(null)">✕</button></header>
+    <form #cashForm="ngForm" (ngSubmit)="submit()"><fieldset [disabled]="saving()">
+      @if (mode === 'close' && closing) { <div class="summary"><span>Solde attendu</span><strong>{{ closing.expectedBalance | money }}</strong></div><p>Comptez les espèces présentes dans la caisse, fond initial compris. La clôture fige le solde de cette session.</p> }
+      <label>{{ mode === 'open' ? 'Fond de caisse initial (XOF)' : 'Espèces comptées (XOF)' }} *<input class="input" type="number" name="amount" required min="0" max="9999999999999" step="1" [(ngModel)]="amount" placeholder="0"></label>
+      @if (mode === 'close' && amount !== null) { <div class="summary" [class.discrepancy]="difference() !== 0"><span>Écart de caisse</span><strong>{{ difference() | money }}</strong></div> }
+      <label>{{ mode === 'close' && difference() !== 0 ? 'Explication de l’écart *' : 'Observations' }}<textarea class="input" name="notes" rows="4" maxlength="2000" [(ngModel)]="notes" [required]="mode === 'close' && difference() !== 0" placeholder="Précisions sur la session…"></textarea></label>
+      <footer><button type="button" class="btn" (click)="modal.set(null)">Annuler</button><button class="btn btn--primary" [disabled]="cashForm.invalid || !validAmount() || (mode === 'close' && difference() !== 0 && !notes.trim())">{{ saving() ? 'Enregistrement…' : mode === 'open' ? 'Ouvrir la caisse' : 'Confirmer la clôture' }}</button></footer>
+    </fieldset></form>
+  </section></div>
+}
+@if (selected(); as s) {
+  <div class="overlay"><section class="panel wide" role="dialog" aria-modal="true" aria-labelledby="session-title"><header><div><h2 id="session-title">Détail de la session</h2><p class="full-reference">{{ s.reference }}</p></div><button class="btn" aria-label="Fermer" (click)="selected.set(null)">✕</button></header>
+    <span class="badge" [class.open]="s.status === 'OPEN'">{{ labels[s.status] }}</span><p>Ouverture : {{ s.openedAt | date:'dd/MM/yyyy HH:mm' }}@if (s.closedAt) { <br>Clôture : {{ s.closedAt | date:'dd/MM/yyyy HH:mm' }} }</p>
+    <dl><div><dt>Fond initial</dt><dd>{{ s.openingBalance | money }}</dd></div><div><dt>Espèces encaissées</dt><dd>{{ s.cashReceived | money }}</dd></div><div><dt>Solde attendu</dt><dd>{{ s.expectedBalance | money }}</dd></div><div><dt>Montant compté</dt><dd>{{ s.actualBalance | money }}</dd></div><div><dt>Écart</dt><dd [class.discrepancy]="s.difference !== null && s.difference !== 0">{{ s.difference | money }}</dd></div></dl>
+    @if (s.notes) { <h3>Observations</h3><p class="notes">{{ s.notes }}</p> }
+    <h3>Paiements validés rattachés</h3><p>Seuls les paiements en espèces entrent dans le solde de caisse.</p>
+    @if (movementsLoading()) { <p role="status">Chargement des paiements…</p> } @else if (movementsError()) { <p role="alert">Impossible de charger les paiements.</p><button class="btn" (click)="inspect(s)">Réessayer</button> } @else {
+      <div class="table-wrap"><table><thead><tr><th>Élève / référence</th><th>Mode</th><th>Montant</th></tr></thead><tbody>@for (m of movements(); track m.id) { <tr><td>{{ m.studentName }}<small>{{ m.reference }} · {{ m.date | date:'dd/MM/yyyy' }}</small></td><td>{{ methods[m.method] || m.method }}</td><td>{{ m.amount | money }}</td></tr> }</tbody></table></div>@if (!movements().length) { <p class="empty">Aucun paiement validé rattaché à cette session.</p> }
+    }
+  </section></div>
+}

@@ -240,7 +240,10 @@ public class AcademicOptionService {
                                                        int page, int size) {
         UUID schoolId = requireSchool();
         AcademicYear year = resolveYear(academicYearId, schoolId);
-        String cleanSearch = search == null || search.isBlank() ? null : search.trim();
+        // Vide plutot que null : un parametre texte nul entrant dans lower() ou
+        // concat() prive PostgreSQL du type dont il a besoin pour resoudre la
+        // fonction, et la requete echoue avant d'etre evaluee.
+        String cleanSearch = search == null || search.isBlank() ? "" : search.trim();
         Page<StudentOptionChoice> result = choiceRepository.search(
                 schoolId, year.getId(), offeringId,
                 status == null ? "" : status.name(), cleanSearch,

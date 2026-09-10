@@ -1,6 +1,7 @@
 package ci.company.eduops.common.event;
 
 import ci.company.eduops.config.EduOpsProperties;
+import ci.company.eduops.notification.service.NotificationFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -32,15 +33,18 @@ public class DomainEventRelay {
     private final SimpMessagingTemplate messagingTemplate;
     private final CacheManager cacheManager;
     private final EduOpsProperties properties;
+    private final NotificationFactory notificationFactory;
 
     public DomainEventRelay(DomainEventRepository repository,
                             SimpMessagingTemplate messagingTemplate,
                             CacheManager cacheManager,
-                            EduOpsProperties properties) {
+                            EduOpsProperties properties,
+                            NotificationFactory notificationFactory) {
         this.repository = repository;
         this.messagingTemplate = messagingTemplate;
         this.cacheManager = cacheManager;
         this.properties = properties;
+        this.notificationFactory = notificationFactory;
     }
 
     @Scheduled(fixedDelayString = "${eduops.events.relay.poll-interval-ms:2000}")
@@ -60,6 +64,7 @@ public class DomainEventRelay {
                 messagingTemplate.convertAndSend(type.channel(), toMessage(event));
                 dashboardTouched |= type.affectsDashboard();
                 event.markProcessed();
+                createNotifications(event);
             } catch (IllegalArgumentException ex) {
                 log.error("Unknown event type {} on event {}", event.getEventType(), event.getId());
                 event.markFailed("Unknown event type: " + event.getEventType());
@@ -76,6 +81,25 @@ public class DomainEventRelay {
             evict("classroomOccupancy");
         }
         log.debug("{} domain events dispatched", events.size());
+    }
+
+    /**
+     * Transforme l'événement en messages, sans jamais faire échouer le relais.
+     *
+     * <p>Appelé <em>après</em> {@code markProcessed()} et dans sa propre
+     * transaction. Si la création échouait avant, l'événement serait rejoué et
+     * les notifications déjà écrites seraient créées une seconde fois : un
+     * parent recevrait cinq fois la même absence le jour où le service de
+     * messages instantanés est indisponible. Perdre une notification et le
+     * dire vaut mieux que d'en envoyer cinq.</p>
+     */
+    private void createNotifications(DomainEvent event) {
+        try {
+            notificationFactory.createFor(event);
+        } catch (RuntimeException ex) {
+            log.error("Notifications non créées pour l'événement {} ({}) : {}",
+                    event.getId(), event.getEventType(), ex.getMessage(), ex);
+        }
     }
 
     private Map<String, Object> toMessage(DomainEvent event) {

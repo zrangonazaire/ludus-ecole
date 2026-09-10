@@ -21,16 +21,33 @@ public interface AttendanceSessionRepository extends JpaRepository<AttendanceSes
 
     Optional<AttendanceSession> findByIdempotencyKey(String idempotencyKey);
 
+    /**
+     * La feuille d'un cours : une classe, un jour, une matière.
+     *
+     * <h2>Aucun paramètre nul</h2>
+     *
+     * <p>La version précédente acceptait un horaire et une matière facultatifs,
+     * testés par {@code :startTime IS NULL}. C'est la forme qui a mis à terre
+     * les écrans Personnel et Enseignants : sur un paramètre lié testé pour la
+     * nullité, PostgreSQL n'a aucun type à inférer, et la requête échoue quelle
+     * que soit la valeur envoyée. Elle n'avait jamais explosé ici parce qu'elle
+     * n'avait jamais tourné — le seul appelant ne s'en servait que si une
+     * matière était fournie, et l'écran n'en envoyait jamais.</p>
+     *
+     * <p>L'horaire ne fait pas partie de la clé : une feuille créée pour une
+     * matière n'en porte pas. Conséquence assumée — deux cours de la même
+     * matière le même jour partagent une feuille. Le jour où cela gêne, c'est
+     * l'heure qu'il faudra enregistrer à la création, pas ce filtre qu'il
+     * faudra durcir.</p>
+     */
     @Query("""
            SELECT s FROM AttendanceSession s
            WHERE s.classroom.id = :classroomId AND s.sessionDate = :date
-             AND (:startTime IS NULL OR s.startTime = :startTime)
-             AND (:subjectId IS NULL OR s.subject.id = :subjectId)
+             AND s.subject.id = :subjectId
            """)
-    Optional<AttendanceSession> findExisting(@Param("classroomId") UUID classroomId,
-                                             @Param("date") LocalDate date,
-                                             @Param("startTime") LocalTime startTime,
-                                             @Param("subjectId") UUID subjectId);
+    Optional<AttendanceSession> findLessonSheet(@Param("classroomId") UUID classroomId,
+                                                @Param("date") LocalDate date,
+                                                @Param("subjectId") UUID subjectId);
 
     /**
      * The day register of one class: no subject, no time slot.

@@ -90,6 +90,20 @@ export const routes: Routes = [
           .then((m) => m.ClassListComponent)
       },
       {
+        path: 'teacher-assignments',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.TEACHER_MANAGE], title: 'Affectation des enseignants' },
+        loadComponent: () => import('./features/teachers/teacher-assignments.component')
+          .then((m) => m.TeacherAssignmentsComponent)
+      },
+      {
+        path: 'teachers/new',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.TEACHER_MANAGE], title: 'Nouvel enseignant' },
+        loadComponent: () => import('./features/teachers/teacher-create.component')
+          .then((m) => m.TeacherCreateComponent)
+      },
+      {
         path: 'teachers',
         canActivate: [permissionGuard],
         data: { permissions: [PERMISSIONS.TEACHER_VIEW], title: 'Enseignants' },
@@ -165,9 +179,10 @@ export const routes: Routes = [
       },
       {
         path: 'discipline',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Discipline', endpoint: 'GET /api/v1/discipline/incidents' }
+        canActivate: [permissionGuard],
+        loadComponent: () => import('./features/discipline/discipline.component')
+          .then((m) => m.DisciplineComponent),
+        data: { title: 'Discipline', permissions: ['DISCIPLINE_VIEW'] }
       },
       {
         path: 'finance',
@@ -267,9 +282,10 @@ export const routes: Routes = [
       },
       {
         path: 'cash',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Caisse' }
+        canActivate: [permissionGuard],
+        loadComponent: () => import('./features/cash/cash.component')
+          .then((m) => m.CashComponent),
+        data: { title: 'Caisse', permissions: [PERMISSIONS.CASH_SESSION_MANAGE] }
       },
       {
         path: 'discounts',
@@ -306,8 +322,8 @@ export const routes: Routes = [
       },
       {
         path: 'notifications',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
+        loadComponent: () => import('./features/notifications/notifications.component')
+          .then((m) => m.NotificationsComponent),
         data: { title: 'Messages' }
       },
       {

@@ -1,0 +1,126 @@
+<section class="inbox">
+
+  <eduops-step-coachmark
+    flow="inbox"
+    stepKey="overview"
+    [stepNumber]="1"
+    [totalSteps]="1"
+    eyebrow="À savoir sur cet écran"
+    [title]="helpCopy.title"
+    [description]="helpCopy.description"
+    [points]="helpCopy.points" />
+
+  <header class="page-head">
+    <div>
+      <h1>Messages</h1>
+      <p>
+        @if (unread() > 0) {
+          {{ unread() }} message(s) non lu(s).
+        } @else {
+          Tout est lu.
+        }
+      </p>
+    </div>
+    @if (unread() > 0) {
+      <button type="button" class="btn btn--ghost"
+              [disabled]="working()" (click)="markAllRead()">
+        Tout marquer comme lu
+      </button>
+    }
+  </header>
+
+  <div class="filters" role="group" aria-label="Filtrer les messages">
+    <button type="button" [class.is-active]="categoryFilter() === ''"
+            (click)="filterCategory('')">Tout</button>
+    @for (category of categories(); track category) {
+      <button type="button" [class.is-active]="categoryFilter() === category"
+              (click)="filterCategory(category)">
+        {{ labelOf(category) }}
+      </button>
+    }
+    <button type="button" class="filters__toggle"
+            [class.is-active]="unreadOnly()"
+            [attr.aria-pressed]="unreadOnly()"
+            (click)="toggleUnreadOnly()">
+      Non lus seulement
+    </button>
+  </div>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement de vos messages…" />
+  } @else if (failed()) {
+    <eduops-error-state
+      title="Messages indisponibles"
+      message="Votre boîte de réception n’a pas pu être chargée."
+      (retry)="load()" />
+  } @else if (messages().length === 0) {
+    <div class="panel empty">
+      @if (hasFilters()) {
+        <h2>Aucun message</h2>
+        <p>Aucun message ne correspond à ces filtres.</p>
+        <button type="button" class="btn btn--ghost" (click)="clearFilters()">
+          Effacer les filtres
+        </button>
+      } @else {
+        <h2>Votre boîte est vide</h2>
+        <p>Les avis de l’école arriveront ici : absence signalée, bulletin
+          publié, règlement enregistré.</p>
+      }
+    </div>
+  } @else {
+    <ul class="messages">
+      @for (message of messages(); track message.id) {
+        <li class="message" [class.is-unread]="message.unread">
+          <span [class]="'message__dot message__dot--' + toneOf(message.category)"
+                aria-hidden="true"></span>
+
+          <div class="message__body">
+            <p class="message__title">
+              {{ message.title }}
+              @if (message.unread) {
+                <span class="message__new" aria-label="Non lu">nouveau</span>
+              }
+            </p>
+            <p class="message__text">{{ message.body }}</p>
+            <p class="message__meta">
+              {{ message.categoryLabel }} ·
+              {{ message.createdAt | date:'dd/MM/yyyy à HH:mm' }}
+            </p>
+          </div>
+
+          <div class="message__actions">
+            @if (message.actionUrl) {
+              <button type="button" class="btn btn--secondary btn--sm"
+                      (click)="open(message)">
+                Ouvrir
+              </button>
+            }
+            @if (message.unread) {
+              <button type="button" class="btn btn--ghost btn--sm"
+                      [disabled]="working()" (click)="markRead(message)">
+                Marquer lu
+              </button>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+
+    @if (totalPages() > 1) {
+      <nav class="pager" aria-label="Pagination des messages">
+        <button type="button" class="btn btn--ghost btn--sm"
+                [disabled]="!canGoBack()" (click)="previousPage()">
+          Précédents
+        </button>
+        <span class="pager__state">
+          Page {{ page() + 1 }} sur {{ totalPages() }} — {{ total() }} message(s)
+        </span>
+        <button type="button" class="btn btn--ghost btn--sm"
+                [disabled]="!canGoForward()" (click)="nextPage()">
+          Suivants
+        </button>
+      </nav>
+    }
+  }
+
+</section>

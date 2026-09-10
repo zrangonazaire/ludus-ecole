@@ -373,6 +373,59 @@
     }
   }
 
+  <!-- ═══════════ Choix du cours (collège, lycée) ═══════════ -->
+  @if (pickingLesson(); as classroom) {
+    <div class="drawer-backdrop" (click)="cancelLessonPick()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true"
+           aria-labelledby="lesson-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="lesson-title">{{ classroom.classroomName }}</h2>
+          <p class="drawer__meta">Quel cours appelez-vous ?</p>
+        </div>
+        <button type="button" class="drawer__close" aria-label="Fermer"
+                (click)="cancelLessonPick()">×</button>
+      </header>
+
+      <ul class="lessons">
+        @for (lesson of lessons(); track lesson.subjectId + (lesson.startTime ?? '')) {
+          <li>
+            <button type="button" class="lesson" [class.is-done]="lesson.done"
+                    (click)="openLesson(lesson)">
+              <span class="lesson__when numeric">{{ lessonWhen(lesson) }}</span>
+              <span class="lesson__body">
+                <span class="lesson__subject">{{ lesson.subjectName }}</span>
+                <span class="lesson__meta">
+                  @if (lesson.teacherName) { {{ lesson.teacherName }} }
+                  @if (lesson.roomName) { · {{ lesson.roomName }} }
+                </span>
+              </span>
+              <!-- Dire si l'appel est fait évite qu'un professeur qui reprend
+                   la classe après un collègue le refasse « au cas où ». -->
+              @if (lesson.done) {
+                <span class="lesson__state lesson__state--done">
+                  appel fait · {{ lesson.absentCount }} absent(s)
+                </span>
+              } @else if (lesson.sheetStarted) {
+                <span class="lesson__state lesson__state--started">commencé</span>
+              } @else {
+                <span class="lesson__state">à faire</span>
+              }
+            </button>
+          </li>
+        }
+      </ul>
+
+      <p class="lessons__fallback">
+        Vous préférez un appel pour toute la journée ?
+        <button type="button" class="btn btn--ghost btn--sm"
+                (click)="openDaySheet(classroom)">
+          Appel de la journée
+        </button>
+      </p>
+    </aside>
+  }
+
   <!-- ═══════════════ Feuille d'appel ═══════════════ -->
   @if (sheet(); as s) {
     <div class="drawer-backdrop" (click)="closeSheet()"></div>
@@ -383,6 +436,12 @@
           <h2 class="drawer__title" id="sheet-title">{{ s.classroomName }}</h2>
           <p class="drawer__meta numeric">
             {{ formatDate(s.sessionDate) }}
+            @if (s.subjectName) {
+              · <strong>{{ s.subjectName }}</strong>
+            } @else {
+              · journée entière
+            }
+            @if (s.startTime) { · {{ s.startTime.slice(0, 5) }} }
             @if (s.teacherName) { · {{ s.teacherName }} }
             @if (s.submittedAt) { · {{ s.statusLabel }} }
           </p>

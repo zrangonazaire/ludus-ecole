@@ -456,9 +456,16 @@ public class MessagingService {
         return saved;
     }
 
-    /** One message out, through the right channel. */
-    @Transactional(propagation = Propagation.MANDATORY)
-    protected String deliver(MessageRecipient recipient, MessagingSettings settings) {
+    /**
+     * One message out, through the right channel.
+     *
+     * <p>The transaction belongs to the caller. {@code MANDATORY} used to be
+     * declared here to say so, which read well and did nothing: the only call
+     * site is {@code send()} in this same class, so it never crosses the Spring
+     * proxy and the guard never runs. A guard that cannot fire is worse than no
+     * guard — it is read as a guarantee.</p>
+     */
+    private String deliver(MessageRecipient recipient, MessagingSettings settings) {
         if (recipient.getChannel() == NotificationChannel.SMS) {
             return smsGateway.send(recipient.getAddress(), recipient.getRenderedBody(),
                     settings.getSmsSenderName());

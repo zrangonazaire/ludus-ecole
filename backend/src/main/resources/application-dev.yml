@@ -35,6 +35,12 @@ management:
       show-details: always
 
 eduops:
+  diagnostics:
+    # Un 500 nomme sa propre cause dans la reponse. Sur un poste de travail,
+    # la trace serveur et le navigateur sont a deux fenetres l'un de l'autre,
+    # mais personne ne pense a ouvrir la premiere : quatre pannes de suite ont
+    # demande plusieurs tours de deduction pour une ligne deja ecrite.
+    expose-internal-errors: true
   mail:
     provider: MAILPIT
   demo:

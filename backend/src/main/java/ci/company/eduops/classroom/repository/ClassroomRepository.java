@@ -40,7 +40,7 @@ public interface ClassroomRepository extends JpaRepository<Classroom, UUID> {
              AND (:campusId IS NULL OR c.campus.id = :campusId)
              AND (:levelId  IS NULL OR c.level.id  = :levelId)
              AND (:status = '' OR CAST(c.status AS String) = :status)
-             AND (:search IS NULL
+             AND (:search = ''
                   OR lower(c.name) LIKE lower(concat('%', :search, '%'))
                   OR lower(c.code) LIKE lower(concat('%', :search, '%')))
            """)

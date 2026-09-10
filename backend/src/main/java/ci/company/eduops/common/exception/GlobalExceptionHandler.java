@@ -6,6 +6,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -37,6 +39,21 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /**
+     * Whether a 500 may name its own cause in the response.
+     *
+     * <p>Off by default, so that adding a profile never accidentally opens it.
+     * The dev profile turns it on; production sets it to false in writing
+     * rather than relying on the default.</p>
+     */
+    private final boolean exposeInternalErrors;
+
+    public GlobalExceptionHandler(
+            @Value("${eduops.diagnostics.expose-internal-errors:false}")
+            boolean exposeInternalErrors) {
+        this.exposeInternalErrors = exposeInternalErrors;
+    }
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiError> handleBusiness(BusinessException ex, HttpServletRequest request) {
@@ -214,12 +231,99 @@ public class GlobalExceptionHandler {
                         request));
     }
 
+    /**
+     * A status already chosen by the thrower is kept, not overwritten by 500.
+     *
+     * <p>Without this method the catch-all below wins. That is not a theoretical
+     * risk: {@code @ExceptionHandler(Exception.class)} matches
+     * {@code ResponseStatusException} too, and Spring's own
+     * {@code ResponseStatusExceptionResolver} never gets a turn — the handler
+     * advice is consulted first. Every refusal the discipline module raised —
+     * « no active enrollment on that date » (400), « this incident is closed »
+     * (409), « unknown incident » (404) — reached the browser as
+     * <strong>500 INTERNAL_ERROR</strong>, sending whoever was debugging to look
+     * for a broken query when the server had in fact answered the question
+     * correctly and then lost the answer on the way out.</p>
+     *
+     * <p>{@link BusinessException} remains the way to refuse an operation: it
+     * carries a stable code the frontend translates. This one exists so that a
+     * module which reaches for the Spring exception instead degrades to a wrong
+     * <em>message</em> rather than a wrong <em>status</em>.</p>
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException ex,
+                                                         HttpServletRequest request) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        if (status == null) {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        ErrorCode code = status.is5xxServerError()
+                ? ErrorCode.INTERNAL_ERROR
+                : ErrorCode.CONFLICT;
+        if (status == HttpStatus.NOT_FOUND) {
+            code = ErrorCode.RESOURCE_NOT_FOUND;
+        } else if (status == HttpStatus.FORBIDDEN) {
+            code = ErrorCode.ACCESS_DENIED;
+        } else if (status == HttpStatus.BAD_REQUEST) {
+            code = ErrorCode.VALIDATION_ERROR;
+        }
+        // La raison ecrite par l'appelant est deja en francais et decrit le cas
+        // precis ; le libelle par defaut du code est un repli en anglais qui ne
+        // doit pas atteindre l'utilisateur.
+        String message = ex.getReason() == null || ex.getReason().isBlank()
+                ? code.getDefaultMessage()
+                : ex.getReason();
+        log.warn("Refus porte par une ResponseStatusException [{}] sur {} : {}",
+                status.value(), request.getRequestURI(), message);
+        return ResponseEntity.status(status).body(build(status, code.name(), message, request));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception on {}", request.getRequestURI(), ex);
         ErrorCode code = ErrorCode.INTERNAL_ERROR;
-        return ResponseEntity.status(code.getStatus())
-                .body(build(code.getStatus(), code.name(), code.getDefaultMessage(), request));
+        ApiError error = build(code.getStatus(), code.name(), code.getDefaultMessage(), request);
+        describeForDeveloper(ex, error);
+        return ResponseEntity.status(code.getStatus()).body(error);
+    }
+
+    /**
+     * Names the failure, on a machine where naming it is safe.
+     *
+     * <p>Until now a 500 said « Erreur interne. Le support a été notifié. » and
+     * nothing else. The stack trace went to the server log, which is the right
+     * place — but only for whoever can read that log. On a workstation running
+     * both halves, that gap turned each failure into several rounds of
+     * deduction: {@code /requests}, {@code /staff}, {@code /attendance/lessons},
+     * {@code /discipline/incidents}. Each time the answer was one line away, in
+     * a console nobody thought to open.</p>
+     *
+     * <p>The class name and the innermost cause are enough to place the fault —
+     * {@code PSQLException: operator does not exist} says something entirely
+     * different from {@code NullPointerException}. They also describe internals,
+     * so they travel only when {@code eduops.diagnostics.expose-internal-errors}
+     * is on: true in the dev profile, false everywhere else, and explicitly
+     * false in production. The correlation id keeps pointing at the full trace
+     * for the cases this does not settle.</p>
+     */
+    private void describeForDeveloper(Exception ex, ApiError error) {
+        if (!exposeInternalErrors) {
+            return;
+        }
+        error.getDetails().put("exception", ex.getClass().getSimpleName());
+        Throwable root = ex;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String cause = root.getMessage();
+        if (cause != null && !cause.isBlank()) {
+            error.getDetails().put("cause",
+                    root.getClass().getSimpleName() + " : " + truncate(cause));
+        }
+    }
+
+    private static String truncate(String value) {
+        return value.length() <= 500 ? value : value.substring(0, 500) + "…";
     }
 
     private ApiError build(HttpStatus status, String code, String message, HttpServletRequest request) {

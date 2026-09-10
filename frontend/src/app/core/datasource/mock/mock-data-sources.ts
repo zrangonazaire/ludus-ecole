@@ -4,7 +4,7 @@ import { PageQuery, PageResponse } from '@core/models/common.models';
 import {
   AcademicYear, Assessment, AttendanceSheet, Classroom, DashboardData, Enrollment,
   EnrollmentCheckResult, FinancialSummary, GlobalSearchResult, Grade, Payment,
-  StudentDetail, StudentSummary, Subject, Teacher, Term
+  StudentDetail, StudentSummary, Subject, Teacher, Term, LessonSlot
 } from '@core/models/domain.models';
 import {
   ClassroomBulkCreatePayload, ClassroomCreatePayload, ClassroomUpdatePayload, LevelCapacity
@@ -390,6 +390,17 @@ export class MockClassroomDataSource implements ClassroomDataSource {
 
 @Injectable()
 export class MockTeacherDataSource implements TeacherDataSource {
+  create(payload: import('../../models/teacher.models').TeacherCreatePayload): Observable<Teacher> {
+    if (MOCK_TEACHERS.some(t => t.email.toLowerCase() === payload.email.toLowerCase())) {
+      return throwError(() => ({ status: 409 }));
+    }
+    const teacher: Teacher = {
+      ...payload, id: crypto.randomUUID(), employeeNumber: `ENS-DEMO-${MOCK_TEACHERS.length + 1}`,
+      fullName: `${payload.firstName} ${payload.lastName}`, status: 'ACTIVE', classCount: 0
+    };
+    MOCK_TEACHERS.unshift(teacher);
+    return of(teacher).pipe(delay(LATENCY));
+  }
   search(query: PageQuery): Observable<PageResponse<Teacher>> {
     const filtered = MOCK_TEACHERS.filter((t) =>
       matches([t.fullName, t.employeeNumber, t.speciality ?? ''], query.search));
@@ -417,6 +428,15 @@ export class MockTeacherDataSource implements TeacherDataSource {
 export class MockAttendanceDataSource implements AttendanceDataSource {
   day(date: string): Observable<AttendanceDay> {
     return of(MOCK_ATTENDANCE.day(date)).pipe(delay(LATENCY));
+  }
+
+  /**
+   * Aucun cours en démonstration : les données factices n'ont pas d'emploi du
+   * temps rattaché aux classes. Rendre une liste inventée ferait ouvrir des
+   * appels pour des cours qui n'existent pas.
+   */
+  lessons(classroomId: string, date: string): Observable<LessonSlot[]> {
+    return of([]).pipe(delay(120));
   }
 
   openSheet(classroomId: string, date: string, subjectId?: string): Observable<AttendanceSheet> {

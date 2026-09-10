@@ -123,7 +123,7 @@ export class AdminLayoutComponent implements OnInit {
     { section: 'Pédagogie', label: 'Conseils de classe', route: '/councils', icon: '◔',
       permissions: ['COUNCIL_VIEW'] },
     { section: 'Pédagogie', label: 'Discipline', route: '/discipline', icon: '⚠',
-      permissions: ['DISCIPLINE_VIEW'] },
+      permissions: ['DISCIPLINE_VIEW'], ready: true },
 
     // ──────────────────────────────────────────────────────── Finance
     { section: 'Finance', label: 'Frais de scolarité', route: '/finance', icon: '◫',
@@ -131,7 +131,7 @@ export class AdminLayoutComponent implements OnInit {
     { section: 'Finance', label: 'Paiements', route: '/payments', icon: '◧',
       permissions: [PERMISSIONS.PAYMENT_VIEW] },
     { section: 'Finance', label: 'Caisse', route: '/cash', icon: '◨',
-      permissions: ['CASH_SESSION_MANAGE'] },
+      permissions: [PERMISSIONS.CASH_SESSION_MANAGE], ready: true },
     { section: 'Finance', label: 'Remises et bourses', route: '/discounts', icon: '◪',
       permissions: ['DISCOUNT_MANAGE', 'SCHOLARSHIP_MANAGE'] },
     { section: 'Finance', label: 'Impayés', route: '/outstanding', icon: '◰',
@@ -148,8 +148,12 @@ export class AdminLayoutComponent implements OnInit {
       permissions: [PERMISSIONS.AUDIT_VIEW], ready: true },
 
     // ─────────────────────────────────────────────────── Communication
+    // Aucune permission : c'est ma boîte de réception, pas un écran
+    // d'administration. L'exiger priverait de leurs propres messages les
+    // parents et les élèves, à qui l'on ne donne évidemment aucun droit
+    // d'administration — or ce sont eux les premiers destinataires.
     { section: 'Communication', label: 'Messages', route: '/notifications', icon: '✉',
-      permissions: ['NOTIFICATION_SEND'] },
+      ready: true },
     { section: 'Communication', label: 'Portail des familles', route: '/portals', icon: '◉',
       permissions: ['SCHOOL_VIEW'] },
 

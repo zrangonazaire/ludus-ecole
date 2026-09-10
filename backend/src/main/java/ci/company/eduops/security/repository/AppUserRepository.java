@@ -33,7 +33,7 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
 
     @Query("""
            SELECT u FROM AppUser u
-           WHERE (:search IS NULL
+           WHERE (:search = ''
                   OR lower(u.firstName) LIKE lower(concat('%', :search, '%'))
                   OR lower(u.lastName)  LIKE lower(concat('%', :search, '%'))
                   OR lower(u.email)     LIKE lower(concat('%', :search, '%'))

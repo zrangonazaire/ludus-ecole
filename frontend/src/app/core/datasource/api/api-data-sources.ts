@@ -6,7 +6,7 @@ import { PageQuery, PageResponse } from '@core/models/common.models';
 import {
   AcademicYear, Assessment, AttendanceSheet, Classroom, DashboardData, Enrollment,
   EnrollmentCheckResult, FinancialSummary, GlobalSearchResult, Grade, Payment,
-  ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term
+  ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term, LessonSlot
 } from '@core/models/domain.models';
 import {
   ClassroomBulkCreatePayload, ClassroomCreatePayload, ClassroomUpdatePayload, LevelCapacity
@@ -182,6 +182,10 @@ export class ApiClassroomDataSource implements ClassroomDataSource {
 export class ApiTeacherDataSource implements TeacherDataSource {
   private readonly http = inject(HttpClient);
 
+  create(payload: import('../../models/teacher.models').TeacherCreatePayload): Observable<Teacher> {
+    return this.http.post<Teacher>(`${API}/teachers`, payload);
+  }
+
   search(query: PageQuery): Observable<PageResponse<Teacher>> {
     return this.http.get<PageResponse<Teacher>>(`${API}/teachers`, { params: toParams(query) });
   }
@@ -203,6 +207,11 @@ export class ApiAttendanceDataSource implements AttendanceDataSource {
   day(date: string): Observable<AttendanceDay> {
     return this.http.get<AttendanceDay>(`${API}/attendance/day`,
       { params: toParams({ date }) });
+  }
+
+  lessons(classroomId: string, date: string): Observable<LessonSlot[]> {
+    return this.http.get<LessonSlot[]>(`${API}/attendance/lessons`,
+      { params: toParams({ classroomId, date }) });
   }
 
   openSheet(classroomId: string, date: string, subjectId?: string): Observable<AttendanceSheet> {

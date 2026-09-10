@@ -1,0 +1,17 @@
+**/.env
+**/.env.*
+.git
+.github
+**/node_modules
+**/target
+**/dist
+**/.angular
+**/coverage
+**/storage
+backups
+presentation-front
+*.png
+*.docx
+*.log
+**/*.pem
+**/*.key

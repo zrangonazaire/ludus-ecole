@@ -27,13 +27,33 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     List<Payment> findByCashSessionIdAndStatus(UUID cashSessionId, PaymentStatus status);
 
+    /**
+     * The payment list, filtered.
+     *
+     * <h2>No parameter is ever null</h2>
+     *
+     * <p>{@code search} arrives as the empty string when the field is blank,
+     * never as {@code null}. A null text parameter inside
+     * {@code lower(concat('%', :search, '%'))} leaves PostgreSQL with nothing to
+     * resolve the overload against: it settles on {@code bytea} and refuses the
+     * whole statement — <em>function lower(bytea) does not exist</em>. The
+     * {@code :search = ''} guard does not save it, because function resolution
+     * happens when the statement is parsed, before any branch is evaluated. So
+     * the screen failed on exactly the case it was meant to handle: no filter
+     * at all.</p>
+     *
+     * <p>Same reason as {@code :status}, which carries the empty string rather
+     * than null and is compared as text. The rule is one rule: a bound
+     * parameter that PostgreSQL cannot type is a runtime failure, whatever the
+     * surrounding logic says.</p>
+     */
     @Query("""
            SELECT p FROM Payment p
            WHERE p.academicYear.id = :academicYearId
              AND (:status = '' OR CAST(p.status AS String) = :status)
              AND (:from IS NULL OR p.paymentDate >= :from)
              AND (:to   IS NULL OR p.paymentDate <= :to)
-             AND (:search IS NULL
+             AND (:search = ''
                   OR lower(p.paymentReference)      LIKE lower(concat('%', :search, '%'))
                   OR lower(p.student.lastName)      LIKE lower(concat('%', :search, '%'))
                   OR lower(p.student.studentNumber) LIKE lower(concat('%', :search, '%')))

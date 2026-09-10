@@ -176,6 +176,22 @@ public enum ErrorCode {
     // ---------- discipline ----------
     INCIDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Discipline incident not found."),
     INCIDENT_CLOSED(HttpStatus.CONFLICT, "The incident is closed."),
+    /**
+     * The student was not enrolled anywhere on the day of the incident.
+     *
+     * <p>An incident is filed against an enrollment, not against a person: the
+     * class and the academic year are what let it appear in the right register
+     * and on the right council file. Recording one without an enrollment would
+     * produce a report attached to no year, invisible everywhere it matters.</p>
+     *
+     * <p>Its own code rather than {@code VALIDATION_ERROR}, because nothing on
+     * the form is wrong: the usual causes are a date that falls outside the
+     * academic year — the very start of September, before the new year opens —
+     * or an enrollment still awaiting validation. Both are fixed elsewhere than
+     * on this screen, and the message has to say so.</p>
+     */
+    INCIDENT_STUDENT_NOT_ENROLLED(HttpStatus.BAD_REQUEST,
+            "The student has no active enrollment on the date of the incident."),
 
     // ---------- finance ----------
     FEE_TYPE_NOT_FOUND(HttpStatus.NOT_FOUND, "Fee type not found."),

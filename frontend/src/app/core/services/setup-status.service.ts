@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { TeacherAssignmentService } from './teacher-assignment.service';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, forkJoin, map, tap } from 'rxjs';
 import { environment } from '@env/environment';
@@ -46,7 +47,7 @@ const STEPS: readonly StepDefinition[] = [
   { key: 'ASSIGNMENTS', label: 'Affecter les enseignants',
     description: 'Qui enseigne quelle matière, à quelle classe. '
       + 'Détermine aussi ce que chacun peut saisir.',
-    actionRoute: '/teachers', actionLabel: 'Affecter aux classes' },
+    actionRoute: '/teacher-assignments', actionLabel: 'Affecter aux classes' },
   { key: 'STUDENTS', label: 'Inscrire les élèves',
     description: 'Vos premiers élèves, un à un ou par import Excel.',
     actionRoute: '/enrollments', actionLabel: 'Inscrire des élèves' }
@@ -73,6 +74,7 @@ export class SetupStatusService {
   private readonly teachers = inject(TEACHER_DATA_SOURCE);
   private readonly enrollments = inject(ENROLLMENT_DATA_SOURCE);
   private readonly fees = inject(FEE_DATA_SOURCE);
+  private readonly assignments = inject(TeacherAssignmentService);
 
   private readonly _status = signal<SetupStatus | null>(null);
   readonly status = this._status.asReadonly();
@@ -107,13 +109,12 @@ export class SetupStatusService {
   /**
    * Demo mode: same ten steps, counted from the mock data sources.
    *
-   * <p>One step stays derived from a proxy: « Affecter les enseignants » has no
-   * screen yet, so it is read from the teachers' class count rather than from a
-   * real assignment list.</p>
+   * Assignment counts come from the same board used by the assignment screen.
    */
   private mockStatus(): Observable<SetupStatus> {
     return forkJoin({
       years: this.reference.academicYears(),
+      assignments: this.assignments.board(),
       levels: this.curriculum.levels(),
       subjects: this.curriculum.listSubjects(),
       classes: this.classrooms.list(),
@@ -122,7 +123,7 @@ export class SetupStatusService {
       fees: this.fees.levels()
     }).pipe(map((data) => {
       const cycles = new Set(data.levels.map((l) => l.cycleId));
-      const assigned = data.teachers.content.filter((t) => (t.classCount ?? 0) > 0).length;
+      const assigned = data.assignments.assignments.length;
 
       const counts: Record<SetupStepKey, number> = {
         ACADEMIC_YEAR: data.years.filter((y) => y.status === 'ACTIVE').length,

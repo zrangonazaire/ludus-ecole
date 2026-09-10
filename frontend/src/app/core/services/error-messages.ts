@@ -156,6 +156,14 @@ const MESSAGES: Record<string, string> = {
     + 'fermer : sinon ils se retrouveraient sans enseignement, sans que rien ne le '
     + 'signale.',
 
+  // discipline
+  INCIDENT_NOT_FOUND: 'Cet incident est introuvable dans le registre.',
+  INCIDENT_CLOSED: 'Cet incident est clôturé : il reste consultable, mais son suivi et ses '
+    + 'mesures ne changent plus.',
+  INCIDENT_STUDENT_NOT_ENROLLED: "Cet élève n'a aucune inscription active à cette date. "
+    + "Vérifiez que la date tombe dans l'année scolaire en cours et que son inscription "
+    + 'est validée.',
+
   // finance
   PAYMENT_NOT_FOUND: 'Paiement introuvable.',
   PAYMENT_ALREADY_PROCESSED: 'Ce paiement a déjà été enregistré.',
@@ -163,6 +171,7 @@ const MESSAGES: Record<string, string> = {
   PAYMENT_EXCEEDS_OUTSTANDING: 'Le montant depasse le solde restant du.',
   PAYMENT_CANCELLATION_NOT_ALLOWED: 'Ce paiement ne peut plus etre annule.',
   PAYMENT_ALREADY_CANCELLED: 'Ce paiement est deja annule.',
+  CASH_SESSION_NOT_FOUND: 'Aucune caisse ouverte accessible. Ouvrez votre caisse depuis la page Caisse avant d’encaisser des espèces.',
   CASH_SESSION_ALREADY_OPEN: 'Vous avez deja une session de caisse ouverte.',
   CASH_SESSION_CLOSED: 'La session de caisse est fermee.',
 
@@ -204,6 +213,19 @@ export function translateErrorCode(code: string, error?: ApiError): string {
   }
   if (code === 'PAYMENT_EXCEEDS_OUTSTANDING' && details['outstanding'] !== undefined) {
     return `${base} Solde restant : ${details['outstanding']}.`;
+  }
+  if (code === 'INTERNAL_ERROR' && details['cause']) {
+    // Le serveur ne joint la cause qu'en développement. Quand elle est là,
+    // c'est elle qui vaut : « Erreur interne, le support a été notifié »
+    // n'apprend rien à la personne qui EST le support.
+    return `${base} (${details['cause']})`;
+  }
+  if (code === 'INCIDENT_STUDENT_NOT_ENROLLED' && details['incidentDate']) {
+    // La date part du serveur en ISO ; l'écran parle jour/mois/année.
+    const [year, month, day] = String(details['incidentDate']).split('-');
+    return day && month && year
+      ? base.replace('à cette date', `au ${day}/${month}/${year}`)
+      : base;
   }
   if (code === 'STUDENT_ALREADY_ENROLLED' && details['existingEnrollmentNumber']) {
     return `${base} (inscription ${details['existingEnrollmentNumber']})`;

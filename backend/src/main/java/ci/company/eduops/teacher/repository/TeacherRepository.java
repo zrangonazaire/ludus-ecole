@@ -15,6 +15,10 @@ import java.util.UUID;
 
 @Repository
 public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Teacher t WHERE t.id = :id")
+    Optional<Teacher> lockById(@Param("id") UUID id);
+    boolean existsBySchoolIdAndEmailIgnoreCase(UUID schoolId, String email);
 
     Optional<Teacher> findByUserAccountId(UUID userAccountId);
 

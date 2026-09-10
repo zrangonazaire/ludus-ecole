@@ -1,5 +1,8 @@
 # EduOps
 
+Production sur VPS : voir [la procedure de deploiement](docs/DEPLOIEMENT_PRODUCTION.md)
+et utiliser `docker/compose.prod.yml` avec `.env.prod`.
+
 **Integrated school management system** — administration, academic operations and school finance.
 
 EduOps models how a school actually runs: a pupil is admitted, enrolled into a class for a

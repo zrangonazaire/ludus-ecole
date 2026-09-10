@@ -164,7 +164,7 @@ public class SetupStatusService {
                 "Qui enseigne quelle matière, à quelle classe. Détermine aussi ce que chacun peut saisir.",
                 true,
                 yearId == null ? 0 : assignmentRepository.countActiveForYear(yearId),
-                "/teachers",
+                "/teacher-assignments",
                 "Affecter aux classes"));
 
         steps.add(new SetupStepResponse(

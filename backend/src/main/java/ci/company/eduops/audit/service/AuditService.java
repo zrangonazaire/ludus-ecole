@@ -2,16 +2,11 @@ package ci.company.eduops.audit.service;
 
 import ci.company.eduops.audit.domain.AuditAction;
 import ci.company.eduops.audit.domain.AuditLog;
-import ci.company.eduops.audit.repository.AuditLogRepository;
 import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.common.web.CorrelationIdFilter;
 import ci.company.eduops.security.service.CurrentUser;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -20,21 +15,22 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Writes the audit trail (rule 12).
+ * Builds the audit trail (rule 12); {@link AuditWriter} commits it.
  *
- * <p>Audit rows are written in a <em>separate</em> transaction: a refused
- * business operation must still leave a trace of the attempt.</p>
+ * <p>Audit rows are written in a <em>separate</em> transaction, so that a
+ * refused business operation still leaves a trace of the attempt. That
+ * sentence was in this file before and was not true: the propagation sat on a
+ * method only ever called from inside the class, where the Spring proxy is not
+ * crossed. Moving the write to its own bean is what makes it true.</p>
  */
 @Service
 public class AuditService {
 
-    private static final Logger log = LoggerFactory.getLogger(AuditService.class);
-
-    private final AuditLogRepository repository;
+    private final AuditWriter writer;
     private final CurrentUser currentUser;
 
-    public AuditService(AuditLogRepository repository, CurrentUser currentUser) {
-        this.repository = repository;
+    public AuditService(AuditWriter writer, CurrentUser currentUser) {
+        this.writer = writer;
         this.currentUser = currentUser;
     }
 
@@ -102,15 +98,16 @@ public class AuditService {
                 .toArray(String[]::new);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void persist(AuditLog entry) {
-        try {
-            repository.save(entry);
-        } catch (RuntimeException ex) {
-            // Never let auditing break the business operation; log loudly instead.
-            log.error("Unable to write the audit entry {} on {} {}",
-                    entry.getAction(), entry.getEntityType(), entry.getEntityId(), ex);
-        }
+    /**
+     * Hands the row to {@link AuditWriter}, which owns the transaction.
+     *
+     * <p>The propagation used to be declared here. It never took effect: both
+     * callers are inside this class, so the call went straight to the target
+     * and never through the proxy that applies the annotation. See
+     * {@link AuditWriter} for what that cost.</p>
+     */
+    private void persist(AuditLog entry) {
+        writer.write(entry);
     }
 
     private void fillContext(AuditLog entry) {

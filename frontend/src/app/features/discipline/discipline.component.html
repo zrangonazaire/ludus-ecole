@@ -1,0 +1,40 @@
+<div class="page-header"><div><span class="eyebrow">VIE SCOLAIRE</span><h1>Discipline</h1><p>Signaler, comprendre et suivre les incidents des élèves.</p></div>
+  @if (canManage()) { <button class="btn btn--primary" (click)="openCreate()">+ Signaler un incident</button> }
+</div>
+@if (loading()) { <p role="status">Chargement du registre…</p> }
+@else if (error()) { <div class="card empty" role="alert"><h2>Le registre est indisponible</h2><p>Les incidents n’ont pas pu être chargés.</p><button class="btn btn--primary" (click)="load()">Réessayer</button></div> }
+@else {
+  <div class="metrics"><article><span>Incidents enregistrés</span><strong>{{ items().length }}</strong></article><article><span>Dossiers ouverts</span><strong>{{ openCount() }}</strong></article><article><span>Priorité élevée ou critique</span><strong>{{ urgentCount() }}</strong></article><article><span>Familles à informer</span><strong>{{ familyCount() }}</strong></article></div>
+  <section class="card"><div class="register-heading"><div><h2>Registre des incidents</h2><p>{{ filtered().length }} résultat(s)</p></div><button class="btn" (click)="load()">Actualiser</button></div>
+    <div class="filters"><label>Rechercher<input class="input" type="search" placeholder="Élève, classe, référence…" [ngModel]="search()" (ngModelChange)="search.set($event); page.set(1)"></label>
+      <label>Statut<select class="input" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); page.set(1)"><option value="">Tous les statuts</option>@for (s of statuses | keyvalue; track s.key) { <option [value]="s.key">{{ s.value }}</option> }</select></label>
+      <label>Gravité<select class="input" [ngModel]="severityFilter()" (ngModelChange)="severityFilter.set($event); page.set(1)"><option value="">Toutes les gravités</option>@for (s of severities | keyvalue; track s.key) { <option [value]="s.key">{{ s.value }}</option> }</select></label>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Élève / classe</th><th>Incident</th><th>Date</th><th>Gravité</th><th>Statut</th><th>Famille</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>
+      @for (i of visible(); track i.id) { <tr><td><strong>{{ i.studentName }}</strong><small>{{ i.classroomName }}</small></td><td>{{ types[i.incidentType] }}<small class="reference">{{ i.reference }}</small></td><td>{{ i.incidentDate | date:'dd/MM/yyyy' }}</td><td><span class="badge" [class.urgent]="i.severity === 'HIGH' || i.severity === 'CRITICAL'">{{ severities[i.severity] }}</span></td><td><span class="badge" [class.done]="closed(i)">{{ statuses[i.status] }}</span></td><td>{{ i.guardianInformed ? 'Informée' : 'À informer' }}</td><td><button class="btn" (click)="inspect(i)" [attr.aria-label]="'Consulter l’incident de ' + i.studentName">Consulter →</button></td></tr> }
+    </tbody></table></div>
+    @if (!filtered().length) { <div class="empty"><h3>{{ items().length ? 'Aucun résultat' : 'Aucun incident enregistré' }}</h3><p>{{ items().length ? 'Modifiez les filtres pour retrouver un dossier.' : 'Les incidents signalés et leur suivi apparaîtront ici.' }}</p></div> }
+    @if (filtered().length) { <footer><span>Page {{ page() }} sur {{ pages() }}</span><div><button class="btn" [disabled]="page() === 1" (click)="page.set(page()-1)">Précédent</button><button class="btn" [disabled]="page() === pages()" (click)="page.set(page()+1)">Suivant</button></div></footer> }
+  </section>
+}
+@if (creating()) {
+  <div class="overlay"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="create-title" (keydown.escape)="!saving() && creating.set(false)"><header><h2 id="create-title">Signaler un incident</h2><button class="btn" aria-label="Fermer" [disabled]="saving()" (click)="creating.set(false)">✕</button></header>
+    <form #incidentForm="ngForm" (ngSubmit)="create()"><fieldset [disabled]="saving()">
+      <label>Rechercher un élève<div class="search-row"><input class="input" name="studentSearch" [(ngModel)]="studentSearch" placeholder="Nom ou matricule"><button type="button" class="btn" (click)="searchStudents()">Rechercher</button></div></label>
+      <label>Élève *<select class="input" required name="student" [(ngModel)]="draft.studentId"><option value="">Sélectionner un élève</option>@for (s of students(); track s.id) { <option [value]="s.id">{{ s.fullName }} — {{ s.classroomName || s.studentNumber }}</option> }</select></label>
+      <div class="form-grid"><label>Date *<input class="input" type="date" required name="date" [(ngModel)]="draft.incidentDate"></label><label>Lieu<input class="input" name="location" maxlength="150" [(ngModel)]="draft.location" placeholder="Cour, salle de classe…"></label>
+      <label>Nature *<select class="input" name="type" [(ngModel)]="draft.incidentType">@for (t of types | keyvalue; track t.key) { <option [value]="t.key">{{ t.value }}</option> }</select></label><label>Gravité *<select class="input" name="severity" [(ngModel)]="draft.severity">@for (s of severities | keyvalue; track s.key) { <option [value]="s.key">{{ s.value }}</option> }</select></label></div>
+      <label>Description des faits *<textarea class="input" rows="5" required maxlength="5000" name="description" [(ngModel)]="draft.description" placeholder="Décrivez les faits observés et leur contexte."></textarea></label>
+      <footer><button type="button" class="btn" (click)="creating.set(false)">Annuler</button><button class="btn btn--primary" [disabled]="incidentForm.invalid || !draft.description.trim()">{{ saving() ? 'Enregistrement…' : 'Enregistrer le signalement' }}</button></footer>
+    </fieldset></form></section></div>
+}
+@if (selected(); as i) {
+  <div class="overlay"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="detail-title" (keydown.escape)="!saving() && selected.set(null)"><header><div><h2 id="detail-title">{{ i.studentName }}</h2><p>{{ i.classroomName }} · {{ i.incidentDate | date:'dd/MM/yyyy' }}</p></div><button class="btn" aria-label="Fermer" [disabled]="saving()" (click)="selected.set(null)">✕</button></header>
+    <span class="badge">{{ types[i.incidentType] }} · {{ severities[i.severity] }}</span><p class="description">{{ i.description }}</p>@if (i.location) { <p>Lieu : {{ i.location }}</p> }
+    <h3>Mesures décidées</h3>@for (a of i.actions; track a.id) { <article class="action"><strong>{{ actionTypes[a.actionType] }}</strong><p class="description">{{ a.description }}</p></article> } @empty { <p>Aucune mesure enregistrée.</p> }
+    @if (canManage() && !closed(i)) {
+      <fieldset [disabled]="saving()"><h3>Suivi du dossier</h3><label>Statut<select class="input" [(ngModel)]="editStatus">@for (s of statuses | keyvalue; track s.key) { <option [value]="s.key">{{ s.value }}</option> }</select></label><label class="check"><input type="checkbox" [(ngModel)]="guardianInformed"> La famille a été informée</label><p class="hint">Cette mention consigne un contact déjà effectué.</p><button class="btn btn--primary" (click)="update()">Enregistrer le suivi</button>
+      <h3>Ajouter une mesure</h3><label>Type de mesure<select class="input" [(ngModel)]="actionType">@for (a of actionTypes | keyvalue; track a.key) { <option [value]="a.key">{{ a.value }}</option> }</select></label><label>Décision et modalités<textarea class="input" rows="3" maxlength="5000" [(ngModel)]="actionDescription"></textarea></label><button class="btn" [disabled]="!actionDescription.trim()" (click)="addAction()">Enregistrer la mesure</button></fieldset>
+    } @else { <p>{{ statuses[i.status] }} · Famille {{ i.guardianInformed ? 'informée' : 'non informée' }}</p> }
+  </section></div>
+}

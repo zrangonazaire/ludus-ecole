@@ -53,6 +53,7 @@ export const ROLES = {
 
 /** Permission codes as defined in section 62. */
 export const PERMISSIONS = {
+  CASH_SESSION_MANAGE: 'CASH_SESSION_MANAGE',
   DASHBOARD_VIEW: 'DASHBOARD_VIEW',
   STUDENT_VIEW: 'STUDENT_VIEW',
   STUDENT_CREATE: 'STUDENT_CREATE',
