@@ -1,3 +1,4 @@
+import { createUuid } from "../../utils/uuid";
 import { Injectable, inject } from '@angular/core';
 import { Observable, defer, delay, of, throwError } from 'rxjs';
 import { PageQuery, PageResponse } from '@core/models/common.models';
@@ -325,7 +326,7 @@ export class MockClassroomDataSource implements ClassroomDataSource {
     const letter = this.nextLetter(siblings);
     const levelName = reference?.levelName ?? 'Niveau';
     const created: Classroom = {
-      id: `c-${crypto.randomUUID().slice(0, 8)}`,
+      id: `c-${createUuid().slice(0, 8)}`,
       code: payload.code || `${levelName.toUpperCase()}-${letter}`,
       name: payload.name || `${levelName} ${letter}`,
       levelId: payload.levelId,
@@ -395,7 +396,7 @@ export class MockTeacherDataSource implements TeacherDataSource {
       return throwError(() => ({ status: 409 }));
     }
     const teacher: Teacher = {
-      ...payload, id: crypto.randomUUID(), employeeNumber: `ENS-DEMO-${MOCK_TEACHERS.length + 1}`,
+      ...payload, id: createUuid(), employeeNumber: `ENS-DEMO-${MOCK_TEACHERS.length + 1}`,
       fullName: `${payload.firstName} ${payload.lastName}`, status: 'ACTIVE', classCount: 0
     };
     MOCK_TEACHERS.unshift(teacher);
@@ -545,7 +546,7 @@ export class MockFinanceDataSource implements FinanceDataSource {
     const amount = Number(payload.amount);
     const outstandingBefore = 200000;
     const payment: Payment = {
-      id: crypto.randomUUID(),
+      id: createUuid(),
       paymentReference: `PAY-2026-${String(sequence).padStart(8, '0')}`,
       studentId: student.id,
       studentNumber: student.studentNumber,

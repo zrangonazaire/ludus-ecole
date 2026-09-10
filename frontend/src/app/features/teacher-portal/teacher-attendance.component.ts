@@ -1,3 +1,4 @@
+import { createUuid } from "../../core/utils/uuid";
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -42,7 +43,7 @@ export class TeacherAttendanceComponent implements OnInit {
   readonly today = new Date().toISOString().slice(0, 10);
 
   /** One key per opened sheet: replaying the submit is safe. */
-  private idempotencyKey = crypto.randomUUID();
+  private idempotencyKey = createUuid();
 
   readonly counters = computed(() => {
     const records = this.sheet()?.records ?? [];
@@ -67,7 +68,7 @@ export class TeacherAttendanceComponent implements OnInit {
   openSheet(classroom: Classroom): void {
     this.loading.set(true);
     this.submitted.set(false);
-    this.idempotencyKey = crypto.randomUUID();
+    this.idempotencyKey = createUuid();
     this.attendance.openSheet(classroom.id, this.today)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

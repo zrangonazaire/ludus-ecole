@@ -1,3 +1,4 @@
+import { createUuid } from "../../core/utils/uuid";
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -62,7 +63,7 @@ export class EnrollmentWizardComponent implements OnInit {
   overrideReason = '';
 
   /** Une clé par session d'assistant : un double clic n'inscrit qu'une fois. */
-  private readonly idempotencyKey = crypto.randomUUID();
+  private readonly idempotencyKey = createUuid();
 
   readonly identity = this.fb.nonNullable.group({
     lastName: ['', [Validators.required, Validators.maxLength(120)]],

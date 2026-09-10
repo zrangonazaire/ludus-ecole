@@ -1,3 +1,4 @@
+import { createUuid } from "../utils/uuid";
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, map, of, throwError } from 'rxjs';
@@ -48,7 +49,7 @@ export class TeacherAssignmentService {
     if (!board?.academicYearCode || !teacher || !classroom || !subject) return throwError(() => ({ error: { message: 'Sélectionnez un enseignant, une classe et une matière du programme.' } }));
     if (board.assignments.some(a => a.classroomId === payload.classroomId && a.subjectId === payload.subjectId))
       return throwError(() => ({ error: { message: 'Cette matière a déjà un enseignant dans cette classe.' } }));
-    const row = { ...payload, id: crypto.randomUUID(), teacherName: teacher.name, classroomName: classroom.name, subjectName: subject.name };
+    const row = { ...payload, id: createUuid(), teacherName: teacher.name, classroomName: classroom.name, subjectName: subject.name };
     this.demoRows.set(this.demoYear, [...board.assignments, row]);
     return of(row);
   }

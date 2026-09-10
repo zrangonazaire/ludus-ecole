@@ -1,3 +1,4 @@
+import { createUuid } from "../utils/uuid";
 import { HttpInterceptorFn } from '@angular/common/http';
 
 /**
@@ -9,6 +10,6 @@ export const correlationInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
   return next(
-    req.clone({ setHeaders: { 'X-Correlation-Id': crypto.randomUUID() } })
+    req.clone({ setHeaders: { 'X-Correlation-Id': createUuid() } })
   );
 };

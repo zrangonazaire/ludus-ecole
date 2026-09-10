@@ -1,3 +1,4 @@
+import { createUuid } from "../../utils/uuid";
 import { Injectable } from '@angular/core';
 import { Observable, delay, of } from 'rxjs';
 import { AccessProfileDataSource } from '../data-source';
@@ -87,7 +88,7 @@ export class MockAccessProfileDataSource implements AccessProfileDataSource {
 
   create(payload: AccessProfilePayload): Observable<AccessProfile> {
     const created: AccessProfile = {
-      id: crypto.randomUUID(),
+      id: createUuid(),
       code: normaliseCode(payload.code),
       label: payload.label.trim(),
       description: payload.description?.trim() || undefined,

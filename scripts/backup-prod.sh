@@ -11,12 +11,13 @@ mkdir "$destination"
 # Always attempt to restart the application, including on backup failure.
 trap 'compose start backend' EXIT
 compose stop backend
-compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$destination/database.dump"
+compose exec -T postgres pg_dump -U eduops -d eduops -Fc > "$destination/database.dump"
 compose run --rm -T --no-deps --entrypoint tar backend -C /app/storage -czf - . > "$destination/storage.tar.gz"
 test -s "$destination/database.dump"
 gzip -t "$destination/storage.tar.gz"
-cp .env.prod "$destination/environment.env"
+cp docker/postgres/production.password "$destination/postgres.password"
+cp docker/redis/production.conf "$destination/redis.conf"
 cp /opt/eduops/config/application-prod.yml "$destination/application-prod.yml"
-git rev-parse HEAD > "$destination/revision.txt"
+docker compose -f docker/compose.prod.yml config --images > "$destination/images.txt"
 touch "$destination/COMPLETE"
 echo "Backup complete: $destination (contains secrets; copy securely off the VPS)."

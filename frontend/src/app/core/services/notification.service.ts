@@ -1,3 +1,4 @@
+import { createUuid } from "../utils/uuid";
 import { Injectable, signal } from '@angular/core';
 
 export type ToastTone = 'success' | 'error' | 'warning' | 'info';
@@ -37,7 +38,7 @@ export class NotificationService {
   }
 
   private push(tone: ToastTone, message: string, title: string | undefined, timeout: number): void {
-    const toast: Toast = { id: crypto.randomUUID(), tone, message, title, timeout };
+    const toast: Toast = { id: createUuid(), tone, message, title, timeout };
     this._toasts.update((list) => [...list, toast]);
     setTimeout(() => this.dismiss(toast.id), timeout);
   }

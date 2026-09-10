@@ -1,3 +1,4 @@
+import { createUuid } from "../utils/uuid";
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
@@ -25,7 +26,7 @@ export class CashService {
     if (!environment.useMockData) return this.http.post<CashSession>(this.url, { openingBalance, notes });
     return defer(() => {
       if (this.items().some(s => s.status === 'OPEN')) throw new Error('Une session est déjà ouverte.');
-      const s: CashSession = { id: crypto.randomUUID(), reference: `CSH-DEMO-${this.items().length + 1}`, status: 'OPEN',
+      const s: CashSession = { id: createUuid(), reference: `CSH-DEMO-${this.items().length + 1}`, status: 'OPEN',
         openedAt: new Date().toISOString(), closedAt: null, openingBalance, cashReceived: 0, expectedBalance: openingBalance,
         actualBalance: null, difference: null, notes };
       this.save([s, ...this.items()]); return of(s);

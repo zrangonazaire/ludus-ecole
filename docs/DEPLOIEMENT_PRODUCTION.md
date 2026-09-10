@@ -1,3 +1,5 @@
+> Configuration actuelle sans variables : suivre [DEPLOIEMENT_IP.md](DEPLOIEMENT_IP.md). Les anciennes instructions dotenv ci-dessous sont remplacees par ce guide.
+
 # Production sur le VPS 57.129.132.150
 
 Cette configuration utilise Docker Compose v2 et Nginx sur le VPS Ubuntu.

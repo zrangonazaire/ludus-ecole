@@ -1,3 +1,4 @@
+import { createUuid } from "../../utils/uuid";
 import { Injectable } from '@angular/core';
 import { Observable, delay, of, throwError } from 'rxjs';
 import { environment } from '@env/environment';
@@ -116,7 +117,7 @@ export class MockOfficialDocumentDataSource implements OfficialDocumentDataSourc
     const next = this.documents.length + 1;
     const year = payload.issueDate.slice(0, 4) || String(new Date().getFullYear());
     return {
-      id: crypto.randomUUID(),
+      id: createUuid(),
       type: payload.type,
       typeLabel: template?.label ?? 'Document officiel',
       documentNumber: formatPattern(this.currentLayout.documentNumberPattern, year, next),

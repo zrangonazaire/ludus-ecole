@@ -1,3 +1,5 @@
+> Configuration actuelle sans variables : suivre [DEPLOIEMENT_IP.md](DEPLOIEMENT_IP.md). Les anciennes instructions dotenv ci-dessous sont remplacees par ce guide.
+
 # Publier les images sur Docker Hub
 
 Les Dockerfiles utilisent chacun leur dossier comme contexte de construction.

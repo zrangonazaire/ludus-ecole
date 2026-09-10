@@ -1,3 +1,4 @@
+import { createUuid } from "../utils/uuid";
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
@@ -19,7 +20,7 @@ export class DisciplineService {
   create(payload: IncidentPayload, studentName: string, classroomName: string) {
     if (!environment.useMockData) return this.http.post<void>(this.url, payload);
     return defer(() => {
-      this.items.unshift({ ...payload, id: crypto.randomUUID(), reference: `INC-${this.items.length + 1}`,
+      this.items.unshift({ ...payload, id: createUuid(), reference: `INC-${this.items.length + 1}`,
         studentName, classroomName, status: 'REPORTED', guardianInformed: false, version: 0, actions: [] });
       return of(undefined);
     });
@@ -32,7 +33,7 @@ export class DisciplineService {
     if (!environment.useMockData) return this.http.post<void>(`${this.url}/${item.id}/actions`, { actionType, description });
     return defer(() => {
       this.items = this.items.map(i => i.id === item.id ? { ...i, status: 'ACTION_TAKEN', version: i.version + 1,
-        actions: [...i.actions, { id: crypto.randomUUID(), actionType, description }] } : i);
+        actions: [...i.actions, { id: createUuid(), actionType, description }] } : i);
       return of(undefined);
     });
   }

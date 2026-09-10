@@ -1,3 +1,4 @@
+import { createUuid } from "../../core/utils/uuid";
 import {
   ChangeDetectionStrategy, Component, DestroyRef, HostListener, OnInit,
   TemplateRef, ViewChild, computed, inject, signal
@@ -387,7 +388,7 @@ export class PaymentListComponent implements OnInit {
     this.studentSearch.set('');
     this.summaryLoading.set(false);
     this.paymentResult.set(null);
-    this.operationId = crypto.randomUUID();
+    this.operationId = createUuid();
     this.paymentForm.reset({
       amount: 0,
       paymentMethod: 'CASH',

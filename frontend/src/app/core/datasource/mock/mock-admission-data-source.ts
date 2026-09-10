@@ -1,3 +1,4 @@
+import { createUuid } from "../../utils/uuid";
 import { Injectable } from '@angular/core';
 import { Observable, delay, of, throwError } from 'rxjs';
 import { AdmissionDataSource } from '../data-source';
@@ -71,7 +72,7 @@ export class MockAdmissionDataSource implements AdmissionDataSource {
     const campus = OPTIONS.campuses.find((item) => item.id === payload.campusId);
     const classroom = OPTIONS.classrooms.find((item) => item.id === payload.reservedClassroomId);
     const created: Admission = {
-      id: crypto.randomUUID(),
+      id: createUuid(),
       applicationNumber: `ADM-2026-${String(applications.length + 15).padStart(6, '0')}`,
       academicYearId: payload.academicYearId,
       academicYearLabel: OPTIONS.academicYears[0]?.label ?? 'Année scolaire',
@@ -169,11 +170,11 @@ function admission(id: string, number: string, name: string, levelId: string,
 
 function documents(complete: boolean): AdmissionDocument[] {
   return [
-    { id: crypto.randomUUID(), code: 'ACTE_NAISSANCE', label: 'Extrait d’acte de naissance',
+    { id: createUuid(), code: 'ACTE_NAISSANCE', label: 'Extrait d’acte de naissance',
       mandatory: true, received: complete },
-    { id: crypto.randomUUID(), code: 'BULLETINS', label: 'Derniers bulletins scolaires',
+    { id: createUuid(), code: 'BULLETINS', label: 'Derniers bulletins scolaires',
       mandatory: true, received: complete },
-    { id: crypto.randomUUID(), code: 'PHOTO', label: 'Photo d’identité',
+    { id: createUuid(), code: 'PHOTO', label: 'Photo d’identité',
       mandatory: false, received: complete }
   ];
 }

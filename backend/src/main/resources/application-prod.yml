@@ -11,7 +11,7 @@ spring:
     # Docker Compose service names. Replace passwords before deployment.
     url: jdbc:postgresql://postgres:5432/eduops
     username: eduops
-    password: "A_COMPLETER_POSTGRES_PASSWORD"
+    password: eduops
     hikari:
       maximum-pool-size: 40
       minimum-idle: 10
@@ -19,7 +19,7 @@ spring:
     redis:
       host: redis
       port: 6379
-      password: "A_COMPLETER_REDIS_PASSWORD"
+      password: eduops
   mail:
     host: "smtp.ton-fournisseur.com"
     port: 587
@@ -46,6 +46,9 @@ logging:
     org.hibernate.SQL: WARN
 
 management:
+  health:
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:
@@ -67,6 +70,8 @@ eduops:
     expose-internal-errors: false
   mail:
     provider: SMTP
+    # No SMTP provider configured yet. Enable together with health.mail later.
+    enabled: false
     from: "no-reply@ton-domaine.com"
   cors:
     allowed-origins: "http://57.129.132.150"
@@ -84,4 +89,4 @@ eduops:
     require-https: false
     jwt:
       # Replace with a unique random secret of at least 64 characters.
-      secret: "A_COMPLETER_JWT_SECRET"
+      secret: "f842ceb311f2398fbb092eccf6450c1f84ae02478ef22956ddcace94375206f2ba259158247483b516fad5da2b5599d88af12421762c77c9295a7b42a31ec308"

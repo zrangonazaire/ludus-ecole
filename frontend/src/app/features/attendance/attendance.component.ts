@@ -1,3 +1,4 @@
+import { createUuid } from "../../core/utils/uuid";
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -591,7 +592,5 @@ function labelOf(status: AttendanceStatus): string {
 }
 
 function newKey(): string {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `key-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return createUuid();
 }
