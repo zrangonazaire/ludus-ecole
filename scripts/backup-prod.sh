@@ -16,6 +16,7 @@ compose run --rm -T --no-deps --entrypoint tar backend -C /app/storage -czf - . 
 test -s "$destination/database.dump"
 gzip -t "$destination/storage.tar.gz"
 cp .env.prod "$destination/environment.env"
+cp /opt/eduops/config/application-prod.yml "$destination/application-prod.yml"
 git rev-parse HEAD > "$destination/revision.txt"
 touch "$destination/COMPLETE"
 echo "Backup complete: $destination (contains secrets; copy securely off the VPS)."

@@ -1,5 +1,6 @@
 # =====================================================================
 # PROD profile - real SMTP relay, strict logging, no demo data
+# Temporary HTTP on the VPS IP: restore secure cookies and require-https with TLS.
 # =====================================================================
 spring:
   jpa:
@@ -7,14 +8,23 @@ spring:
       hibernate:
         format_sql: false
   datasource:
+    # Docker Compose service names. Replace passwords before deployment.
+    url: jdbc:postgresql://postgres:5432/eduops
+    username: eduops
+    password: "A_COMPLETER_POSTGRES_PASSWORD"
     hikari:
       maximum-pool-size: 40
       minimum-idle: 10
+  data:
+    redis:
+      host: redis
+      port: 6379
+      password: "A_COMPLETER_REDIS_PASSWORD"
   mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    host: "smtp.ton-fournisseur.com"
+    port: 587
+    username: "A_COMPLETER_MAIL_USERNAME"
+    password: "A_COMPLETER_MAIL_PASSWORD"
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
@@ -27,7 +37,7 @@ server:
   servlet:
     session:
       cookie:
-        secure: true
+        secure: false
 
 logging:
   level:
@@ -45,6 +55,8 @@ management:
       show-details: never
 
 springdoc:
+  api-docs:
+    enabled: false
   swagger-ui:
     enabled: false
 
@@ -55,7 +67,21 @@ eduops:
     expose-internal-errors: false
   mail:
     provider: SMTP
+    from: "no-reply@ton-domaine.com"
+  cors:
+    allowed-origins: "http://57.129.132.150"
+  app:
+    base-url: "http://57.129.132.150"
+    api-url: "http://57.129.132.150"
+  storage:
+    location: /app/storage
+  bootstrap:
+    admin-email: "admin@ton-domaine.com"
+    admin-password: "A_COMPLETER_ADMIN_PASSWORD"
   demo:
     enabled: false
   security:
-    require-https: true
+    require-https: false
+    jwt:
+      # Replace with a unique random secret of at least 64 characters.
+      secret: "A_COMPLETER_JWT_SECRET"

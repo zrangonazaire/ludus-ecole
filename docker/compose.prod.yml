@@ -46,10 +46,10 @@ services:
 
   backend:
     <<: *service
-    image: eduops-backend:${IMAGE_TAG:-production}
-    build:
-      context: ..
-      dockerfile: docker/backend/Dockerfile
+    image: astairenazaire/ludus-backend:${IMAGE_TAG:-1.0.0}
+    command:
+      - --spring.profiles.active=prod
+      - --spring.config.additional-location=file:/app/config/application-prod.yml
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
@@ -64,8 +64,8 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
-      APP_BASE_URL: ${APP_BASE_URL:?Set HTTPS APP_BASE_URL}
-      API_BASE_URL: ${APP_BASE_URL:?Set HTTPS APP_BASE_URL}
+      APP_BASE_URL: ${APP_BASE_URL:?Set APP_BASE_URL}
+      API_BASE_URL: ${APP_BASE_URL:?Set APP_BASE_URL}
       EDUOPS_ADMIN_EMAIL: ${EDUOPS_ADMIN_EMAIL:?Set EDUOPS_ADMIN_EMAIL}
       EDUOPS_ADMIN_PASSWORD: ${EDUOPS_ADMIN_PASSWORD:?Set EDUOPS_ADMIN_PASSWORD}
       MAIL_HOST: ${MAIL_HOST:?Set MAIL_HOST}
@@ -85,6 +85,12 @@ services:
       - "127.0.0.1:58080:8080"
     volumes:
       - backend_storage:/app/storage
+      - type: bind
+        source: /opt/eduops/config/application-prod.yml
+        target: /app/config/application-prod.yml
+        read_only: true
+        bind:
+          create_host_path: false
     healthcheck:
       test: [CMD, wget, -qO-, 'http://localhost:8080/actuator/health']
       interval: 15s
@@ -94,10 +100,7 @@ services:
 
   frontend:
     <<: *service
-    image: eduops-frontend:${IMAGE_TAG:-production}
-    build:
-      context: ..
-      dockerfile: docker/frontend/Dockerfile
+    image: astairenazaire/ludus-frontend:${IMAGE_TAG:-1.0.0}
     depends_on:
       backend: {condition: service_healthy}
     ports:

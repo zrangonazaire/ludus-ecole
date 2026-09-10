@@ -1,0 +1,11 @@
+target
+.git
+.idea
+.env
+.env.*
+*.log
+storage
+**/*.pem
+**/*.key
+# Production credentials are mounted at runtime, never published in the image.
+src/main/resources/application-prod.yml
