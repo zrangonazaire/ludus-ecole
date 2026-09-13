@@ -14,6 +14,24 @@ Conserver les URL http://57.129.132.150 et les adresses postgres:5432, redis:637
 Ne pas ecraser des fichiers existants deja renseignes. Changer un fichier de
 mot de passe ne change pas le mot de passe d'une base deja initialisee.
 
+## Scripts prêts à l'emploi
+
+Deux scripts complètent le guide :
+
+- `scripts/upload.sh` — depuis le PC, transfère `docker/`, `scripts/` et
+  `config/application-prod.yml` vers le VPS (scp, mot de passe SSH demandé).
+- `scripts/deploy-server.sh` — SUR le VPS, après `upload.sh` : pull des images,
+  droits sur les secrets, `docker compose up -d` et démarrage du proxy Node.js
+  `gateway` (remplace Nginx).
+
+```bash
+# Sur le PC
+bash scripts/upload.sh
+
+# Sur le VPS
+cd /opt/eduops && bash scripts/deploy-server.sh
+```
+
 ## Depuis PowerShell sur le PC
 
 ```powershell
@@ -61,25 +79,35 @@ sudo docker compose -f docker/compose.prod.yml logs --tail=200
 Si le YAML monte est modifie apres demarrage, faire aussi
 `sudo docker compose -f docker/compose.prod.yml restart backend`.
 
-## Nginx
+## Reverse proxy Node.js (remplace Nginx)
+
+Le proxy est un conteneur Docker du Compose (`gateway`) : un serveur Node.js
+sans dépendance externe (`docker/proxy/server.js`), en écoute sur le port 80.
+Il sert le SPA Angular et route `/api/` et `/ws` vers le backend. Il n'y a plus
+d'installation Nginx système.
 
 ```bash
-sudo apt update
-sudo apt install -y nginx
-sudo cp docker/nginx/production.conf /etc/nginx/sites-available/eduops
+# Vérifier que l'image node est présente et démarrer le proxy avec le stack
+sudo docker compose -f docker/compose.prod.yml pull node:22-alpine
+sudo docker compose -f docker/compose.prod.yml up -d --wait --wait-timeout 300
+sudo docker compose -f docker/compose.prod.yml ps
 ```
 
-Creer le lien uniquement s'il n'existe pas :
-
-```bash
-sudo ln -s /etc/nginx/sites-available/eduops /etc/nginx/sites-enabled/eduops
-```
+Si un ancien Nginx système occupe encore le port 80, le liberer :
 
 ```bash
-sudo nginx -t
-sudo systemctl enable --now nginx
-sudo systemctl reload nginx
+sudo rm -f /etc/nginx/sites-enabled/eduops /etc/nginx/sites-available/eduops
+sudo systemctl disable --now nginx
 ```
+
+Vérifier le proxy et le backend :
+
+```bash
+curl -fsS http://127.0.0.1/healthz            # -> ok
+curl -fsS http://127.0.0.1:58080/actuator/health  # -> {"status":"UP"}
+```
+
+Logs du proxy : `sudo docker compose -f docker/compose.prod.yml logs -f gateway`.
 
 Autoriser TCP 80 sur le VPS et chez OVH, conserver SSH. Ne pas exposer les ports
 4200, 58080, PostgreSQL ou Redis. Ouvrir http://57.129.132.150.

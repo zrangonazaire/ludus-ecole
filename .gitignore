@@ -4,6 +4,10 @@ docker/.env
 .env.prod
 .env.prod.*
 !.env.prod.example
+# Fichiers a renseigner localement et a NE PAS committer
+backend/src/main/resources/application-prod.yml
+docker/postgres/production.password
+docker/redis/production.conf
 backups/
 *.pem
 *.key

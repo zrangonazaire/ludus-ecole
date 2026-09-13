@@ -1,0 +1,10 @@
+{
+  "name": "eduops-reverse-proxy",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Reverse proxy Node.js (sans dépendance) pour le déploiement EduOps.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
