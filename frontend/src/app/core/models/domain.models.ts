@@ -34,6 +34,10 @@ export interface Level {
   name: string;
   shortName?: string;
   sequence: number;
+  nextLevelId?: string;
+  nextLevelName?: string;
+  terminal: boolean;
+  status: string;
 }
 
 export interface Classroom {

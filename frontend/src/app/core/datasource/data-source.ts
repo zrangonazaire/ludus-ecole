@@ -329,12 +329,26 @@ export interface HealthDataSource {
                     payload: ExaminationResultPayload): Observable<MedicalExamination>;
 }
 
-export interface ReferenceDataSource {
-  academicYears(): Observable<AcademicYear[]>;
-  terms(academicYearId: string): Observable<Term[]>;
-  subjects(): Observable<Subject[]>;
-  globalSearch(term: string): Observable<GlobalSearchResult[]>;
+export interface LevelDataSource {
+  list(): Observable<Level[]>;
+  get(id: string): Observable<Level>;
+  create(payload: LevelUpsertPayload): Observable<Level>;
+  update(id: string, payload: LevelUpsertPayload): Observable<Level>;
+  archive(id: string): Observable<Level>;
+  restore(id: string): Observable<Level>;
 }
+
+export interface LevelUpsertPayload {
+  cycleId: string;
+  code: string;
+  name: string;
+  shortName?: string;
+  sequence: number;
+  nextLevelId?: string;
+  terminal?: boolean;
+}
+
+export const LEVEL_DATA_SOURCE = new InjectionToken<LevelDataSource>('LevelDataSource');
 
 export interface AccessProfileDataSource {
   overview(): Observable<AccessProfileOverview>;
