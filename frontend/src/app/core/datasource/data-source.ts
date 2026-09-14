@@ -48,7 +48,7 @@ import {
 import { OutstandingBoard, OutstandingQuery } from '../models/outstanding.models';
 import {
   AcademicYear, Assessment, AttendanceSheet, Classroom, DashboardData, Enrollment,
-  EnrollmentCheckResult, FinancialSummary, Grade, GlobalSearchResult, LessonSlot, Payment,
+  EnrollmentCheckResult, FinancialSummary, Grade, GlobalSearchResult, LessonSlot, Level, Payment,
   ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term
 } from '../models/domain.models';
 import {
@@ -327,6 +327,13 @@ export interface HealthDataSource {
   /** « Apte avec réserve » exige d'écrire la réserve. */
   recordExamination(examinationId: string,
                     payload: ExaminationResultPayload): Observable<MedicalExamination>;
+}
+
+export interface ReferenceDataSource {
+  academicYears(): Observable<AcademicYear[]>;
+  terms(academicYearId: string): Observable<Term[]>;
+  subjects(): Observable<Subject[]>;
+  globalSearch(term: string): Observable<GlobalSearchResult[]>;
 }
 
 export interface LevelDataSource {

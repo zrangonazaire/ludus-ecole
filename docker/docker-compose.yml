@@ -5,9 +5,14 @@ services:
     container_name: eduops-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: eduops
-      POSTGRES_USER: eduops
-      POSTGRES_PASSWORD: "eduops_local_pwd"
+      # Interpolated from docker/.env, which docker compose loads
+      # automatically from this directory. The fallback keeps the stack
+      # working when that file is absent, and matches the Spring defaults.
+      # NOTE: changing POSTGRES_PASSWORD here does NOT rotate the password
+      # of an existing postgres_data volume - see docker/.env.example.
+      POSTGRES_DB: ${POSTGRES_DB:-eduops}
+      POSTGRES_USER: ${POSTGRES_USER:-eduops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eduops_local_pwd}
       TZ: Africa/Abidjan
       PGTZ: Africa/Abidjan
     ports:
@@ -95,6 +100,14 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_started
+    environment:
+      # Same variables as the Spring placeholders in application-dev.yml,
+      # so a credential changed in docker/.env also reaches the backend.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: '5432'
+      POSTGRES_DB: ${POSTGRES_DB:-eduops}
+      POSTGRES_USER: ${POSTGRES_USER:-eduops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eduops_local_pwd}
     ports:
     - 58080:8080
     volumes:

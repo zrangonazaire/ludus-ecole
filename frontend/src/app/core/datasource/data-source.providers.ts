@@ -3,7 +3,7 @@ import { environment } from '@env/environment';
 import {
   ATTENDANCE_DATA_SOURCE, CLASSROOM_DATA_SOURCE, DASHBOARD_DATA_SOURCE,
   ENROLLMENT_DATA_SOURCE, FINANCE_DATA_SOURCE, GRADE_DATA_SOURCE,
-  LEVEL_DATA_SOURCE, OFFICIAL_DOCUMENT_DATA_SOURCE, OPTION_DATA_SOURCE, REFERENCE_DATA_SOURCE, TRANSFER_DATA_SOURCE, REPORT_CARD_DATA_SOURCE, HEALTH_DATA_SOURCE, FAMILY_REQUEST_DATA_SOURCE,
+  OFFICIAL_DOCUMENT_DATA_SOURCE, OPTION_DATA_SOURCE, REFERENCE_DATA_SOURCE, TRANSFER_DATA_SOURCE, REPORT_CARD_DATA_SOURCE, HEALTH_DATA_SOURCE, FAMILY_REQUEST_DATA_SOURCE,
   STUDENT_DATA_SOURCE, STUDENT_PORTAL_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE,
   CURRICULUM_DATA_SOURCE, FEE_DATA_SOURCE, ACCESS_PROFILE_DATA_SOURCE, ADMISSION_DATA_SOURCE,
   GUARDIAN_DATA_SOURCE, COUNCIL_DATA_SOURCE
@@ -11,13 +11,13 @@ import {
 import {
   MockAttendanceDataSource, MockClassroomDataSource, MockDashboardDataSource,
   MockEnrollmentDataSource, MockFinanceDataSource, MockGradeDataSource,
-  MockLevelDataSource, MockOptionDataSource, MockReferenceDataSource, MockTransferDataSource, MockHealthDataSource, MockFamilyRequestDataSource, MockReportCardDataSource, MockStudentDataSource, MockTeacherDataSource,
+  MockOptionDataSource, MockReferenceDataSource, MockTransferDataSource, MockHealthDataSource, MockFamilyRequestDataSource, MockReportCardDataSource, MockStudentDataSource, MockTeacherDataSource,
   MockTimetableDataSource, MockCurriculumDataSource, MockFeeDataSource, MockCouncilDataSource
 } from './mock/mock-data-sources';
 import {
   ApiAttendanceDataSource, ApiClassroomDataSource, ApiDashboardDataSource,
   ApiEnrollmentDataSource, ApiFinanceDataSource, ApiGradeDataSource,
-  ApiLevelDataSource, ApiOptionDataSource, ApiReferenceDataSource, ApiTransferDataSource, ApiHealthDataSource, ApiFamilyRequestDataSource, ApiReportCardDataSource, ApiStudentDataSource, ApiTeacherDataSource,
+  ApiOptionDataSource, ApiReferenceDataSource, ApiTransferDataSource, ApiHealthDataSource, ApiFamilyRequestDataSource, ApiReportCardDataSource, ApiStudentDataSource, ApiTeacherDataSource,
   ApiTimetableDataSource, ApiCurriculumDataSource, ApiFeeDataSource, ApiCouncilDataSource
 } from './api/api-data-sources';
 import { MockOfficialDocumentDataSource } from './mock/mock-official-document-data-source';

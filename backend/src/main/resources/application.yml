@@ -9,9 +9,12 @@ spring:
 
   datasource:
     # Local development ports. application-prod.yml uses Docker service names.
-    url: "jdbc:postgresql://localhost:55432/eduops"
-    username: "eduops"
-    password: "eduops_local_pwd"
+    # Overridable via environment variables; the fallbacks match the
+    # credentials in docker/docker-compose.yml. Spring does not read .env
+    # files, so export the variable (or set it in your IDE) to override.
+    url: "jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:55432}/${POSTGRES_DB:eduops}"
+    username: "${POSTGRES_USER:eduops}"
+    password: "${POSTGRES_PASSWORD:eduops_local_pwd}"
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: eduops-pool
