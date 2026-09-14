@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, of } from 'rxjs';
@@ -40,6 +41,7 @@ export class StudentFilesComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
 
   readonly templates = OFFICIAL_DOCUMENT_TEMPLATES;
   readonly tab = signal<StudentFilesTab>('CREATE');
@@ -195,13 +197,19 @@ export class StudentFilesComponent implements OnInit {
 
   ngOnInit(): void {
     this.watchForms();
-    this.load();
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
 
   load(): void {
     this.loading.set(true);
     this.error.set(false);
+    const requestedStudentId = this.route.snapshot.queryParamMap.get('studentId');
+    const requestedType = this.route.snapshot.queryParamMap.get('type');
+    if (requestedType && this.templates.some(template => template.type === requestedType)) {
+      this.chooseTemplate(requestedType as OfficialDocumentType);
+    }
     forkJoin({
+      requestedStudent: requestedStudentId ? this.studentsSource.getById(requestedStudentId) : of(null),
       students: this.studentsSource.search({ page: 0, size: 300, status: 'ACTIVE' })
         .pipe(catchError(() => of({ content: [] as StudentSummary[] }))),
       classrooms: this.classroomsSource.list().pipe(catchError(() => of([] as Classroom[]))),
@@ -211,7 +219,9 @@ export class StudentFilesComponent implements OnInit {
       layout: this.documentsSource.layout().pipe(catchError(() => of(null)))
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (data) => {
-        this.students.set(data.students.content);
+        const students = data.students.content;
+        this.students.set(data.requestedStudent && !students.some(student => student.id === data.requestedStudent!.id)
+          ? [data.requestedStudent, ...students] : students);
         this.classrooms.set(data.classrooms);
         this.documents.set(data.documents.content);
         if (data.layout) {
@@ -220,7 +230,8 @@ export class StudentFilesComponent implements OnInit {
         }
         const activeYear = data.years.find((year) => year.status === 'ACTIVE') ?? data.years[0];
         this.academicYearCode.set(activeYear?.code ?? '');
-        this.selectedStudentId.set(data.students.content[0]?.id ?? '');
+        this.selectedStudentId.set(data.requestedStudent?.id ?? students[0]?.id ?? '');
+        if (data.requestedStudent) this.tab.set('CREATE');
         this.loading.set(false);
         this.draftRevision.update((value) => value + 1);
       },

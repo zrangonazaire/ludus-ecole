@@ -18,6 +18,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
 
     Optional<Enrollment> findByEnrollmentNumber(String enrollmentNumber);
 
+    Optional<Enrollment> findByClassroomIdAndIdempotencyKey(UUID classroomId, String idempotencyKey);
+
     List<Enrollment> findByStudentIdOrderByEnrollmentDateDesc(UUID studentId);
 
     /**

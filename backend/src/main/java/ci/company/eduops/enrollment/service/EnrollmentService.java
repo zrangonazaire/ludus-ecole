@@ -15,6 +15,7 @@ import ci.company.eduops.common.event.DomainEventPublisher;
 import ci.company.eduops.common.event.DomainEventType;
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.exception.ErrorCode;
+import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.common.util.MoneyUtils;
 import ci.company.eduops.common.util.NumberSequenceService;
 import ci.company.eduops.config.EduOpsProperties;
@@ -30,6 +31,10 @@ import ci.company.eduops.student.domain.Student;
 import ci.company.eduops.student.domain.StudentStatus;
 import ci.company.eduops.student.repository.StudentRepository;
 import ci.company.eduops.student.service.StudentService;
+import ci.company.eduops.guardian.domain.Guardian;
+import ci.company.eduops.guardian.domain.StudentGuardian;
+import ci.company.eduops.guardian.repository.GuardianRepository;
+import ci.company.eduops.guardian.repository.StudentGuardianRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
@@ -76,6 +81,8 @@ public class EnrollmentService {
     private final AuditService auditService;
     private final CurrentUser currentUser;
     private final EduOpsProperties properties;
+    private final GuardianRepository guardianRepository;
+    private final StudentGuardianRepository studentGuardianRepository;
 
     public EnrollmentService(EnrollmentRepository enrollmentRepository,
                              StudentRepository studentRepository,
@@ -89,7 +96,9 @@ public class EnrollmentService {
                              DomainEventPublisher eventPublisher,
                              AuditService auditService,
                              CurrentUser currentUser,
-                             EduOpsProperties properties) {
+                             EduOpsProperties properties,
+                             GuardianRepository guardianRepository,
+                             StudentGuardianRepository studentGuardianRepository) {
         this.enrollmentRepository = enrollmentRepository;
         this.studentRepository = studentRepository;
         this.classroomRepository = classroomRepository;
@@ -103,6 +112,8 @@ public class EnrollmentService {
         this.auditService = auditService;
         this.currentUser = currentUser;
         this.properties = properties;
+        this.guardianRepository = guardianRepository;
+        this.studentGuardianRepository = studentGuardianRepository;
     }
 
     /**
@@ -114,8 +125,27 @@ public class EnrollmentService {
     @Transactional
     public EnrollmentResponse enroll(EnrollmentCreateRequest request) {
         // 1 - identify the student
-        Student student = studentRepository.findById(request.getStudentId())
-                .orElseThrow(() -> BusinessException.of(ErrorCode.STUDENT_NOT_FOUND));
+        if (!request.isStudentSelectionValid() || request.getClassroomId() == null) {
+            throw BusinessException.of(ErrorCode.VALIDATION_ERROR,
+                    "Renseignez une classe et soit un élève existant, soit un nouvel élève.");
+        }
+        Student student;
+        if (request.getNewStudent() != null) {
+            // Serialize retries for this class before creating any student or guardian.
+            Classroom target = classroomRepository.lockById(request.getClassroomId())
+                    .orElseThrow(() -> BusinessException.of(ErrorCode.CLASS_NOT_FOUND));
+            if (request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank()) {
+                var replay = enrollmentRepository.findByClassroomIdAndIdempotencyKey(
+                        target.getId(), request.getIdempotencyKey());
+                if (replay.isPresent()) {
+                    return toResponse(replay.get(), 0, BigDecimal.ZERO);
+                }
+            }
+            student = createStudent(request, target);
+        } else {
+            student = studentRepository.findById(request.getStudentId())
+                    .orElseThrow(() -> BusinessException.of(ErrorCode.STUDENT_NOT_FOUND));
+        }
 
         // idempotency: a resubmitted form must not create a second enrollment
         if (request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank()) {
@@ -332,6 +362,51 @@ public class EnrollmentService {
 
     // ------------------------------------------------------------------
 
+    private Student createStudent(EnrollmentCreateRequest request, Classroom classroom) {
+        var payload = request.getNewStudent();
+        var school = classroom.getAcademicYear().getSchool();
+        Student student = new Student();
+        student.setSchool(school);
+        student.setStudentNumber(studentService.generateStudentNumber(school));
+        student.setFirstName(payload.getFirstName().trim());
+        student.setLastName(payload.getLastName().trim());
+        student.setMiddleName(payload.getMiddleName());
+        student.setGender(payload.getGender());
+        student.setBirthDate(payload.getBirthDate());
+        student.setBirthPlace(payload.getBirthPlace());
+        student.setNationality(payload.getNationality());
+        student.setNationalId(payload.getNationalId());
+        student.setEmail(payload.getEmail());
+        student.setPhone(payload.getPhone());
+        student.setAddressLine1(payload.getAddressLine1());
+        student.setCity(payload.getCity());
+        student.setPreviousSchool(payload.getPreviousSchool());
+        student.setAdmissionDate(LocalDate.now());
+        student.setStatus(StudentStatus.ADMITTED);
+        student = studentRepository.save(student);
+        var guardianPayload = payload.getGuardian();
+        if (guardianPayload != null) {
+            Guardian guardian = guardianRepository.findBySchoolIdAndPhone(
+                    school.getId(), guardianPayload.getPhone().trim()).orElseGet(() -> {
+                        Guardian created = new Guardian();
+                        created.setSchool(school);
+                        created.setFirstName(guardianPayload.getFirstName().trim());
+                        created.setLastName(guardianPayload.getLastName().trim());
+                        created.setPhone(guardianPayload.getPhone().trim());
+                        created.setEmail(guardianPayload.getEmail());
+                        return guardianRepository.save(created);
+                    });
+            StudentGuardian link = new StudentGuardian();
+            link.setStudent(student);
+            link.setGuardian(guardian);
+            link.setRelationship(guardianPayload.getRelationship());
+            link.setPrimary(true);
+            link.setFinancialResponsibility(guardianPayload.isFinancialResponsibility());
+            studentGuardianRepository.save(link);
+        }
+        return student;
+    }
+
     private AcademicYear resolveYear(EnrollmentCreateRequest request, Student student) {
         if (request.getAcademicYearId() != null) {
             return academicYearRepository.findById(request.getAcademicYearId())
@@ -352,8 +427,17 @@ public class EnrollmentService {
     }
 
     private UUID activeYearId() {
-        return academicYearRepository.findByStatuses(List.of(AcademicYearStatus.ACTIVE)).stream()
-                .findFirst()
+        // L'annee active de CET etablissement, jamais la premiere annee ACTIVE
+        // venue de la base : avec plusieurs ecoles sur le meme serveur, une
+        // resolution globale affichait les inscriptions d'une autre ecole et
+        // masquait l'inscription qui venait d'etre creee.
+        UUID schoolId = TenantContext.getSchoolId();
+        if (schoolId == null) {
+            throw BusinessException.of(ErrorCode.SCHOOL_NOT_FOUND,
+                    "Aucun établissement dans le contexte de la requête.");
+        }
+        return academicYearRepository
+                .findBySchoolIdAndStatus(schoolId, AcademicYearStatus.ACTIVE)
                 .map(AcademicYear::getId)
                 .orElseThrow(() -> BusinessException.of(ErrorCode.ACADEMIC_YEAR_NOT_ACTIVE));
     }

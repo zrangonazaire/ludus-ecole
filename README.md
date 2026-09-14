@@ -206,7 +206,7 @@ docker compose up -d postgres redis mailpit
 
 # Backend
 cd ../backend
-# The dev profile automatically imports ../.env when launched locally.
+# Local backend connection settings are defined in src/main/resources/application.yml.
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 # Frontend (separate terminal) - proxies /api and /ws to the local :8080

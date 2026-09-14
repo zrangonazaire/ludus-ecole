@@ -1,6 +1,7 @@
 package ci.company.eduops.notification.repository;
 
 import ci.company.eduops.notification.domain.Notification;
+import ci.company.eduops.notification.domain.NotificationChannel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,24 +31,36 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     @Query("""
            SELECT n FROM Notification n
            WHERE n.recipientUserId = :userId
-             AND n.channel = ci.company.eduops.notification.domain.NotificationChannel.IN_APP
+             AND n.channel = :channel
              AND (:category = '' OR n.category = :category)
              AND (:unreadOnly = FALSE OR n.readAt IS NULL)
            ORDER BY CASE WHEN n.readAt IS NULL THEN 0 ELSE 1 END ASC,
                     n.createdAt DESC
            """)
-    Page<Notification> inbox(@Param("userId") UUID userId,
+    Page<Notification> inboxByChannel(@Param("userId") UUID userId,
                              @Param("category") String category,
                              @Param("unreadOnly") boolean unreadOnly,
+                             @Param("channel") NotificationChannel channel,
                              Pageable pageable);
+
+    // Bind the enum as a parameter: literal casts use the Java enum name,
+    // which differs from PostgreSQL's notification_channel type.
+    default Page<Notification> inbox(UUID userId, String category, boolean unreadOnly, Pageable pageable) {
+        return inboxByChannel(userId, category, unreadOnly, NotificationChannel.IN_APP, pageable);
+    }
 
     @Query("""
            SELECT COUNT(n) FROM Notification n
            WHERE n.recipientUserId = :userId
-             AND n.channel = ci.company.eduops.notification.domain.NotificationChannel.IN_APP
+             AND n.channel = :channel
              AND n.readAt IS NULL
            """)
-    long countUnread(@Param("userId") UUID userId);
+    long countUnreadByChannel(@Param("userId") UUID userId,
+                              @Param("channel") NotificationChannel channel);
+
+    default long countUnread(UUID userId) {
+        return countUnreadByChannel(userId, NotificationChannel.IN_APP);
+    }
 
     /** Les catégories réellement présentes, pour n'offrir que des filtres utiles. */
     @Query("""

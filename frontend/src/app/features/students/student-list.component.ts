@@ -171,6 +171,16 @@ export class StudentListComponent implements OnInit {
     this.requery();
   }
 
+  /**
+   * Ouvre l'assistant d'inscription en mode « Nouvel élève » : la création
+   * d'un élève passe toujours par une inscription (élève + responsable + classe).
+   */
+  openCreateWizard(): void {
+    void this.router.navigate(['/enrollments/new'], {
+      queryParams: this.classroomFilter() ? { classroomId: this.classroomFilter() } : undefined
+    });
+  }
+
   openStudent(student: StudentSummary): void {
     void this.router.navigate(['/students', student.id]);
   }

@@ -25,7 +25,8 @@
       </div>
       <div class="profile__actions">
         <a class="btn btn--secondary" routerLink="/students">Retour</a>
-        <button type="button" class="btn btn--secondary">Certificat de scolarité</button>
+        <a class="btn btn--secondary" routerLink="/student-files"
+           [queryParams]="{ studentId: student.id, type: 'SCHOOL_CERTIFICATE' }">Certificat de scolarité</a>
         <button type="button" class="btn btn--primary">Modifier</button>
       </div>
     </header>
@@ -38,7 +39,7 @@
       <button type="button" role="tab" class="tabs__tab"
               [class.tabs__tab--active]="activeTab() === 'academic'"
               [attr.aria-selected]="activeTab() === 'academic'"
-              (click)="activeTab.set('academic')">Scolarité</button>
+              (click)="openAcademic()">Scolarité</button>
       <button type="button" role="tab" class="tabs__tab"
               [class.tabs__tab--active]="activeTab() === 'attendance'"
               [attr.aria-selected]="activeTab() === 'attendance'"
@@ -100,10 +101,24 @@
         <section class="card">
           <header class="card__header"><h3 class="card__title">Parcours scolaire</h3></header>
           <div class="card__body">
-            <p class="muted">
-              Historique complet des inscriptions, notes, moyennes et bulletins.
-              Consomme <code>GET /api/v1/students/{{ '{' }}id{{ '}' }}/history</code>.
-            </p>
+            @if (historyLoading()) {
+              <eduops-loading-state message="Chargement du parcours scolaire…" />
+            } @else if (historyError()) {
+              <eduops-error-state (retry)="loadHistory()" />
+            } @else {
+              <p class="muted">Les inscriptions de l’élève, de la plus récente à la plus ancienne.</p>
+              @for (enrollment of history(); track enrollment.id) {
+                <article class="card" style="margin-bottom: 16px; padding: 16px">
+                  <h4>{{ enrollment.academicYearCode }} — {{ enrollment.classroomName }}</h4>
+                  <p>{{ enrollment.levelName }} · {{ enrollment.enrollmentNumber }}</p>
+                  <p>Inscription le {{ enrollment.enrollmentDate | date:'dd/MM/yyyy' }}</p>
+                  <eduops-status-badge [status]="enrollment.status" />
+                  @if (enrollment.repeating) { <span class="badge badge--warning">Redoublement</span> }
+                </article>
+              } @empty {
+                <p class="empty">Aucune inscription enregistrée pour cet élève.</p>
+              }
+            }
           </div>
         </section>
       }

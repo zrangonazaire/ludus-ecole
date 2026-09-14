@@ -9,9 +9,9 @@ spring:
 
   datasource:
     # Local development ports. application-prod.yml uses Docker service names.
-    url: jdbc:postgresql://localhost:55432/eduops
+    url: "jdbc:postgresql://localhost:55432/eduops"
     username: "eduops"
-    password: "change_me_postgres"
+    password: "eduops_local_pwd"
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: eduops-pool
@@ -48,7 +48,7 @@ spring:
   data:
     redis:
       host: localhost
-      port: 56579
+      port: 56379
       password: "change_me_redis"
       timeout: 3s
       lettuce:
@@ -67,7 +67,7 @@ spring:
   mail:
     host: localhost
     port: 51025
-    username: ""
+    username: "eduops"
     password: ""
     properties:
       mail.smtp.auth: false

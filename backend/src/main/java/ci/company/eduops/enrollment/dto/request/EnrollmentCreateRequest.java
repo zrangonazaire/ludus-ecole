@@ -3,6 +3,9 @@ package ci.company.eduops.enrollment.dto.request;
 import ci.company.eduops.enrollment.domain.EnrollmentKind;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -26,7 +29,14 @@ public class EnrollmentCreateRequest {
     /** When non-null the backend creates the student inline before enrolling. */
     @Schema(description = "Identity of a brand-new student to create as part of the enrollment. "
             + "Used by the /enrollments/new wizard in \"Nouvel élève\" mode.")
+    @Valid
     private NewStudentPayload newStudent;
+
+    @JsonIgnore
+    @AssertTrue(message = "Renseignez soit un élève existant, soit les informations du nouvel élève.")
+    public boolean isStudentSelectionValid() {
+        return (studentId != null) != (newStudent != null);
+    }
 
     private EnrollmentKind enrollmentKind = EnrollmentKind.NEW;
 

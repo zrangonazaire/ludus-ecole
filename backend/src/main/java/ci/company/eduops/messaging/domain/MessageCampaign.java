@@ -54,18 +54,18 @@ public class MessageCampaign extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "kind", nullable = false)
+    @Column(name = "kind", nullable = false, columnDefinition = "campaign_kind")
     private CampaignKind kind;
 
     /** Renseigné pour une relance, nul pour une annonce libre. */
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "reminder")
+    @Column(name = "reminder", columnDefinition = "reminder_type")
     private ReminderType reminder;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "channel", nullable = false)
+    @Column(name = "channel", nullable = false, columnDefinition = "notification_channel")
     private NotificationChannel channel;
 
     @Column(name = "title", nullable = false, length = 200)
@@ -88,7 +88,7 @@ public class MessageCampaign extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, columnDefinition = "campaign_status")
     private CampaignStatus status = CampaignStatus.DRAFT;
 
     @Column(name = "recipient_count", nullable = false)

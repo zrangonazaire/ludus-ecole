@@ -57,7 +57,7 @@ public class MessageRecipient extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "channel", nullable = false)
+    @Column(name = "channel", nullable = false, columnDefinition = "notification_channel")
     private NotificationChannel channel;
 
     @Column(name = "rendered_subject", length = 200)
@@ -72,7 +72,7 @@ public class MessageRecipient extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, columnDefinition = "notification_status")
     private NotificationStatus status = NotificationStatus.PENDING;
 
     @Column(name = "sent_at")

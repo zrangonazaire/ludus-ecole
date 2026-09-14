@@ -3,6 +3,7 @@ package ci.company.eduops.enrollment.dto.request;
 import ci.company.eduops.common.domain.Gender;
 import ci.company.eduops.guardian.domain.GuardianRelationship;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -59,6 +60,7 @@ public class NewStudentPayload {
     @Size(max = 200)
     private String previousSchool;
 
+    @Valid
     private NewGuardianPayload guardian;
 
     // ----------------------------------------------------------------- student

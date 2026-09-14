@@ -36,7 +36,7 @@ public class MedicalExamination extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "kind", nullable = false)
+    @Column(name = "kind", nullable = false, columnDefinition = "examination_kind")
     private ExaminationKind kind;
 
     @Column(name = "scheduled_on", nullable = false)
@@ -47,7 +47,7 @@ public class MedicalExamination extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "outcome", nullable = false)
+    @Column(name = "outcome", nullable = false, columnDefinition = "examination_outcome")
     private ExaminationOutcome outcome = ExaminationOutcome.PENDING;
 
     /** The reserve pronounced: excused from running, seated at the front. */

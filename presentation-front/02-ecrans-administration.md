@@ -170,8 +170,28 @@ Chacun affiche un **placeholder** qui documente l'endpoint API qu'il consommera
 | `/discipline`    | Discipline         | `GET /api/v1/discipline/incidents`   | DISCIPLINE_VIEW |
 | `/finance`       | Frais scolaires    | `GET /api/v1/fees`                   | FINANCE_VIEW |
 | `/reports`       | Rapports           | `GET /api/v1/reports`                | REPORT_VIEW |
-| `/administration`| Paramètres         | `GET /api/v1/school`                 | SCHOOL_VIEW |
 
 > Note : le parcours d'inscription d'établissement renvoie vers `/onboarding`, dont
 > la route/écran n'est pas encore déclaré dans la table de routage principale.
+
+---
+
+## 10. Paramètres de l'établissement
+
+- **Route** : `/administration`
+- **Composant** : `features/administration/administration.component.ts`
+- **État** : ✅ Implémenté
+- **Permission** : `SCHOOL_VIEW` (lecture), `SCHOOL_MANAGE` (écriture)
+
+**Description** : Les réglages qui s'appliquent à tout l'établissement, en
+sections : **Identité** (nom, raison sociale, devise, numéro d'enregistrement),
+**Coordonnées** (e-mail, téléphone, site, adresse, ville, pays),
+**Préférences** (code devise, langue, fuseau horaire, échelle de notation,
+classement des bulletins) et **Numérotation** (gabarits du matricule élève,
+des reçus et des factures).
+
+**Comportement** : le formulaire est en lecture seule sans `SCHOOL_MANAGE`.
+Le code et le statut de l'établissement sont montrés mais non éditables. À
+l'enregistrement (`PUT /api/v1/school`), le backend ne réécrit que les champs
+réellement changés et journalise chaque différence dans le journal d'audit.
 

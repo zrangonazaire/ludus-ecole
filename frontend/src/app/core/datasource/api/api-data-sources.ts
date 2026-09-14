@@ -94,7 +94,7 @@ export class ApiStudentDataSource implements StudentDataSource {
   }
 
   getEnrollments(studentId: string): Observable<Enrollment[]> {
-    return this.http.get<Enrollment[]>(`${API}/students/${studentId}/enrollments`);
+    return this.http.get<Enrollment[]>(`${API}/students/${studentId}/history`);
   }
 
   getFinancialSummary(studentId: string): Observable<FinancialSummary> {

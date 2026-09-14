@@ -329,10 +329,16 @@ public class PaymentService {
     }
 
     private UUID activeAcademicYearId() {
+        // Comme pour les inscriptions : l'annee active de CET etablissement,
+        // jamais la premiere annee ACTIVE trouvee dans toute la base.
+        UUID schoolId = ci.company.eduops.common.tenant.TenantContext.getSchoolId();
+        if (schoolId == null) {
+            throw BusinessException.of(ErrorCode.SCHOOL_NOT_FOUND,
+                    "Aucun établissement dans le contexte de la requête.");
+        }
         return academicYearRepository
-                .findByStatuses(List.of(ci.company.eduops.academicyear.domain.AcademicYearStatus.ACTIVE))
-                .stream()
-                .findFirst()
+                .findBySchoolIdAndStatus(schoolId,
+                        ci.company.eduops.academicyear.domain.AcademicYearStatus.ACTIVE)
                 .map(AcademicYear::getId)
                 .orElseThrow(() -> BusinessException.of(ErrorCode.ACADEMIC_YEAR_NOT_ACTIVE));
     }

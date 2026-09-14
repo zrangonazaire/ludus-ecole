@@ -61,7 +61,7 @@ public class InfirmaryVisit extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "outcome", nullable = false)
+    @Column(name = "outcome", nullable = false, columnDefinition = "infirmary_outcome")
     private InfirmaryOutcome outcome = InfirmaryOutcome.BACK_TO_CLASS;
 
     @Column(name = "notes")

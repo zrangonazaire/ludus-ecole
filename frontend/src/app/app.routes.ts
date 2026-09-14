@@ -328,9 +328,10 @@ export const routes: Routes = [
       },
       {
         path: 'portals',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Portail des familles' }
+        canActivate: [permissionGuard],
+        loadComponent: () => import('./features/portals/portals.component')
+          .then((m) => m.PortalsComponent),
+        data: { title: 'Portail des familles', permissions: [PERMISSIONS.SCHOOL_VIEW] }
       },
       {
         path: 'academic-years',
@@ -352,9 +353,10 @@ export const routes: Routes = [
       },
       {
         path: 'administration',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Paramètres', endpoint: 'GET /api/v1/school' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.SCHOOL_VIEW], title: 'Paramètres' },
+        loadComponent: () => import('./features/administration/administration.component')
+          .then((m) => m.AdministrationComponent)
       }
     ]
   },

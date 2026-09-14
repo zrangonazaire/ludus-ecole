@@ -67,7 +67,7 @@ public class StudentController {
         return studentQueryService.detail(studentId);
     }
 
-    @GetMapping("/{studentId}/enrollments")
+    @GetMapping({"/{studentId}/enrollments", "/{studentId}/history"})
     @PreAuthorize("hasAuthority('" + Permissions.ENROLLMENT_VIEW + "')")
     @Operation(summary = "L'historique des inscriptions de l'élève")
     public List<EnrollmentResponse> enrollments(@PathVariable UUID studentId) {

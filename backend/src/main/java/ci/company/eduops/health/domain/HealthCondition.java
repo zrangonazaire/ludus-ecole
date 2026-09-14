@@ -35,7 +35,7 @@ public class HealthCondition extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "kind", nullable = false)
+    @Column(name = "kind", nullable = false, columnDefinition = "health_condition_kind")
     private HealthConditionKind kind;
 
     @Column(name = "label", nullable = false, length = 160)
@@ -43,7 +43,7 @@ public class HealthCondition extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "severity", nullable = false)
+    @Column(name = "severity", nullable = false, columnDefinition = "health_severity")
     private HealthSeverity severity = HealthSeverity.MODERATE;
 
     @Column(name = "description")

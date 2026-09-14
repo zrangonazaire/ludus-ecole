@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: eduops
       POSTGRES_USER: eduops
-      POSTGRES_PASSWORD: change_me_postgres
+      POSTGRES_PASSWORD: "eduops_local_pwd"
       TZ: Africa/Abidjan
       PGTZ: Africa/Abidjan
     ports:
@@ -95,38 +95,11 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_started
-    environment:
-      SPRING_PROFILES_ACTIVE: dev
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: eduops
-      POSTGRES_USER: eduops
-      POSTGRES_PASSWORD: change_me_postgres
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: change_me_redis
-      MAIL_HOST: mailpit
-      MAIL_PORT: 1025
-      MAIL_FROM: no-reply@eduops.local
-      JWT_SECRET: change_me_this_must_be_a_very_long_random_secret_at_least_64_chars_long
-      JWT_EXPIRATION: '3600000'
-      JWT_REFRESH_EXPIRATION: '604800000'
-      APP_BASE_URL: http://localhost:4200
-      API_BASE_URL: http://localhost:8080
-      SCHOOL_NAME: Groupe Scolaire Horizon
-      SCHOOL_CODE: GSH
-      SCHOOL_CURRENCY: XOF
-      SCHOOL_TIMEZONE: Africa/Abidjan
-      STUDENT_NUMBER_PATTERN: EDU-{year}-{seq:6}
-      RECEIPT_NUMBER_PATTERN: REC-{year}-{seq:8}
-      INVOICE_NUMBER_PATTERN: INV-{year}-{seq:8}
-      EDUOPS_ADMIN_EMAIL: admin@eduops.local
-      EDUOPS_ADMIN_PASSWORD: ChangeMe!2026
-      TZ: Africa/Abidjan
     ports:
     - 58080:8080
     volumes:
     - backend_storage:/app/storage
+    - ./backend/application-dev.yml:/app/config/application-dev.yml:ro
     healthcheck:
       test:
       - CMD

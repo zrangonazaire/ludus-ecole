@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { STUDENT_DATA_SOURCE } from '@core/datasource/data-source';
-import { StudentDetail } from '@core/models/domain.models';
+import { Enrollment, StudentDetail } from '@core/models/domain.models';
 import { AvatarComponent } from '@shared/ui/avatar/avatar.component';
 import { StatusBadgeComponent } from '@shared/ui/status-badge/status-badge.component';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
@@ -37,6 +37,31 @@ export class StudentDetailComponent implements OnInit {
   readonly student = signal<StudentDetail | null>(null);
   readonly loading = signal(true);
   readonly error = signal(false);
+  readonly history = signal<Enrollment[]>([]);
+  readonly historyLoading = signal(false);
+  readonly historyError = signal(false);
+  private historyLoaded = false;
+
+  openAcademic(): void {
+    this.activeTab.set('academic');
+    if (!this.historyLoaded && !this.historyLoading()) this.loadHistory();
+  }
+
+  loadHistory(): void {
+    this.historyLoading.set(true);
+    this.historyError.set(false);
+    this.dataSource.getEnrollments(this.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: rows => {
+        this.history.set(rows);
+        this.historyLoaded = true;
+        this.historyLoading.set(false);
+      },
+      error: () => {
+        this.historyError.set(true);
+        this.historyLoading.set(false);
+      }
+    });
+  }
   readonly activeTab = signal<'identity' | 'academic' | 'attendance' | 'finance'>('identity');
 
   ngOnInit(): void {

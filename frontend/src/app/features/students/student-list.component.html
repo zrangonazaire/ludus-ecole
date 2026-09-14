@@ -19,7 +19,8 @@
     </div>
     <div class="page__actions">
       <button type="button" class="btn btn--secondary">Exporter Excel</button>
-      <button type="button" class="btn btn--primary" *eduopsHasPermission="createPermission">
+      <button type="button" class="btn btn--primary" *eduopsHasPermission="createPermission"
+              (click)="openCreateWizard()">
         <span aria-hidden="true">+</span> Nouvel élève
       </button>
     </div>
