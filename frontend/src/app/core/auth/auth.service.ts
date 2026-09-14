@@ -252,7 +252,7 @@ export class AuthService {
       return {
         userId: `mock-user-${key}`,
         username: key,
-        email: `${key}@eduops.local`,
+        email: `${key}@soocloo.com`,
         firstName: profile.name.split(' ')[0] ?? '',
         lastName: profile.name.split(' ').slice(1).join(' '),
         fullName: profile.name,
@@ -298,7 +298,7 @@ export class AuthService {
       expiresIn: 28800,
       userId: `mock-user-${key}`,
       username: key,
-      email: `${key}@eduops.local`,
+      email: `${key}@soocloo.com`,
       fullName: profile.name,
       schoolId: 'mock-school',
       mustChangePassword: false,

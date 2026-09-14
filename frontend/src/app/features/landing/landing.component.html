@@ -3,11 +3,11 @@
 <div class="landing">
   <header class="nav" [class.nav--open]="menuOpen()">
     <div class="nav__inner">
-      <a class="brand" routerLink="/" aria-label="EduOps, accueil" (click)="closeMenu()">
+      <a class="brand" routerLink="/" aria-label="Soocloo, accueil" (click)="closeMenu()">
         <span class="brand__mark" aria-hidden="true">
           <span></span><span></span><span></span>
         </span>
-        <span>EduOps</span>
+        <span>Soocloo</span>
       </a>
 
       <button class="nav__toggle" type="button" aria-label="Ouvrir le menu"
@@ -52,7 +52,7 @@
       <div class="hero__inner">
         <div class="hero__copy">
           <p class="eyebrow"><span></span> Pensé pour les écoles qui ont leur propre façon de faire</p>
-          <h1>Votre école a ses règles.<br><em>EduOps s’y adapte.</em></h1>
+          <h1>Simplifiez l’école.<br><em>Multipliez les réussites.</em></h1>
           <p class="hero__lead">
             Configurez vos cycles, classes, bulletins, frais et accès dans un seul espace.
             Commencez par une école témoin qui ressemble déjà à la vôtre.
@@ -83,7 +83,7 @@
           </ul>
         </div>
 
-        <div class="hero__experience" aria-label="Aperçu interactif d’un espace EduOps">
+        <div class="hero__experience" aria-label="Aperçu interactif d’un espace Soocloo">
           <div class="profile-picker" role="group" aria-label="Type d’établissement à prévisualiser">
             @for (preview of previews; track preview.id) {
               <button type="button" [class.profile-picker__item--active]="activePreviewId() === preview.id"
@@ -97,7 +97,7 @@
           <div class="console">
             <div class="console__bar">
               <div class="console__dots" aria-hidden="true"><i></i><i></i><i></i></div>
-              <div class="console__address">aperçu.eduops.ci / direction</div>
+              <div class="console__address">www.soocloo.com / direction</div>
               <span class="console__live"><i></i> Démo</span>
             </div>
 
@@ -193,7 +193,7 @@
       <div class="section__heading">
         <p class="section-kicker">Commencer par le vrai problème</p>
         <h2>Quel sujet voulez-vous<br><em>résoudre en premier ?</em></h2>
-        <p>EduOps ne vous impose pas un ordre. Votre démonstration met d’abord en scène ce qui compte maintenant pour votre équipe.</p>
+        <p>Soocloo ne vous impose pas un ordre. Votre démonstration met d’abord en scène ce qui compte maintenant pour votre équipe.</p>
       </div>
       <div class="challenge-grid">
         @for (challenge of challenges; track challenge.index) {
@@ -226,7 +226,7 @@
         <a class="text-link" routerLink="/commencer" (click)="prepareDemo()">Configurer mon école témoin <span>→</span></a>
       </div>
 
-      <div class="rule-board" aria-label="Exemple de paramètres EduOps">
+      <div class="rule-board" aria-label="Exemple de paramètres Soocloo">
         <div class="rule-board__top">
           <div><small>PROFIL ACTIF</small><strong>Groupe Scolaire Horizon</strong></div>
           <span><i></i> Brouillon sauvegardé</span>
@@ -330,16 +330,16 @@
     <div class="footer__inner">
       <a class="brand brand--footer" routerLink="/">
         <span class="brand__mark" aria-hidden="true"><span></span><span></span><span></span></span>
-        <span>EduOps</span>
+        <span>Soocloo</span>
       </a>
-      <p>Le système d’exploitation des écoles qui avancent.</p>
+      <p>Simplifiez l’école. Multipliez les réussites.</p>
       <nav aria-label="Liens de pied de page">
         <a routerLink="/login">Connexion</a>
         <a routerLink="/signup">Créer mon espace</a>
         <a routerLink="/commencer" (click)="prepareDemo()">Créer une démo</a>
         <button type="button" (click)="scrollTo('faq')">Questions</button>
       </nav>
-      <small>© {{ currentYear }} EduOps</small>
+      <small>© {{ currentYear }} Soocloo · www.soocloo.com</small>
     </div>
   </footer>
 </div>

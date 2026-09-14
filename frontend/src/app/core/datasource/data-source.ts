@@ -51,7 +51,10 @@ import {
   EnrollmentCheckResult, FinancialSummary, Grade, GlobalSearchResult, LessonSlot, Payment,
   ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term
 } from '../models/domain.models';
-import { StudentDashboard } from '../models/student-portal.models';
+import {
+  StudentAttendanceData, StudentDashboard, StudentGradesData, StudentProfile,
+  StudentReportCard, StudentTimetableData
+} from '../models/student-portal.models';
 import {
   AccessProfile, AccessProfileOverview, AccessProfilePayload
 } from '../models/access-profile.models';
@@ -81,9 +84,17 @@ export interface StudentDataSource {
   getReportCards(studentId: string): Observable<ReportCard[]>;
 }
 
-/** Data resolved from the authenticated pupil; no student id comes from the client. */
+/**
+ * Data resolved from the authenticated pupil; no student id comes from the
+ * client (a route accepting one would let any pupil read a classmate's marks).
+ */
 export interface StudentPortalDataSource {
   dashboard(): Observable<StudentDashboard>;
+  timetable(): Observable<StudentTimetableData>;
+  grades(): Observable<StudentGradesData>;
+  reportCards(): Observable<StudentReportCard[]>;
+  attendance(): Observable<StudentAttendanceData>;
+  profile(): Observable<StudentProfile>;
 }
 
 export interface EnrollmentDataSource {

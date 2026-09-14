@@ -111,7 +111,7 @@ export class LandingComponent {
 
   readonly faq = signal<FaqItem[]>([
     {
-      question: 'Puis-je essayer EduOps sans importer mes vrais élèves ?',
+      question: 'Puis-je essayer Soocloo sans importer mes vrais élèves ?',
       answer: 'Oui. Le parcours crée une école témoin avec une configuration fictive. Vous explorez les écrans et les rôles sans exposer les données de votre établissement.',
       open: true
     },

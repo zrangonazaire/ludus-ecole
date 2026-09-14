@@ -1,7 +1,7 @@
 {
-  "name": "EduOps - Gestion scolaire",
-  "short_name": "EduOps",
-  "description": "Systeme integre de gestion d'etablissement scolaire",
+  "name": "Soocloo - Gestion scolaire",
+  "short_name": "Soocloo",
+  "description": "Simplifiez l’école. Multipliez les réussites. — Gestion scolaire Soocloo",
   "theme_color": "#1f5fd6",
   "background_color": "#f6f8fb",
   "display": "standalone",

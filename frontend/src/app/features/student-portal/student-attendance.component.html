@@ -1,0 +1,58 @@
+@if (loading()) {
+  <eduops-loading-state message="Chargement de tes présences..." />
+} @else if (loadFailed()) {
+  <eduops-error-state
+    title="Présences indisponibles"
+    message="Impossible de récupérer tes présences pour le moment."
+    (retry)="load()" />
+} @else {
+  @if (data(); as att) {
+    <div class="attendance-page">
+      <header class="page-header">
+        <div>
+          <p class="page-header__eyebrow">Assiduité</p>
+          <h1 id="attendance-title">Mes présences</h1>
+          <p class="page-header__message">Ton taux de présence et tes absences récentes.</p>
+        </div>
+      </header>
+
+      <div class="summary">
+        <article class="summary-card">
+          <span class="summary-card__label">Taux de présence</span>
+          @if (att.attendanceRate !== undefined) {
+            <span class="summary-card__value numeric">{{ att.attendanceRate | number:'1.0-1':'fr-FR' }} %</span>
+          } @else { <span class="summary-card__value numeric">-</span> }
+        </article>
+        <article class="summary-card">
+          <span class="summary-card__label">Absences non justifiées</span>
+          <span class="summary-card__value numeric" [class.summary-card__value--alert]="att.unjustifiedAbsences > 0">
+            {{ att.unjustifiedAbsences }}
+          </span>
+        </article>
+      </div>
+
+      <section class="records" aria-labelledby="records-title">
+        <h2 id="records-title" class="visually-hidden">Relevé des présences</h2>
+        <div class="records__list">
+          @for (record of att.records; track record.id) {
+            <article class="record">
+              <time class="record__date" [attr.datetime]="record.date">{{ dateLabel(record.date) }}</time>
+              <div class="record__body">
+                <h3>{{ record.subjectName || 'Journée' }}</h3>
+                @if (record.reason) { <p>{{ record.reason }}</p> }
+              </div>
+              <span class="badge" [class]="'badge record__pill record__pill--' + toneOf(record.status)">
+                {{ record.statusLabel }}
+              </span>
+            </article>
+          } @empty {
+            <eduops-empty-state
+              title="Aucun relevé"
+              icon="◐"
+              message="Aucune absence ou retard enregistré sur la période." />
+          }
+        </div>
+      </section>
+    </div>
+  }
+}

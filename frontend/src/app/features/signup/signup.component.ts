@@ -193,7 +193,7 @@ export class SignupComponent {
         next: (response) => {
           this.notifications.success(
             `${response.schoolName} est cree. Annee scolaire ${response.academicYearCode} ouverte.`,
-            'Bienvenue sur EduOps');
+            'Bienvenue sur Soocloo');
           // The API already returns a usable session; go straight to the wizard.
           this.auth.applyExternalSession({
             accessToken: response.accessToken,

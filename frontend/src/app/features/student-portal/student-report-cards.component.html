@@ -1,0 +1,78 @@
+@if (loading()) {
+  <eduops-loading-state message="Chargement de tes bulletins..." />
+} @else if (loadFailed()) {
+  <eduops-error-state
+    title="Bulletins indisponibles"
+    message="Impossible de récupérer tes bulletins pour le moment."
+    (retry)="load()" />
+} @else {
+  <div class="report-cards-page">
+    <header class="page-header">
+      <div>
+        <p class="page-header__eyebrow">Fin de période</p>
+        <h1 id="report-cards-title">Mes bulletins</h1>
+        <p class="page-header__message">Consultables dès leur remise aux familles.</p>
+      </div>
+    </header>
+
+    <div class="cards">
+      @for (card of list(); track card.id) {
+        <article class="card">
+          <header class="card__head">
+            <div class="card__head-main">
+              <h2 class="card__title">{{ card.termName }}</h2>
+              <p class="card__meta">
+                {{ card.academicYearCode }}
+                @if (card.publishedAt) { <span>· publié le {{ publishedAt(card.publishedAt) }}</span> }
+              </p>
+            </div>
+            <span class="badge" [class]="card.passing ? 'badge--success' : 'badge--danger'">
+              {{ card.passing ? 'Admis' : 'A améliorer' }}
+            </span>
+          </header>
+
+          <div class="card__figures">
+            <div class="figure">
+              <span class="figure__label">Moyenne générale</span>
+              @if (card.generalAverage !== undefined) {
+                <span class="figure__value numeric">{{ card.generalAverage }}/{{ card.scaleMax }}</span>
+              } @else { <span class="figure__value numeric">-</span> }
+            </div>
+            <div class="figure">
+              <span class="figure__label">Rang</span>
+              <span class="figure__value">{{ card.rankLabel || '—' }}</span>
+            </div>
+            <div class="figure">
+              <span class="figure__label">Statut</span>
+              <span class="figure__value">{{ card.statusLabel }}</span>
+            </div>
+          </div>
+
+          <button type="button" class="card__toggle" (click)="toggle(card.id)"
+            [attr.aria-expanded]="expanded() === card.id">
+            {{ expanded() === card.id ? 'Masquer le détail' : 'Voir le détail par matière' }}
+          </button>
+
+          @if (expanded() === card.id) {
+            <ol class="card__lines">
+              @for (line of card.lines; track line.subjectName) {
+                <li>
+                  <span class="card__lines-subject">{{ line.subjectName }}</span>
+                  @if (line.coefficient) { <span class="card__lines-coef numeric">coef. {{ line.coefficient }}</span> }
+                  <span class="card__lines-average numeric">
+                    @if (line.subjectAverage !== undefined) { {{ line.subjectAverage }}/{{ card.scaleMax }} } @else { — }
+                  </span>
+                </li>
+              }
+            </ol>
+          }
+        </article>
+      } @empty {
+        <eduops-empty-state
+          title="Aucun bulletin publié"
+          icon="▣"
+          message="Ton établissement n'a pas encore remis de bulletin sur cette année scolaire." />
+      }
+    </div>
+  </div>
+}

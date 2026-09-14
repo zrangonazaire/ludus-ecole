@@ -46,5 +46,5 @@ export class PlaceholderComponent {
   private readonly route = inject(ActivatedRoute);
 
   readonly title = (this.route.snapshot.data['title'] as string) ?? 'Module';
-  readonly endpoint = (this.route.snapshot.data['endpoint'] as string) ?? 'API EduOps';
+  readonly endpoint = (this.route.snapshot.data['endpoint'] as string) ?? 'API Soocloo';
 }

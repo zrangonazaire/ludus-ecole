@@ -11,7 +11,8 @@ import java.util.UUID;
 @Schema(name = "EnrollmentCreateRequest", description = "Places a student in a class for a year")
 public class EnrollmentCreateRequest {
 
-    @NotNull
+        @Schema(description = "Existing student to enroll. Omit (or null) when "
+            + "\"newStudent\" is supplied — the backend creates the student first.")
     private UUID studentId;
 
     @Schema(description = "Defaults to the active academic year")
@@ -21,6 +22,11 @@ public class EnrollmentCreateRequest {
     private UUID classroomId;
 
     private UUID admissionId;
+
+    /** When non-null the backend creates the student inline before enrolling. */
+    @Schema(description = "Identity of a brand-new student to create as part of the enrollment. "
+            + "Used by the /enrollments/new wizard in \"Nouvel élève\" mode.")
+    private NewStudentPayload newStudent;
 
     private EnrollmentKind enrollmentKind = EnrollmentKind.NEW;
 
@@ -137,7 +143,15 @@ public class EnrollmentCreateRequest {
         return validateImmediately;
     }
 
-    public void setValidateImmediately(boolean validateImmediately) {
+        public void setValidateImmediately(boolean validateImmediately) {
         this.validateImmediately = validateImmediately;
+    }
+
+    public NewStudentPayload getNewStudent() {
+        return newStudent;
+    }
+
+    public void setNewStudent(NewStudentPayload newStudent) {
+        this.newStudent = newStudent;
     }
 }

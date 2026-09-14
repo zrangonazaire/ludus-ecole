@@ -1,0 +1,72 @@
+@if (loading()) {
+  <eduops-loading-state message="Chargement de tes notes..." />
+} @else if (loadFailed()) {
+  <eduops-error-state
+    title="Notes indisponibles"
+    message="Impossible de récupérer tes notes pour le moment."
+    (retry)="load()" />
+} @else {
+  @if (data(); as grades) {
+    <div class="grades-page">
+      <header class="page-header">
+        <div>
+          <p class="page-header__eyebrow">{{ grades.termLabel }}</p>
+          <h1 id="grades-title">Mes notes</h1>
+          <p class="page-header__message">Tes résultats publiés.</p>
+        </div>
+        @if (grades.average !== undefined) {
+          <div class="average-card">
+            <span class="average-card__label">Ma moyenne</span>
+            <span class="average-card__value numeric">{{ grades.average | grade:grades.scaleMax }}</span>
+          </div>
+        }
+      </header>
+
+      @if (grades.bySubject.length > 0) {
+        <section class="subjects" aria-labelledby="subjects-title">
+          <h2 id="subjects-title" class="visually-hidden">Moyennes par matière</h2>
+          @for (subject of grades.bySubject; track subject.subjectName) {
+            <article class="subject-card">
+              <span class="subject-card__badge" aria-hidden="true">
+                {{ subject.subjectName.slice(0, 2).toUpperCase() }}
+              </span>
+              <div class="subject-card__body">
+                <h3>{{ subject.subjectName }}</h3>
+                <p>{{ subject.count }} note{{ subject.count > 1 ? 's' : '' }}</p>
+              </div>
+              <span class="subject-card__average numeric">
+                @if (subject.average !== undefined) { {{ subject.average | grade:grades.scaleMax }} } @else { - }
+              </span>
+            </article>
+          }
+        </section>
+      }
+
+      <section class="grade-list" aria-labelledby="details-title">
+        <h2 id="details-title" class="visually-hidden">Détails des notes</h2>
+        <div class="grade-list__items">
+          @for (record of grades.records; track record.id) {
+            <article class="grade-row">
+              <span class="grade-row__subject" aria-hidden="true">
+                {{ record.subjectName.slice(0, 2).toUpperCase() }}
+              </span>
+              <div class="grade-row__body">
+                <h3>{{ record.assessmentName }}</h3>
+                <p>{{ record.subjectName }} · {{ publishedAt(record.publishedAt) }}</p>
+              </div>
+              <div class="grade-row__result">
+                <strong class="numeric">{{ record.score | grade:record.maxScore }}</strong>
+                @if (record.coefficient) { <span>coef. {{ record.coefficient }}</span> }
+              </div>
+            </article>
+          } @empty {
+            <eduops-empty-state
+              title="Aucune note publiée"
+              icon="◉"
+              message="Ton établissement n'a pas encore publié de notes sur cette période." />
+          }
+        </div>
+      </section>
+    </div>
+  }
+}

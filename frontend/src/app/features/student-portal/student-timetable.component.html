@@ -1,0 +1,59 @@
+@if (loading()) {
+  <eduops-loading-state message="Chargement de ton emploi du temps..." />
+} @else if (loadFailed()) {
+  <eduops-error-state
+    title="Emploi du temps indisponible"
+    message="Impossible de récupérer ton emploi du temps pour le moment."
+    (retry)="load()" />
+} @else {
+  @if (data(); as emp) {
+    <div class="timetable-page">
+      <header class="page-header">
+        <div>
+          <p class="page-header__eyebrow">{{ emp.termLabel }}</p>
+          <h1 id="timetable-title">Mon emploi du temps</h1>
+          <p class="page-header__message">Ta semaine de cours, jour par jour.</p>
+        </div>
+      </header>
+
+      <div class="week">
+        @for (day of emp.days; track day.date) {
+          <section class="day" [class.day--today]="isToday(day)">
+            <header class="day__head">
+              <h2 class="day__title">{{ dayTitle(day) }}</h2>
+              @if (isToday(day)) {
+                <span class="badge badge--info badge--pill">Aujourd'hui</span>
+              }
+            </header>
+
+            <div class="day__list">
+              @for (course of day.courses; track course.id) {
+                <article class="course">
+                  <div class="course__time numeric">
+                    <strong>{{ courseTime(course, 'start') }}</strong>
+                    <span>{{ courseTime(course, 'end') }}</span>
+                  </div>
+                  <span class="course__marker" aria-hidden="true"></span>
+                  <div class="course__body">
+                    <h3>{{ course.subjectName }}</h3>
+                    <p>
+                      {{ course.teacherName || 'Enseignant à confirmer' }}
+                      @if (course.roomName) { <span>· {{ course.roomName }}</span> }
+                    </p>
+                  </div>
+                </article>
+              } @empty {
+                <p class="day__empty">Pas de cours ce jour.</p>
+              }
+            </div>
+          </section>
+        } @empty {
+          <eduops-empty-state
+            title="Aucun cours cette semaine"
+            icon="▥"
+            message="Rien de programmé pour le moment." />
+        }
+      </div>
+    </div>
+  }
+}

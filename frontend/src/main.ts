@@ -17,4 +17,4 @@ if (globalThis.crypto && typeof (globalThis.crypto as any).randomUUID !== 'funct
 }
 
 bootstrapApplication(AppComponent, appConfig)
-  .catch((error) => console.error('EduOps failed to start', error));
+  .catch((error) => console.error('Soocloo failed to start', error));

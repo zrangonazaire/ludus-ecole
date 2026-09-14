@@ -1,0 +1,61 @@
+@if (loading()) {
+  <eduops-loading-state message="Chargement de ton profil..." />
+} @else if (loadFailed()) {
+  <eduops-error-state
+    title="Profil indisponible"
+    message="Impossible de récupérer ton profil pour le moment."
+    (retry)="load()" />
+} @else {
+  @if (profile(); as p) {
+    <div class="profile-page">
+      <header class="profile-header">
+        <eduops-avatar [name]="p.fullName" [photoUrl]="p.photoUrl" size="xl" />
+        <div class="profile-header__body">
+          <p class="profile-header__eyebrow">Mon profil</p>
+          <h1 id="profile-title">{{ p.fullName }}</h1>
+          <p class="profile-header__meta">
+            {{ p.classroomName || 'Sans classe' }}
+            @if (p.levelName) { <span>· {{ p.levelName }}</span> }
+            <span>· <strong class="numeric">{{ p.studentNumber }}</strong></span>
+          </p>
+        </div>
+      </header>
+
+      <section class="about">
+        <h2 class="about__title">Informations personnelles</h2>
+        <dl class="about__grid">
+          <div class="about__item">
+            <dt>Sexe</dt>
+            <dd>{{ genderLabel(p.gender) }}</dd>
+          </div>
+          <div class="about__item">
+            <dt>Date de naissance</dt>
+            <dd>{{ birthDate(p.birthDate) }}</dd>
+          </div>
+          <div class="about__item">
+            <dt>Nationalité</dt>
+            <dd>{{ p.nationality || '—' }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="contact">
+        <h2 class="about__title">Coordonnées</h2>
+        <dl class="about__grid">
+          <div class="about__item">
+            <dt>Courriel</dt>
+            <dd>{{ p.email || '—' }}</dd>
+          </div>
+          <div class="about__item">
+            <dt>Téléphone</dt>
+            <dd class="numeric">{{ p.phone || '—' }}</dd>
+          </div>
+          <div class="about__item">
+            <dt>Adresse</dt>
+            <dd>{{ p.addressLine1 || '—' }}{{ p.city ? ' · ' + p.city : '' }}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  }
+}

@@ -1,0 +1,56 @@
+@import 'styles/tokens';
+
+:host { display: block; }
+
+.attendance-page { width: 100%; max-width: 920px; margin: 0 auto; }
+
+.page-header { margin: var(--space-1) 0 var(--space-4); }
+.page-header__eyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.page-header h1 { font-size: clamp(var(--text-xl), 5vw, var(--text-2xl)); }
+.page-header__message { margin: var(--space-1) 0 0; color: var(--text-muted); }
+
+.summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+}
+.summary-card__label { margin: 0; color: var(--text-muted); font-size: var(--text-xs); }
+.summary-card__value { margin: 2px 0 0; color: var(--text-strong); font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; }
+.summary-card__value--alert { color: var(--danger); }
+
+.records__list { display: grid; gap: var(--space-1); }
+.record {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.record:last-child { border-bottom: 0; }
+.record__date { flex: 0 0 auto; color: var(--text-muted); font-size: var(--text-xs); font-weight: 600; text-transform: capitalize; min-width: 120px; }
+.record__body { flex: 1; min-width: 0; }
+.record h3 { margin: 0; font-size: var(--text-sm); }
+.record__body p { margin: 2px 0 0; color: var(--text-muted); font-size: var(--text-xs); }
+
+.record__pill { font-weight: 700; }
+.record__pill--ok { color: var(--success); background: var(--success-bg); }
+.record__pill--absent { color: var(--danger); background: var(--danger-bg); }
+.record__pill--late { color: var(--warning); background: var(--warning-bg); }
+.record__pill--neutral { color: var(--text-muted); background: var(--surface-sunken); }
+
+@include mobile {
+  .summary { grid-template-columns: 1fr 1fr; }
+  .record { flex-wrap: wrap; }
+}

@@ -1,33 +1,72 @@
 <div class="login">
-  <div class="login__panel">
-    <div class="login__brand">
-      <span class="login__logo" aria-hidden="true">E</span>
-      <div>
-        <h1 class="login__title">EduOps</h1>
-        <p class="login__subtitle">{{ schoolName }}</p>
+  <aside class="login__showcase" aria-hidden="true">
+    <div class="login__grid-bg"></div>
+    <div class="login__glow login__glow--one"></div>
+    <div class="login__glow login__glow--two"></div>
+    <div class="login__showcase-inner">
+      <span class="login__brand">
+        <span class="login__mark"><span></span><span></span><span></span></span>
+        <span class="login__word">Soocloo</span>
+      </span>
+      <div class="login__pitch">
+        <p class="login__eyebrow"><span class="login__pulse"></span> La plateforme des écoles qui avancent</p>
+        <h2 class="login__tagline">Simplifiez l’école.<br><em>Multipliez les réussites.</em></h2>
+        <p class="login__lead">Notes, présences, frais scolaires et bulletins — tout votre établissement dans un seul espace.</p>
+        <ul class="login__perks">
+          <li><span class="login__perk-icon">✓</span><div><strong>Bulletins en un clic</strong><span>Moyennes, rangs et mentions calculés.</span></div></li>
+          <li><span class="login__perk-icon">✓</span><div><strong>Frais suivis en temps réel</strong><span>Reçus, relances et impayés pilotés.</span></div></li>
+          <li><span class="login__perk-icon">✓</span><div><strong>Chacun à sa place</strong><span>Direction, enseignants, parents, élèves.</span></div></li>
+        </ul>
       </div>
+      <figure class="login__proof">
+        <blockquote>« Chaque note, chaque présence, chaque paiement raconte la scolarité d’un élève. »</blockquote>
+        <figcaption><span class="login__avatar">D</span><span><strong>Direction témoin</strong><i>École partenaire · Abidjan</i></span></figcaption>
+      </figure>
     </div>
+  </aside>
 
-    <form class="login__form" [formGroup]="form" (ngSubmit)="submit()">
-      <h2 class="login__heading">Connexion</h2>
+  <div class="login__main">
+    <div class="login__topbar">
+      <a class="login__back" routerLink="/">← Retour au site</a>
+      <span class="login__secure"><span class="login__dot"></span> Espace sécurisé</span>
+    </div>
+    <div class="login__panel">
+      <div class="login__mobile-brand">
+        <span class="login__mark login__mark--sm"><span></span><span></span><span></span></span>
+        <span class="login__word">Soocloo</span>
+      </div>
+      <p class="login__school">{{ schoolName }}</p>
+      <h1 class="login__heading">Bon retour parmi nous</h1>
+      <p class="login__sub">Connectez-vous pour retrouver votre établissement.</p>
 
+    <form class="login__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
       @if (errorMessage(); as message) {
-        <p class="login__error" role="alert">{{ message }}</p>
+        <p class="login__error" role="alert">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+          <span>{{ message }}</span>
+        </p>
       }
 
-      <div class="field">
+      <div class="field login__field">
         <label class="field__label" for="login">Identifiant ou email</label>
-        <input id="login" class="input" type="text" formControlName="login"
-               autocomplete="username" placeholder="prénom.nom@eduops.local" />
+        <div class="login__control">
+          <svg class="login__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.4-3.4 4-5 7-5s5.6 1.6 7 5"/></svg>
+          <input id="login" class="input login__input" type="text" formControlName="login"
+                 autocomplete="username" placeholder="prénom.nom@votre-ecole.ci" />
+        </div>
         @if (form.controls.login.touched && form.controls.login.invalid) {
           <span class="field__error">L'identifiant est obligatoire.</span>
         }
       </div>
 
-      <div class="field">
-        <label class="field__label" for="password">Mot de passe</label>
+      <div class="field login__field">
+        <div class="login__label-row">
+          <label class="field__label" for="password">Mot de passe</label>
+          <a class="login__forgot" href="#" (click)="$event.preventDefault()">Mot de passe oublié ?</a>
+        </div>
         <div class="field__control">
-          <input id="password" class="input input--with-action"
+          <svg class="login__icon login__icon--lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+          <input id="password" class="input input--with-action login__input"
                  [type]="passwordVisible() ? 'text' : 'password'"
                  formControlName="password"
                  autocomplete="current-password" placeholder="••••••••" />
@@ -62,11 +101,13 @@
         }
       </div>
 
-      <button type="submit" class="btn btn--primary btn--block btn--lg" [disabled]="submitting()">
-        {{ submitting() ? 'Connexion...' : 'Se connecter' }}
+      <button type="submit" class="btn btn--primary btn--block btn--lg login__submit" [disabled]="submitting()">
+        @if (submitting()) {
+          <span class="login__spinner" aria-hidden="true"></span> Connexion…
+        } @else {
+          Se connecter <span aria-hidden="true">→</span>
+        }
       </button>
-
-      <a class="login__forgot" href="#" (click)="$event.preventDefault()">Mot de passe oublié ?</a>
     </form>
 
     <!--
@@ -74,31 +115,40 @@
       moyen de créer un compte : l'écran existait, mais rien n'y menait.
     -->
     <p class="login__switch">
-      Pas encore d'établissement sur EduOps ?
+      Pas encore d'établissement sur Soocloo ?
       <a routerLink="/signup">Créer mon espace</a>
     </p>
 
     @if (demoMode) {
       <div class="login__demo">
-        <p class="login__demo-title">Mode demonstration — profils disponibles</p>
+        <div class="login__divider"><span>Mode démonstration</span></div>
+        <p class="login__demo-hint">Un clic remplit le formulaire et vous connecte.</p>
         <div class="login__demo-grid">
-          <button type="button" class="btn btn--secondary btn--sm"
-                  (click)="useDemoProfile('admin@eduops.local')">Administration</button>
-          <button type="button" class="btn btn--secondary btn--sm"
-                  (click)="useDemoProfile('prof@eduops.local')">Enseignant</button>
-          <button type="button" class="btn btn--secondary btn--sm"
-                  (click)="useDemoProfile('parent@eduops.local')">Parent</button>
-          <button type="button" class="btn btn--secondary btn--sm"
-                  (click)="useDemoProfile('eleve@eduops.local')">Élève</button>
+          <button type="button" class="login__role"
+                  (click)="useDemoProfile('admin@soocloo.com')">
+            <span class="login__role-icon login__role-icon--admin">◈</span>
+            <span class="login__role-text"><strong>Administration</strong><i>Direction & secrétariat</i></span>
+          </button>
+          <button type="button" class="login__role"
+                  (click)="useDemoProfile('prof@soocloo.com')">
+            <span class="login__role-icon login__role-icon--teacher">✎</span>
+            <span class="login__role-text"><strong>Enseignant</strong><i>Notes & appels</i></span>
+          </button>
+          <button type="button" class="login__role"
+                  (click)="useDemoProfile('parent@soocloo.com')">
+            <span class="login__role-icon login__role-icon--parent">♡</span>
+            <span class="login__role-text"><strong>Parent</strong><i>Suivi de scolarité</i></span>
+          </button>
+          <button type="button" class="login__role"
+                  (click)="useDemoProfile('eleve@soocloo.com')">
+            <span class="login__role-icon login__role-icon--student">✦</span>
+            <span class="login__role-text"><strong>Élève</strong><i>Notes & devoirs</i></span>
+          </button>
         </div>
       </div>
     }
-  </div>
+    </div>
 
-  <aside class="login__aside" aria-hidden="true">
-    <blockquote class="login__quote">
-      <p>Chaque note, chaque présence, chaque paiement raconte la scolarité d'un élève.</p>
-      <footer>EduOps — administration, pedagogie, finance</footer>
-    </blockquote>
-  </aside>
+    <p class="login__foot">© Soocloo · www.soocloo.com — Vos données restent celles de votre école.</p>
+  </div>
 </div>

@@ -1,0 +1,64 @@
+@import 'styles/tokens';
+
+:host { display: block; }
+
+.report-cards-page { width: 100%; max-width: 920px; margin: 0 auto; }
+
+.page-header { margin: var(--space-1) 0 var(--space-4); }
+.page-header__eyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.page-header h1 { font-size: clamp(var(--text-xl), 5vw, var(--text-2xl)); }
+.page-header__message { margin: var(--space-1) 0 0; color: var(--text-muted); }
+
+.cards { display: grid; gap: var(--space-4); }
+
+.card {
+  padding: var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+}
+.card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.card__title { margin: 0; font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; }
+.card__meta { margin: 2px 0 0; color: var(--text-muted); font-size: var(--text-xs); }
+
+.card__figures { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin: var(--space-4) 0 0; }
+.figure { display: flex; flex-direction: column; }
+.figure__label { margin: 0; color: var(--text-muted); font-size: var(--text-xs); }
+.figure__value { margin: 2px 0 0; color: var(--text-strong); font-family: var(--font-display); font-size: var(--text-md); font-weight: 700; }
+
+.card__toggle {
+  display: block;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.card__lines { display: grid; gap: var(--space-1); margin: var(--space-3) 0 0; }
+.card__lines li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--border-light);
+}
+.card__lines li:last-child { border-bottom: 0; }
+.card__lines-subject { color: var(--text-normal); font-size: var(--text-xs); }
+.card__lines-coef { color: var(--text-light); font-size: 10px; }
+.card__lines-average { color: var(--text-strong); font-family: var(--font-display); font-size: var(--text-sm); white-space: nowrap; }
+
+@include mobile {
+  .card__figures { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+}

@@ -103,19 +103,19 @@ export const MOCK_STUDENTS = buildMockStudents();
 
 export const MOCK_TEACHERS: Teacher[] = [
   { id: 'tc-1', employeeNumber: 'ENS-0001', firstName: 'Kouassi', lastName: 'N\'Guessan',
-    fullName: 'Kouassi N\'Guessan', email: 'kouassi.nguessan@eduops.local', phone: '+225 07 00 00 01',
+    fullName: 'Kouassi N\'Guessan', email: 'kouassi.nguessan@soocloo.com', phone: '+225 07 00 00 01',
     speciality: 'Mathematiques', status: 'ACTIVE', subjectNames: ['Mathematiques'], classCount: 4 },
   { id: 'tc-2', employeeNumber: 'ENS-0002', firstName: 'Adjoua', lastName: 'Bamba',
-    fullName: 'Adjoua Bamba', email: 'adjoua.bamba@eduops.local', phone: '+225 07 00 00 02',
+    fullName: 'Adjoua Bamba', email: 'adjoua.bamba@soocloo.com', phone: '+225 07 00 00 02',
     speciality: 'Français', status: 'ACTIVE', subjectNames: ['Français'], classCount: 5 },
   { id: 'tc-3', employeeNumber: 'ENS-0003', firstName: 'Ibrahim', lastName: 'Cisse',
-    fullName: 'Ibrahim Cisse', email: 'ibrahim.cisse@eduops.local', phone: '+225 07 00 00 03',
+    fullName: 'Ibrahim Cisse', email: 'ibrahim.cisse@soocloo.com', phone: '+225 07 00 00 03',
     speciality: 'Sciences physiques', status: 'ACTIVE', subjectNames: ['Physique-Chimie'], classCount: 6 },
   { id: 'tc-4', employeeNumber: 'ENS-0004', firstName: 'Fatou', lastName: 'Diallo',
-    fullName: 'Fatou Diallo', email: 'fatou.diallo@eduops.local', phone: '+225 07 00 00 04',
+    fullName: 'Fatou Diallo', email: 'fatou.diallo@soocloo.com', phone: '+225 07 00 00 04',
     speciality: 'Anglais', status: 'ACTIVE', subjectNames: ['Anglais'], classCount: 6 },
   { id: 'tc-5', employeeNumber: 'ENS-0005', firstName: 'Yao', lastName: 'Kouame',
-    fullName: 'Yao Kouame', email: 'yao.kouame@eduops.local', phone: '+225 07 00 00 05',
+    fullName: 'Yao Kouame', email: 'yao.kouame@soocloo.com', phone: '+225 07 00 00 05',
     speciality: 'SVT', status: 'ON_LEAVE', subjectNames: ['SVT'], classCount: 3 }
 ];
 
