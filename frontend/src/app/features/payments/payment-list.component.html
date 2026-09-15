@@ -7,7 +7,9 @@
       }
     </div>
     <div class="page__actions">
-      <button type="button" class="btn btn--secondary">Exporter</button>
+      <button type="button" class="btn btn--secondary" [disabled]="exporting()" (click)="exportPayments()">
+        {{ exporting() ? 'Export en cours…' : 'Exporter' }}
+      </button>
       <button type="button" class="btn btn--primary"
               *eduopsHasPermission="createPermission" (click)="openCollection()">
         <span aria-hidden="true">+</span> Encaisser un paiement
@@ -22,6 +24,11 @@
              placeholder="Élève, matricule, référence ou numéro de reçu"
              (input)="onSearch($any($event.target).value)" />
     </div>
+    @if (loadError()) {
+      <p role="alert">Impossible de charger les paiements.
+        <button type="button" class="btn btn--secondary" (click)="load()">Réessayer</button>
+      </p>
+    }
     <eduops-data-table
       [columns]="columns" [page]="page()" [loading]="loading()"
       caption="Registre des paiements"
@@ -43,10 +50,11 @@
 
 <ng-template #actionsTpl let-payment>
   <div class="row">
-    <button type="button" class="btn btn--ghost btn--sm">Reçu</button>
+    <button type="button" class="btn btn--ghost btn--sm" (click)="showReceipt(payment)">Reçu</button>
     @if (payment.status === 'VALIDATED') {
       <button type="button" class="btn btn--ghost btn--sm"
               *eduopsHasPermission="cancelPermission"
+              [disabled]="cancelling()"
               (click)="askCancel(payment)">Annuler</button>
     }
   </div>
@@ -105,6 +113,7 @@
         </section>
       </div>
       <footer class="drawer__foot drawer__foot--success">
+        <button type="button" class="btn btn--secondary" (click)="showReceipt(result)">Voir le reçu</button>
         <button type="button" class="btn btn--secondary" (click)="collectAnother()">
           Encaisser un autre paiement
         </button>
@@ -207,7 +216,7 @@
                 <label class="field__label field__label--required" for="payment-amount">Montant reçu</label>
                 <div class="amount-input">
                   <input id="payment-amount" class="input" type="number" inputmode="decimal"
-                         min="0.01" step="1000" formControlName="amount"
+                         min="0.01" step="0.01" formControlName="amount"
                          [class.is-invalid]="paymentForm.controls.amount.touched && paymentForm.controls.amount.invalid" />
                   <span>{{ summary.currency }}</span>
                 </div>
@@ -344,6 +353,60 @@
       </form>
     }
   </aside>
+}
+
+@if (receipt() || receiptLoading()) {
+  <div class="receipt-overlay">
+    <button type="button" class="drawer-backdrop" aria-label="Fermer le reçu" (click)="closeReceipt()"></button>
+    <aside class="drawer drawer--wide" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
+      <header class="drawer__head">
+        <h2 id="receipt-title">Reçu de paiement</h2>
+        <button type="button" class="drawer__close" aria-label="Fermer le reçu" (click)="closeReceipt()">×</button>
+      </header>
+      <div class="drawer__body">
+        @if (receiptLoading()) { <p role="status">Chargement du reçu…</p> }
+        @if (receipt(); as payment) {
+          <article id="payment-receipt" class="receipt-card">
+            <div class="receipt-card__head">
+              <strong>{{ payment.receiptNumber ?? payment.paymentReference }}</strong>
+              <strong>{{ payment.status | statusLabel }}</strong>
+            </div>
+            @if (payment.status === 'CANCELLED') {
+              <p class="inline-message inline-message--warning">ANNULÉ — Ce reçu ne justifie plus un règlement.</p>
+            }
+            <div class="receipt-card__amount money">{{ payment.amount | money:payment.currency }}</div>
+            <dl class="receipt-card__details">
+              <div><dt>Élève</dt><dd>{{ payment.studentName }}</dd></div>
+              <div><dt>Matricule</dt><dd>{{ payment.studentNumber }}</dd></div>
+              <div><dt>Date</dt><dd>{{ payment.paymentDate | date:'dd/MM/yyyy' }}</dd></div>
+              <div><dt>Mode</dt><dd>{{ payment.paymentMethod | statusLabel }}</dd></div>
+              <div><dt>Référence du paiement</dt><dd>{{ payment.paymentReference }}</dd></div>
+              @if (payment.payerName) { <div><dt>Payeur</dt><dd>{{ payment.payerName }}</dd></div> }
+              @if (payment.externalReference) { <div><dt>Référence externe</dt><dd>{{ payment.externalReference }}</dd></div> }
+              @if (payment.status === 'VALIDATED') {
+                <div><dt>Montant affecté</dt><dd>{{ payment.allocatedAmount | money:payment.currency }}</dd></div>
+                <div><dt>Avance non affectée</dt><dd>{{ payment.unallocatedAmount | money:payment.currency }}</dd></div>
+              }
+            </dl>
+            @if (payment.allocations.length) {
+              <section class="allocation-card">
+                <h3>Affectations</h3>
+                <ul>
+                  @for (allocation of payment.allocations; track allocation.id) {
+                    <li><span>{{ allocation.feeLabel }}</span><strong>{{ allocation.amount | money:payment.currency }}</strong></li>
+                  }
+                </ul>
+              </section>
+            }
+          </article>
+        }
+      </div>
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeReceipt()">Fermer</button>
+        <button type="button" class="btn btn--primary" [disabled]="!receipt()" (click)="printReceipt()">Imprimer / PDF</button>
+      </footer>
+    </aside>
+  </div>
 }
 
 <eduops-confirm-dialog

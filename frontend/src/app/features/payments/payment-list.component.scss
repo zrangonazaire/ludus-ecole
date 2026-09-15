@@ -445,6 +445,8 @@
   }
 }
 
+.receipt-overlay { position: fixed; inset: 0; z-index: var(--z-modal); }
+
 @include mobile {
   .register-search { max-width: none; }
   .drawer, .drawer--wide { width: 100vw; }

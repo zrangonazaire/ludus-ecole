@@ -5,6 +5,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -25,12 +28,14 @@ public class PaymentCreateRequest {
 
     @NotNull
     @DecimalMin(value = "0.01", message = "The amount must be greater than zero")
+    @Digits(integer = 13, fraction = 2)
     @Schema(example = "200000.00")
     private BigDecimal amount;
 
     @NotNull
     private PaymentMethod paymentMethod;
 
+    @PastOrPresent
     private LocalDate paymentDate;
 
     @Size(max = 120)
@@ -44,7 +49,7 @@ public class PaymentCreateRequest {
      * Idempotency key (rule 13). Sending the same operationId twice returns the
      * first payment instead of creating a duplicate.
      */
-    @NotNull
+    @NotBlank
     @Size(max = 120)
     @Schema(example = "3f9a1b2c-8d4e-4f6a-9b1c-2d3e4f5a6b7c",
             description = "Client-generated UUID; guarantees the payment is recorded once")
@@ -52,10 +57,12 @@ public class PaymentCreateRequest {
 
     @Schema(description = "Leave empty to let the server settle the oldest instalments first")
     @Valid
-    private List<PaymentAllocationRequest> allocations = new ArrayList<>();
+    @NotNull
+    private List<@NotNull PaymentAllocationRequest> allocations = new ArrayList<>();
 
     private UUID cashSessionId;
 
+    @Size(max = 1000)
     private String notes;
 
     public UUID getStudentId() {

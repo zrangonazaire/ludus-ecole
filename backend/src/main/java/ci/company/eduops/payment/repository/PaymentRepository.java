@@ -51,12 +51,15 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
            SELECT p FROM Payment p
            WHERE p.academicYear.id = :academicYearId
              AND (:status = '' OR CAST(p.status AS String) = :status)
-             AND (:from IS NULL OR p.paymentDate >= :from)
-             AND (:to   IS NULL OR p.paymentDate <= :to)
+             AND (CAST(:from AS LocalDate) IS NULL OR p.paymentDate >= :from)
+             AND (CAST(:to AS LocalDate) IS NULL OR p.paymentDate <= :to)
              AND (:search = ''
                   OR lower(p.paymentReference)      LIKE lower(concat('%', :search, '%'))
                   OR lower(p.student.lastName)      LIKE lower(concat('%', :search, '%'))
-                  OR lower(p.student.studentNumber) LIKE lower(concat('%', :search, '%')))
+                  OR lower(p.student.firstName)     LIKE lower(concat('%', :search, '%'))
+                  OR lower(p.student.studentNumber) LIKE lower(concat('%', :search, '%'))
+                  OR EXISTS (SELECT r.id FROM Receipt r WHERE r.payment = p
+                      AND lower(r.receiptNumber) LIKE lower(concat('%', :search, '%'))))
            ORDER BY p.paymentDate DESC, p.createdAt DESC
            """)
     Page<Payment> search(@Param("academicYearId") UUID academicYearId,

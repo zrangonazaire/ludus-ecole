@@ -1,23 +1,14 @@
-<<<<<<< HEAD
 package ci.company.eduops.level.service;
 
 import ci.company.eduops.admission.repository.AdmissionApplicationRepository;
 import ci.company.eduops.audit.service.AuditService;
 import ci.company.eduops.classroom.domain.ClassroomStatus;
-=======
-﻿package ci.company.eduops.level.service;
-
-import ci.company.eduops.audit.service.AuditService;
->>>>>>> 13f4202 (envoi de maj)
 import ci.company.eduops.classroom.repository.ClassroomRepository;
 import ci.company.eduops.common.domain.CommonStatus;
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.exception.ErrorCode;
 import ci.company.eduops.common.tenant.TenantContext;
-<<<<<<< HEAD
 import ci.company.eduops.curriculum.repository.CurriculumRepository;
-=======
->>>>>>> 13f4202 (envoi de maj)
 import ci.company.eduops.cycle.domain.Cycle;
 import ci.company.eduops.cycle.repository.CycleRepository;
 import ci.company.eduops.level.domain.Level;
@@ -30,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
-<<<<<<< HEAD
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,18 +36,10 @@ import java.util.UUID;
  * it from the pickers while keeping those references readable — but only when
  * nothing active still depends on it.</p>
  */
-=======
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
-
-/** Service pour la gestion des niveaux scolaires. */
->>>>>>> 13f4202 (envoi de maj)
 @Service
 public class LevelService {
 
     private static final Logger log = LoggerFactory.getLogger(LevelService.class);
-<<<<<<< HEAD
 
     private final LevelRepository levelRepository;
     private final CycleRepository cycleRepository;
@@ -97,31 +79,10 @@ public class LevelService {
             result.add(toResponse(level));
         }
         return result;
-=======
-    private final LevelRepository levelRepository;
-    private final CycleRepository cycleRepository;
-    private final ClassroomRepository classroomRepository;
-    private final AuditService auditService;
-
-    public LevelService(LevelRepository levelRepository, CycleRepository cycleRepository,
-                        ClassroomRepository classroomRepository, AuditService auditService) {
-        this.levelRepository = levelRepository;
-        this.cycleRepository = cycleRepository;
-        this.classroomRepository = classroomRepository;
-        this.auditService = auditService;
-    }
-
-    @Transactional(readOnly = true)
-    public List<LevelResponse> list() {
-        UUID schoolId = requireSchoolId();
-        List<Level> levels = levelRepository.findBySchool(schoolId, CommonStatus.ACTIVE);
-        return levels.stream().map(this::toResponse).toList();
->>>>>>> 13f4202 (envoi de maj)
     }
 
     @Transactional(readOnly = true)
     public LevelResponse getById(UUID id) {
-<<<<<<< HEAD
         return toResponse(require(id));
     }
 
@@ -148,42 +109,10 @@ public class LevelService {
         auditService.logCreate("Level", saved.getId(), saved.getName(), snapshot(saved));
         log.info("Niveau {} ({}) créé dans le cycle {}", saved.getName(), saved.getCode(),
                 cycle.getName());
-=======
-        return toResponse(requireLevel(id));
-    }
-
-    @Transactional
-    public LevelResponse create(LevelUpsertRequest req) {
-        Cycle cycle = requireCycle(req.getCycleId());
-        if (levelRepository.existsByCycleIdAndCode(req.getCycleId(),
-                normaliseCode(req.getCode()))) {
-            throw new BusinessException(ErrorCode.CONFLICT,
-                    "Ce code est dÃ©jÃ  utilisÃ© dans ce cycle.");
-        }
-        if (req.getSequence() < 1) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
-                    "La sÃ©quence doit Ãªtre positive.");
-        }
-        Level level = new Level();
-        level.setCycle(cycle);
-        level.setCode(normaliseCode(req.getCode()));
-        level.setName(req.getName().trim());
-        level.setShortName(clean(req.getShortName()));
-        level.setSequence(req.getSequence());
-        if (req.getNextLevelId() != null) {
-            level.setNextLevel(levelRepository.getReferenceById(req.getNextLevelId()));
-        }
-        level.setTerminal(req.getTerminal() != null && req.getTerminal());
-        level.setStatus(CommonStatus.ACTIVE);
-        Level saved = levelRepository.save(level);
-        auditService.logCreate("Level", saved.getId(), saved.getName(), cycle.getName());
-        log.info("Created level {} for cycle {}", saved.getName(), cycle.getName());
->>>>>>> 13f4202 (envoi de maj)
         return toResponse(saved);
     }
 
     @Transactional
-<<<<<<< HEAD
     public LevelResponse update(UUID id, LevelUpsertRequest request) {
         Level level = require(id);
 
@@ -228,70 +157,11 @@ public class LevelService {
         level.setStatus(CommonStatus.ARCHIVED);
         Level saved = levelRepository.save(level);
         auditService.logCancel("Level", saved.getId(), saved.getName(), null);
-=======
-    public LevelResponse update(UUID id, LevelUpsertRequest req) {
-        Level level = requireLevel(id);
-        if (!level.getCycle().getId().equals(req.getCycleId())) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
-                    "Le cycle ne peut pas Ãªtre modifiÃ©.");
-        }
-        if (req.getCode() != null && !req.getCode().equals(level.getCode())) {
-            if (levelRepository.existsByCycleIdAndCode(req.getCycleId(),
-                    normaliseCode(req.getCode()))) {
-                throw new BusinessException(ErrorCode.CONFLICT,
-                        "Ce code est dÃ©jÃ  utilisÃ© dans ce cycle.");
-            }
-        }
-        if (req.getNextLevelId() != null) {
-            Level next = levelRepository.findById(req.getNextLevelId()).orElse(null);
-            if (next == null) throw new BusinessException(ErrorCode.LEVEL_NOT_FOUND);
-            if (!next.getCycle().getId().equals(level.getCycle().getId())) {
-                throw new BusinessException(ErrorCode.VALIDATION_ERROR,
-                        "Le niveau de promotion doit appartenir au mÃªme cycle.");
-            }
-            if (next.getId().equals(id)) {
-                throw new BusinessException(ErrorCode.VALIDATION_ERROR,
-                        "Un niveau ne peut pas se rÃ©fÃ©rencer lui-mÃªme.");
-            }
-        }
-        level.setCode(normaliseCode(req.getCode()));
-        level.setName(req.getName().trim());
-        level.setShortName(clean(req.getShortName()));
-        level.setSequence(req.getSequence());
-        if (req.getNextLevelId() != null) {
-            level.setNextLevel(levelRepository.getReferenceById(req.getNextLevelId()));
-        } else {
-            level.setNextLevel(null);
-        }
-        level.setTerminal(req.getTerminal() != null && req.getTerminal());
-        Level saved = levelRepository.save(level);
-        auditService.logUpdate("Level", saved.getId(), saved.getName(),
-                level.getCycle().getName());
-        return toResponse(saved);
-    }
-
-    @Transactional
-    public LevelResponse archive(UUID id) {
-        Level level = requireLevel(id);
-        long active = classroomRepository.countByLevelIdAndStatus(id, "ACTIVE");
-        if (active > 0) {
-            throw new BusinessException(ErrorCode.CONFLICT,
-                    "Impossible d'archiver : " + active + " classe(s) active(s).");
-        }
-        if (level.getStatus() == CommonStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.CONFLICT, "DÃ©jÃ  archivÃ©.");
-        }
-        level.setStatus(CommonStatus.ARCHIVED);
-        Level saved = levelRepository.save(level);
-        auditService.logArchive("Level", saved.getId(), saved.getName(),
-                level.getCycle().getName());
->>>>>>> 13f4202 (envoi de maj)
         return toResponse(saved);
     }
 
     @Transactional
     public LevelResponse restore(UUID id) {
-<<<<<<< HEAD
         Level level = require(id);
         level.setStatus(CommonStatus.ACTIVE);
         Level saved = levelRepository.save(level);
@@ -371,58 +241,11 @@ public class LevelService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.LEVEL_NOT_FOUND));
         // Belt and braces: RLS already scopes the query.
         if (!level.getCycle().getSchool().getId().equals(requireSchool())) {
-=======
-        Level level = requireLevel(id);
-        if (level.getStatus() != CommonStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.CONFLICT, "Ce niveau n'est pas archivÃ©.");
-        }
-        level.setStatus(CommonStatus.ACTIVE);
-        Level saved = levelRepository.save(level);
-        auditService.logRestore("Level", saved.getId(), saved.getName(),
-                level.getCycle().getName());
-        return toResponse(saved);
-    }
-
-    private LevelResponse toResponse(Level level) {
-        LevelResponse dto = new LevelResponse();
-        dto.setId(level.getId());
-        dto.setCycleId(level.getCycle().getId());
-        dto.setCycleName(level.getCycle().getName());
-        dto.setCode(level.getCode());
-        dto.setName(level.getName());
-        dto.setShortName(level.getShortName());
-        dto.setSequence(level.getSequence());
-        if (level.getNextLevel() != null) {
-            dto.setNextLevelId(level.getNextLevel().getId());
-            dto.setNextLevelName(level.getNextLevel().getName());
-        }
-        dto.setTerminal(level.isTerminal());
-        dto.setStatus(level.getStatus().name());
-        return dto;
-    }
-
-    private UUID requireSchoolId() {
-        UUID schoolId = TenantContext.getSchoolId();
-        if (schoolId == null) throw new BusinessException(ErrorCode.SCHOOL_NOT_FOUND);
-        return schoolId;
-    }
-
-    private Cycle requireCycle(UUID cycleId) {
-        return cycleRepository.findById(cycleId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CYCLE_NOT_FOUND));
-    }
-
-    private Level requireLevel(UUID id) {
-        Level level = levelRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.LEVEL_NOT_FOUND));
-        if (!level.getCycle().getSchool().getId().equals(requireSchoolId())) {
->>>>>>> 13f4202 (envoi de maj)
             throw new BusinessException(ErrorCode.LEVEL_NOT_FOUND);
         }
         return level;
     }
 
-<<<<<<< HEAD
     private LevelResponse toResponse(Level level) {
         LevelResponse response = new LevelResponse();
         response.setId(level.getId());
@@ -482,17 +305,5 @@ public class LevelService {
                     "Le code doit contenir au moins une lettre ou un chiffre.");
         }
         return code;
-=======
-    private static String normaliseCode(String value) {
-        String stripped = Normalizer.normalize(value.trim(), Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "");
-        return stripped.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9-]+", "");
-    }
-
-    private static String clean(String value) {
-        if (value == null) return null;
-        String t = value.trim();
-        return t.isEmpty() ? null : t;
->>>>>>> 13f4202 (envoi de maj)
     }
 }

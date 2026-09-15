@@ -518,6 +518,26 @@ export class MockGradeDataSource implements GradeDataSource {
 export class MockFinanceDataSource implements FinanceDataSource {
   private readonly paymentsByOperation = new Map<string, Payment>();
 
+  getPayment(id: string): Observable<Payment> {
+    const payment = MOCK_RECENT_PAYMENTS.find((item) => item.id === id);
+    return payment ? of({ ...payment }).pipe(delay(LATENCY))
+      : throwError(() => new Error('Paiement introuvable.'));
+  }
+
+  cancelPayment(id: string, reason: string): Observable<Payment> {
+    return defer(() => {
+      const payment = MOCK_RECENT_PAYMENTS.find((item) => item.id === id);
+      if (!payment || payment.status !== 'VALIDATED' || !reason.trim()) {
+        return throwError(() => new Error('Annulation impossible.'));
+      }
+      payment.status = 'CANCELLED';
+      payment.allocatedAmount = 0;
+      payment.unallocatedAmount = 0;
+      payment.allocations = [];
+      return of({ ...payment });
+    }).pipe(delay(LATENCY));
+  }
+
   searchPayments(query: PageQuery): Observable<PageResponse<Payment>> {
     const filtered = MOCK_RECENT_PAYMENTS.filter((p) =>
       matches([p.studentName, p.studentNumber, p.paymentReference, p.receiptNumber ?? ''],

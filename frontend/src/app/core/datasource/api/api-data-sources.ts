@@ -314,6 +314,14 @@ export class ApiFinanceDataSource implements FinanceDataSource {
     return this.http.post<Payment>(`${API}/payments`, payload);
   }
 
+  getPayment(id: string): Observable<Payment> {
+    return this.http.get<Payment>(`${API}/payments/${id}`);
+  }
+
+  cancelPayment(id: string, reason: string): Observable<Payment> {
+    return this.http.post<Payment>(`${API}/payments/${id}/cancel`, { reason });
+  }
+
   getStudentSummary(studentId: string): Observable<FinancialSummary> {
     return this.http.get<FinancialSummary>(`${API}/students/${studentId}/financial-summary`);
   }

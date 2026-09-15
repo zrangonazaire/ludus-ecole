@@ -167,6 +167,8 @@ export interface GradeDataSource {
 export interface FinanceDataSource {
   searchPayments(query: PageQuery): Observable<PageResponse<Payment>>;
   recordPayment(payload: unknown): Observable<Payment>;
+  getPayment(id: string): Observable<Payment>;
+  cancelPayment(id: string, reason: string): Observable<Payment>;
   getStudentSummary(studentId: string): Observable<FinancialSummary>;
   outstanding(query: OutstandingQuery): Observable<OutstandingBoard>;
 }

@@ -7,7 +7,8 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ReplaySubject, catchError, debounceTime, of, switchMap } from 'rxjs';
+import { EMPTY, ReplaySubject, Subscription, catchError, debounceTime, expand, finalize, of, reduce, switchMap } from 'rxjs';
+import { buildXlsx, saveBlob } from '@core/utils/spreadsheet-writer';
 import { FINANCE_DATA_SOURCE, STUDENT_DATA_SOURCE } from '@core/datasource/data-source';
 import { PageResponse, PaymentMethod } from '@core/models/common.models';
 import {
@@ -82,6 +83,14 @@ export class PaymentListComponent implements OnInit {
   readonly page = signal<PageResponse<Payment> | null>(null);
   readonly loading = signal(true);
   readonly cancelTarget = signal<Payment | null>(null);
+  readonly cancelling = signal(false);
+  readonly receipt = signal<Payment | null>(null);
+  readonly receiptLoading = signal(false);
+  readonly exporting = signal(false);
+  readonly loadError = signal(false);
+  private summaryRequest?: Subscription;
+  private listRequest?: Subscription;
+  private receiptRequest?: Subscription;
 
   readonly panelOpen = signal(false);
   readonly studentSearch = signal('');
@@ -207,8 +216,10 @@ export class PaymentListComponent implements OnInit {
   }
 
   load(): void {
+    this.listRequest?.unsubscribe();
     this.loading.set(true);
-    this.dataSource
+    this.loadError.set(false);
+    this.listRequest = this.dataSource
       .searchPayments({ page: this.currentPage, size: 20, search: this.search || undefined })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -216,7 +227,10 @@ export class PaymentListComponent implements OnInit {
           this.page.set(page);
           this.loading.set(false);
         },
-        error: () => this.loading.set(false)
+        error: () => {
+          this.loading.set(false);
+          this.loadError.set(true);
+        }
       });
   }
 
@@ -249,6 +263,7 @@ export class PaymentListComponent implements OnInit {
   }
 
   selectStudent(student: StudentSummary): void {
+    this.summaryRequest?.unsubscribe();
     this.selectedStudent.set(student);
     this.studentSearch.set(student.fullName);
     this.studentResults.set([]);
@@ -256,7 +271,7 @@ export class PaymentListComponent implements OnInit {
     this.summaryLoading.set(true);
     this.paymentForm.controls.payerName.setValue('');
 
-    this.dataSource.getStudentSummary(student.id)
+    this.summaryRequest = this.dataSource.getStudentSummary(student.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (summary) => {
@@ -274,6 +289,8 @@ export class PaymentListComponent implements OnInit {
   }
 
   changeStudent(): void {
+    this.summaryRequest?.unsubscribe();
+    this.summaryLoading.set(false);
     this.selectedStudent.set(null);
     this.financialSummary.set(null);
     this.studentSearch.set('');
@@ -305,7 +322,8 @@ export class PaymentListComponent implements OnInit {
   canSubmit(): boolean {
     const referencePresent = this.paymentForm.controls.externalReference.value.trim().length > 0;
     return !!this.selectedStudent() && !!this.financialSummary() && !this.summaryLoading()
-      && !this.saving() && this.paymentForm.valid
+      && !this.saving() && !this.paymentResult() && this.paymentForm.valid
+      && this.paymentForm.controls.paymentDate.value <= this.localToday()
       && (!this.referenceRequired() || referencePresent);
   }
 
@@ -366,22 +384,104 @@ export class PaymentListComponent implements OnInit {
       + `Aucune donnée n'est supprimée.`;
   }
 
-  confirmCancel(_reason: string): void {
+  confirmCancel(reason: string): void {
     const payment = this.cancelTarget();
+    if (!payment || this.cancelling() || !reason.trim()) return;
     this.cancelTarget.set(null);
-    if (!payment) return;
-    // The cancellation endpoint will be connected with the receipt viewer.
-    this.notifications.success(
-      `Demande d'annulation enregistrée pour ${payment.paymentReference}.`);
-    this.load();
+    this.cancelling.set(true);
+    this.dataSource.cancelPayment(payment.id, reason.trim())
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.cancelling.set(false)))
+      .subscribe({
+        next: (cancelled) => {
+          if (this.receipt()?.id === cancelled.id) this.receipt.set(cancelled);
+          this.notifications.success(`Le paiement ${cancelled.paymentReference} a été annulé.`);
+          this.load();
+        },
+        error: () => this.notifications.error("Le paiement n'a pas pu être annulé. Réessayez.")
+      });
+  }
+
+  showReceipt(payment: Payment): void {
+    this.receiptRequest?.unsubscribe();
+    this.receipt.set(null);
+    this.receiptLoading.set(true);
+    this.receiptRequest = this.dataSource.getPayment(payment.id)
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.receiptLoading.set(false)))
+      .subscribe({
+        next: (result) => this.receipt.set(result),
+        error: () => this.notifications.error('Impossible de charger le reçu.')
+      });
+  }
+
+  closeReceipt(): void {
+    this.receiptRequest?.unsubscribe();
+    this.receipt.set(null);
+    this.receiptLoading.set(false);
+  }
+
+  printReceipt(): void {
+    const content = document.getElementById('payment-receipt');
+    if (!content || !this.receipt()) return;
+    const preview = window.open('', '_blank', 'width=800,height=900');
+    if (!preview) {
+      this.notifications.error("Autorisez l'ouverture de la fenêtre pour imprimer le reçu.");
+      return;
+    }
+    preview.opener = null;
+    preview.document.title = this.receipt()!.receiptNumber ?? 'Reçu de paiement';
+    const style = preview.document.createElement('style');
+    style.textContent = `body { font: 15px Arial, sans-serif; color: #172338; padding: 32px; }
+      .receipt-card__head { display: flex; justify-content: space-between; border-bottom: 2px solid; padding-bottom: 16px; }
+      .receipt-card__amount { font-size: 32px; margin: 24px 0; }
+      dl { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      dt { color: #555; } dd { margin: 6px 0 0; overflow-wrap: anywhere; }
+      li { display: flex; justify-content: space-between; padding: 10px 0; }
+      ul { padding: 0; } @page { margin: 16mm; }`;
+    preview.document.head.appendChild(style);
+    preview.document.body.appendChild(content.cloneNode(true));
+    preview.focus();
+    preview.setTimeout(() => preview.print(), 150);
+  }
+
+  exportPayments(): void {
+    if (this.exporting()) return;
+    const search = this.search || undefined;
+    this.exporting.set(true);
+    this.dataSource.searchPayments({ page: 0, size: 100, search })
+      .pipe(
+        expand((page) => page.last || page.content.length === 0 ? EMPTY
+          : this.dataSource.searchPayments({ page: page.page + 1, size: 100, search })),
+        reduce((payments, page) => payments.concat(page.content), [] as Payment[]),
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.exporting.set(false))
+      ).subscribe({
+        next: (payments) => {
+          const labels = new StatusLabelPipe();
+          saveBlob(buildXlsx({
+            sheetName: 'Paiements',
+            columns: ['Date', 'Référence', 'Reçu', 'Élève', 'Matricule', 'Montant', 'Devise', 'Mode', 'Statut']
+              .map((header, index) => ({ header, width: index === 3 ? 32 : 22, kind: index === 5 ? 'number' as const : 'text' as const })),
+            rows: payments.map((payment) => [payment.paymentDate, payment.paymentReference,
+              payment.receiptNumber, payment.studentName, payment.studentNumber, payment.amount,
+              payment.currency, labels.transform(payment.paymentMethod), labels.transform(payment.status)])
+          }), `paiements-${this.localToday()}.xlsx`);
+          this.notifications.success(`${payments.length} paiement(s) exporté(s).`);
+        },
+        error: () => this.notifications.error("L'export a échoué. Réessayez.")
+      });
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    if (this.receipt() || this.receiptLoading()) {
+      this.closeReceipt();
+      return;
+    }
     if (this.panelOpen()) this.closeCollection();
   }
 
   private resetCollection(): void {
+    this.summaryRequest?.unsubscribe();
     this.selectedStudent.set(null);
     this.financialSummary.set(null);
     this.studentResults.set([]);

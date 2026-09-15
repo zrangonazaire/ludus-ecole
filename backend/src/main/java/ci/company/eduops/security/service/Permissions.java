@@ -33,13 +33,8 @@ public final class Permissions {
     // school / academic
     public static final String SCHOOL_VIEW = "SCHOOL_VIEW";
     public static final String SCHOOL_MANAGE = "SCHOOL_MANAGE";
-<<<<<<< HEAD
     public static final String CAMPUS_VIEW = "CAMPUS_VIEW";
     public static final String CAMPUS_MANAGE = "CAMPUS_MANAGE";
-=======
-    public static final String LEVEL_VIEW = "LEVEL_VIEW";
-    public static final String LEVEL_MANAGE = "LEVEL_MANAGE";
->>>>>>> 13f4202 (envoi de maj)
     public static final String ACADEMIC_YEAR_VIEW = "ACADEMIC_YEAR_VIEW";
     public static final String ACADEMIC_YEAR_MANAGE = "ACADEMIC_YEAR_MANAGE";
     public static final String CLASS_VIEW = "CLASS_VIEW";
