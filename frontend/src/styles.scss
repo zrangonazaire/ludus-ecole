@@ -9,6 +9,20 @@
 @import 'styles/base';
 @import 'styles/components';
 
+/* A light backing keeps the navy wordmark readable in dark navigation. */
+.soocloo-logo {
+  display: block;
+  width: 160px;
+  height: 60px;
+  max-width: 100%;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 8px;
+}
+.soocloo-logo--large { width: 240px; height: 89px; }
+.soocloo-logo--compact { width: 108px; height: 40px; }
+
 /* =====================================================================
    Impression.
 

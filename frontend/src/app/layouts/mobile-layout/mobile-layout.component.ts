@@ -26,7 +26,7 @@ export interface TabItem {
     <div class="portal">
       <header class="portal__header">
         <div class="portal__identity">
-          <span class="portal__logo" aria-hidden="true">E</span>
+          <img class="soocloo-logo soocloo-logo--compact" src="assets/branding/soocloo-logo.png" alt="Soocloo" width="108" height="40">
           <div>
             <p class="portal__title">{{ title }}</p>
             <p class="portal__subtitle">{{ subtitle }}</p>

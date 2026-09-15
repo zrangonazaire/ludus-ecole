@@ -78,8 +78,8 @@ eduops:
   cors:
     allowed-origins: "https://soocloo.com,https://www.soocloo.com"
   app:
-    base-url: "https://www.soocloo.com"
-    api-url: "https://www.soocloo.com"
+    base-url: "https://soocloo.com"
+    api-url: "https://soocloo.com"
   storage:
     location: /app/storage
   bootstrap:

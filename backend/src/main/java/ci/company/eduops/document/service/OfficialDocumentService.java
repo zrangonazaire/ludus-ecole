@@ -182,6 +182,15 @@ public class OfficialDocumentService {
         return layout;
     }
 
+    @Transactional
+    public String saveSchoolLogo(String logo) {
+        DocumentLayoutDto layout = readLayout(currentSchool());
+        layout.setLogoDataUrl(logo);
+        layout.setShowLogo(logo != null && !logo.isBlank());
+        saveLayout(layout);
+        return logo;
+    }
+
     private School currentSchool() {
         return schoolRepository.findById(TenantContext.getSchoolId())
                 .orElseThrow(() -> BusinessException.of(ErrorCode.SCHOOL_NOT_FOUND));

@@ -1,0 +1,8 @@
+www.soocloo.com {
+    redir https://soocloo.com{uri} permanent
+}
+
+soocloo.com {
+    encode zstd gzip
+    reverse_proxy gateway:80
+}

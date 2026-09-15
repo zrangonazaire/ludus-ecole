@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { SchoolLogoComponent } from './school-logo.component';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@core/auth/auth.service';
@@ -30,7 +31,7 @@ import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.co
 @Component({
   selector: 'eduops-administration',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LoadingStateComponent, ErrorStateComponent],
+  imports: [CommonModule, ReactiveFormsModule, LoadingStateComponent, ErrorStateComponent, SchoolLogoComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './administration.component.html',
   styleUrl: './administration.component.scss'
