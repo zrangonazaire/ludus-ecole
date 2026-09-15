@@ -6,19 +6,20 @@ import {
   OFFICIAL_DOCUMENT_DATA_SOURCE, OPTION_DATA_SOURCE, REFERENCE_DATA_SOURCE, TRANSFER_DATA_SOURCE, REPORT_CARD_DATA_SOURCE, HEALTH_DATA_SOURCE, FAMILY_REQUEST_DATA_SOURCE,
   STUDENT_DATA_SOURCE, STUDENT_PORTAL_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE,
   CURRICULUM_DATA_SOURCE, FEE_DATA_SOURCE, ACCESS_PROFILE_DATA_SOURCE, ADMISSION_DATA_SOURCE,
-  GUARDIAN_DATA_SOURCE, COUNCIL_DATA_SOURCE
+    GUARDIAN_DATA_SOURCE, COUNCIL_DATA_SOURCE, LEVEL_DATA_SOURCE, CAMPUS_DATA_SOURCE
 } from './data-source';
 import {
   MockAttendanceDataSource, MockClassroomDataSource, MockDashboardDataSource,
   MockEnrollmentDataSource, MockFinanceDataSource, MockGradeDataSource,
   MockOptionDataSource, MockReferenceDataSource, MockTransferDataSource, MockHealthDataSource, MockFamilyRequestDataSource, MockReportCardDataSource, MockStudentDataSource, MockTeacherDataSource,
-  MockTimetableDataSource, MockCurriculumDataSource, MockFeeDataSource, MockCouncilDataSource
+    MockTimetableDataSource, MockCurriculumDataSource, MockFeeDataSource, MockCouncilDataSource
 } from './mock/mock-data-sources';
 import {
   ApiAttendanceDataSource, ApiClassroomDataSource, ApiDashboardDataSource,
   ApiEnrollmentDataSource, ApiFinanceDataSource, ApiGradeDataSource,
   ApiOptionDataSource, ApiReferenceDataSource, ApiTransferDataSource, ApiHealthDataSource, ApiFamilyRequestDataSource, ApiReportCardDataSource, ApiStudentDataSource, ApiTeacherDataSource,
-  ApiTimetableDataSource, ApiCurriculumDataSource, ApiFeeDataSource, ApiCouncilDataSource
+  ApiTimetableDataSource, ApiCurriculumDataSource, ApiFeeDataSource, ApiCouncilDataSource,
+  ApiLevelDataSource
 } from './api/api-data-sources';
 import { MockOfficialDocumentDataSource } from './mock/mock-official-document-data-source';
 import { ApiOfficialDocumentDataSource } from './api/api-official-document-data-source';
@@ -27,8 +28,11 @@ import { ApiStudentPortalDataSource } from './api/api-student-portal-data-source
 import { MockAccessProfileDataSource } from './mock/mock-access-profile-data-source';
 import { ApiAccessProfileDataSource } from './api/api-access-profile-data-source';
 import { MockAdmissionDataSource } from './mock/mock-admission-data-source';
+import { MockLevelDataSource } from './mock/mock-level-data-source';
+import { MockCampusDataSource } from './mock/mock-campus-data-source';
 import { ApiAdmissionDataSource } from './api/api-admission-data-source';
 import { ApiGuardianDataSource } from './api/api-guardian-data-source';
+import { ApiCampusDataSource } from './api/api-campus-data-source';
 
 /**
  * The single switch between demo mode and the real backend (section 78).
@@ -65,6 +69,10 @@ export const dataSourceProviders: Provider[] = [
     useClass: useMock ? MockAccessProfileDataSource : ApiAccessProfileDataSource },
   { provide: ADMISSION_DATA_SOURCE,
     useClass: useMock ? MockAdmissionDataSource : ApiAdmissionDataSource },
+  { provide: LEVEL_DATA_SOURCE,
+    useClass: useMock ? MockLevelDataSource : ApiLevelDataSource },
+  { provide: CAMPUS_DATA_SOURCE,
+    useClass: useMock ? MockCampusDataSource : ApiCampusDataSource },
   { provide: GUARDIAN_DATA_SOURCE, useClass: ApiGuardianDataSource },
   { provide: REFERENCE_DATA_SOURCE, useClass: useMock ? MockReferenceDataSource : ApiReferenceDataSource }
 ];

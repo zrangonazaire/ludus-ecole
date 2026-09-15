@@ -21,4 +21,8 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
     Optional<Room> findByCampusIdAndCode(UUID campusId, String code);
 
     boolean existsByCampusIdAndCode(UUID campusId, String code);
+
+    long countByCampusId(UUID campusId);
+
+    boolean existsByCampusIdAndStatus(UUID campusId, CommonStatus status);
 }

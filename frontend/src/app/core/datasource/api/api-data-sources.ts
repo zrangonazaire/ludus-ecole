@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '@env/environment';
 import { PageQuery, PageResponse } from '@core/models/common.models';
 import {
-  AcademicYear, Assessment, AttendanceSheet, Classroom, DashboardData, Enrollment,
+  AcademicYear, Assessment, AttendanceSheet, Campus, Classroom, DashboardData, Enrollment,
   EnrollmentCheckResult, FinancialSummary, GlobalSearchResult, Grade, Payment,
   ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term, LessonSlot
 } from '@core/models/domain.models';
@@ -719,8 +719,12 @@ export class ApiLevelDataSource implements LevelDataSource {
   private readonly http = inject(HttpClient);
   private readonly base = `${API}/levels`;
 
-  list(): Observable<Level[]> {
-    return this.http.get<Level[]>(this.base);
+  list(includeArchived = false): Observable<Level[]> {
+    let params = new HttpParams();
+    if (includeArchived) {
+      params = params.set('includeArchived', 'true');
+    }
+    return this.http.get<Level[]>(this.base, { params });
   }
 
   get(id: string): Observable<Level> {

@@ -163,9 +163,9 @@ export class AdminLayoutComponent implements OnInit {
     { section: 'Établissement', label: 'Années et périodes', route: '/academic-years',
       icon: '◷', permissions: [PERMISSIONS.ACADEMIC_YEAR_VIEW], ready: true },
     { section: 'Établissement', label: 'Cycles et niveaux', route: '/levels', icon: '◱',
-      permissions: ['SCHOOL_VIEW'] },
-    { section: 'Établissement', label: 'Campus et salles', route: '/campus', icon: '⌂',
-      permissions: ['SCHOOL_VIEW'] }
+      permissions: [PERMISSIONS.LEVEL_VIEW], ready: true },
+        { section: 'Établissement', label: 'Campus et salles', route: '/campus', icon: '⌂',
+      permissions: [PERMISSIONS.CAMPUS_VIEW], ready: true }
   ];
 
   /**

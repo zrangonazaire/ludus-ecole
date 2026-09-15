@@ -17,6 +17,9 @@ public interface AdmissionApplicationRepository extends JpaRepository<AdmissionA
 
     Optional<AdmissionApplication> findByApplicationNumber(String applicationNumber);
 
+    /** Pending or decided applications aimed at a level: the archive guard. */
+    boolean existsByRequestedLevelId(UUID requestedLevelId);
+
     /** Seats held by pending admissions, used by projectedAvailableSeats. */
     @Query("""
            SELECT COUNT(a) FROM AdmissionApplication a

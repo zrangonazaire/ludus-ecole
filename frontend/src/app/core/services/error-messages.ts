@@ -58,6 +58,13 @@ const MESSAGES: Record<string, string> = {
     + 'modifiable pour les prochaines inscriptions, mais le tarif ne peut plus être supprimé.',
   FEE_AMOUNT_INVALID: 'Le montant doit être positif, et chaque échéance strictement positive.',
   CURRICULUM_NOT_FOUND: 'Aucun programme défini pour ce niveau.',
+  LEVEL_NOT_FOUND: 'Niveau introuvable.',
+  LEVEL_CODE_ALREADY_USED: 'Un autre niveau utilise déjà ce code dans ce cycle.',
+  LEVEL_IN_USE: 'Ce niveau porte encore des classes, un programme, des candidatures '
+    + 'ou un passage : libérez ces liens avant de l’archiver.',
+  LEVEL_INVALID_NEXT_LEVEL: 'La destination de passage doit appartenir à l’établissement '
+    + 'et ne pas créer de boucle.',
+  CYCLE_NOT_FOUND: 'Cycle introuvable.',
 
   // student / enrollment
   STUDENT_NOT_FOUND: 'Élève introuvable.',

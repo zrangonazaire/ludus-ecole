@@ -29,4 +29,11 @@ public interface LevelRepository extends JpaRepository<Level, UUID> {
                              @Param("status") CommonStatus status);
 
     boolean existsByCycleIdAndCode(UUID cycleId, String code);
+
+    /**
+     * How many levels point at this one as their promotion target. Archiving
+     * a level that is somebody's « next » would break the promotion path the
+     * class council follows, so the archive guard refuses it.
+     */
+    long countByNextLevelId(UUID nextLevelId);
 }

@@ -1,0 +1,162 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Cycles et niveaux</h1>
+      <p class="page__meta numeric">
+        {{ activeCount() }} niveau(x) actif(s) — {{ cycles().length }} cycle(s)
+      </p>
+    </div>
+    <div class="page__actions">
+      <button type="button" class="btn btn--secondary" (click)="toggleArchived()">
+        {{ showArchived() ? 'Masquer les archivés' : 'Voir les archivés' }}
+      </button>
+      @if (canManage()) {
+        <button type="button" class="btn btn--primary" (click)="openCreate()">
+          <span aria-hidden="true">+</span> Nouveau niveau
+        </button>
+      }
+    </div>
+  </header>
+
+  <p class="lead">
+    Un niveau reste dans son cycle à vie : déplacer une 6e du collège vers le
+    primaire orphelinerait ses classes, ses programmes et ses tarifs. Le cycle
+    se choisit donc à la création et ne change plus ensuite.
+  </p>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des niveaux..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else if (cycles().length === 0) {
+    <div class="card"><div class="card__body">
+      <h2 class="empty__title">Aucun niveau</h2>
+      <p class="empty__text">Créez le premier niveau depuis l'assistant
+        d'accueil, puis revenez ici pour l'ordonner.</p>
+    </div></div>
+  } @else {
+    @for (cycle of cycles(); track cycle.id) {
+      <section class="cycle card">
+        <header class="cycle__head">
+          <div>
+            <h2 class="cycle__name">{{ cycle.name }}</h2>
+            <p class="cycle__meta numeric">{{ cycle.levels.length }} niveau(x)</p>
+          </div>
+          @if (canManage()) {
+            <button type="button" class="btn btn--secondary btn--sm"
+                    (click)="openCreate(cycle.id)">+ Niveau dans ce cycle</button>
+          }
+        </header>
+        <ol class="levels">
+          @for (level of cycle.levels; track level.id) {
+            <li class="level" [class.level--archived]="level.status !== 'ACTIVE'">
+              <div class="level__main">
+                <span class="level__seq numeric">{{ level.sequence }}</span>
+                <div class="level__identity">
+                  <h3 class="level__name">{{ level.name }}
+                    <span class="muted numeric">{{ level.code }}</span>
+                  </h3>
+                  <p class="level__sub numeric">
+                    @if (level.shortName) { {{ level.shortName }} · }
+                    @if (level.terminal) { Terminal — sortie. }
+                    @else if (level.nextLevelName) { Passage vers {{ level.nextLevelName }}. }
+                    @else { Sans destination de passage. }
+                    @if (level.classroomCount !== undefined) {
+                      · {{ level.classroomCount }} classe(s)
+                    }
+                  </p>
+                </div>
+              </div>
+              <div class="level__side">
+                @if (level.status !== 'ACTIVE') {
+                  <span class="pill pill--archived">Archivé</span>
+                }
+                @if (canManage()) {
+                  <button type="button" class="btn btn--ghost btn--sm"
+                          (click)="openEdit(level)">Modifier</button>
+                  @if (level.status === 'ACTIVE') {
+                    <button type="button" class="btn btn--ghost btn--sm"
+                            [disabled]="level.archivable === false"
+                            (click)="archive(level)">Archiver</button>
+                  } @else {
+                    <button type="button" class="btn btn--ghost btn--sm"
+                            (click)="restore(level)">Restaurer</button>
+                  }
+                }
+              </div>
+            </li>
+          }
+        </ol>
+      </section>
+    }
+  }
+
+  @if (editing() || creating()) {
+    <div class="drawer-backdrop" (click)="closePanel()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-label="Niveau">
+      <header class="drawer__head">
+        <h2>{{ editing() ? 'Modifier ' + editing()!.name : 'Nouveau niveau' }}</h2>
+        <button type="button" class="btn btn--ghost btn--sm" (click)="closePanel()">✕</button>
+      </header>
+      <form class="drawer__body" [formGroup]="form" (ngSubmit)="submit()">
+        @if (!editing()) {
+          <label class="field">
+            <span class="field__label">Cycle d'accueil — figé après création</span>
+            <select class="input" formControlName="cycleId"
+                    (change)="onCycleChange($any($event.target).value)">
+              @for (cycle of cycles(); track cycle.id) {
+                <option [value]="cycle.id">{{ cycle.name }}</option>
+              }
+            </select>
+          </label>
+        } @else {
+          <p class="hint-block">Cycle : <strong>{{ editing()!.cycleName ?? 'Cycle' }}</strong>
+            — un niveau ne change jamais de cycle.</p>
+        }
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Code (unique dans le cycle)</span>
+            <input class="input" formControlName="code" maxlength="30"
+                   placeholder="6EME" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span class="field__label">Rang dans le cycle</span>
+            <input class="input" type="number" formControlName="sequence" min="1" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="field__label">Nom</span>
+          <input class="input" formControlName="name" maxlength="120"
+                 placeholder="Sixième" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span class="field__label">Abréviation</span>
+          <input class="input" formControlName="shortName" maxlength="30"
+                 placeholder="6e" autocomplete="off" />
+        </label>
+        <label class="switch">
+          <input type="checkbox" formControlName="terminal" />
+          <span>Niveau terminal (le passage mène à la sortie)</span>
+        </label>
+        @if (!form.controls.terminal.value) {
+          <label class="field">
+            <span class="field__label">Destination de passage</span>
+            <select class="input" formControlName="nextLevelId">
+              <option value="">— Aucune —</option>
+              @for (candidate of candidatesFor(editingId()); track candidate.id) {
+                <option [value]="candidate.id">{{ candidate.name }} ({{ candidate.code }})</option>
+              }
+            </select>
+          </label>
+        }
+      </form>
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closePanel()">Annuler</button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="form.invalid || saving()" (click)="submit()">
+          {{ saving() ? 'Enregistrement...' : (editing() ? 'Enregistrer' : 'Créer') }}
+        </button>
+      </footer>
+    </aside>
+  }
+</div>

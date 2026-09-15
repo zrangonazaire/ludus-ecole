@@ -1,0 +1,137 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Campus et salles</h1>
+      <p class="page__meta numeric">
+        {{ activeCount() }} campus(x) actif(s)
+      </p>
+    </div>
+    <div class="page__actions">
+      <button type="button" class="btn btn--secondary" (click)="toggleArchived()">
+        {{ showArchived() ? 'Masquer les archivés' : 'Voir les archivés' }}
+      </button>
+      @if (canManage()) {
+        <button type="button" class="btn btn--primary" (click)="openCreate()">
+          <span aria-hidden="true">+</span> Nouveau campus
+        </button>
+      }
+    </div>
+  </header>
+
+  <p class="lead">
+    Les campus sont les sites physiques de l'établissement. Chaque salle est
+    rattachée à un campus. Un campus principal ne peut pas être archivé.
+  </p>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des campus..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else if (campuses().length === 0) {
+    <div class="card"><div class="card__body">
+      <h2 class="empty__title">Aucun campus</h2>
+      <p class="empty__text">Créez le premier campus pour organiser les salles de l'établissement.</p>
+    </div></div>
+  } @else {
+    <section class="campuses">
+      @for (campus of campuses(); track campus.id) {
+        <div class="campus card" [class.campus--archived]="campus.status !== 'ACTIVE'">
+          <div class="campus__main">
+            <div class="campus__identity">
+              <h3 class="campus__name">{{ campus.name }}
+                <span class="muted numeric">{{ campus.code }}</span>
+              </h3>
+              <p class="campus__sub numeric">
+                @if (campus.addressLine1) { {{ campus.addressLine1 }} · }
+                @if (campus.city) { {{ campus.city }} }
+                @if (campus.roomCount !== undefined) {
+                  · {{ campus.roomCount }} salle(s)
+                }
+              </p>
+            </div>
+            <div class="campus__meta">
+              @if (campus.main) {
+                <span class="badge badge--main">Principal</span>
+              }
+              @if (campus.status !== 'ACTIVE') {
+                <span class="pill pill--archived">Archivé</span>
+              }
+            </div>
+          </div>
+
+          <div class="campus__side">
+            @if (campus.status !== 'ACTIVE') {
+              <button type="button" class="btn btn--ghost btn--sm"
+                      (click)="restore(campus)">Restaurer</button>
+            } @else if (canManage()) {
+              <button type="button" class="btn btn--secondary btn--sm"
+                      (click)="openEdit(campus)">Modifier</button>
+              <button type="button" class="btn btn--ghost btn--sm"
+                      [disabled]="campus.archivable === false"
+                      (click)="archive(campus)">Archiver</button>
+            }
+          </div>
+        </div>
+      }
+    </section>
+  }
+
+  @if (editing() || creating()) {
+    <div class="drawer-backdrop" (click)="closePanel()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-label="Campus">
+      <header class="drawer__head">
+        <h2>{{ editing() ? 'Modifier ' + editing()!.name : 'Nouveau campus' }}</h2>
+        <button type="button" class="btn btn--ghost btn--sm" (click)="closePanel()">✕</button>
+      </header>
+      <form class="drawer__body" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Code</span>
+            <input class="input" formControlName="code" maxlength="30"
+                   placeholder="CAMP-US" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span class="field__label">Nom</span>
+            <input class="input" formControlName="name" maxlength="120"
+                   placeholder="Campus Principal" autocomplete="off" />
+          </label>
+        </div>
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Adresse</span>
+            <input class="input" formControlName="addressLine1"
+                   placeholder="Avenue de la République" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span class="field__label">Ville</span>
+            <input class="input" formControlName="city"
+                   placeholder="Abidjan" autocomplete="off" />
+          </label>
+        </div>
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Téléphone</span>
+            <input class="input" formControlName="phone"
+                   placeholder="+225 0700000000" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span class="field__label">Email</span>
+            <input class="input" formControlName="email"
+                   placeholder="contact@ecole.ci" autocomplete="off" />
+          </label>
+        </div>
+        <label class="switch">
+          <input type="checkbox" formControlName="main" />
+          <span>Campus principal (un seul par établissement)</span>
+        </label>
+      </form>
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closePanel()">Annuler</button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="form.invalid || saving()" (click)="submit()">
+          {{ saving() ? 'Enregistrement...' : (editing() ? 'Enregistrer' : 'Créer') }}
+        </button>
+      </footer>
+    </aside>
+  }
+</div>

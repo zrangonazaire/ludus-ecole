@@ -30,6 +30,8 @@ export interface Term {
 export interface Level {
   id: string;
   cycleId: string;
+  /** Nom du cycle porteur, renvoyé par le backend pour regrouper l'écran. */
+  cycleName?: string;
   code: string;
   name: string;
   shortName?: string;
@@ -37,7 +39,9 @@ export interface Level {
   nextLevelId?: string;
   nextLevelName?: string;
   terminal: boolean;
-  status: string;
+  status: 'ACTIVE' | 'ARCHIVED';
+  classroomCount?: number;
+  archivable?: boolean;
 }
 
 export interface Classroom {
@@ -67,6 +71,20 @@ export interface Subject {
   category: string;
   colorHex?: string;
   graded: boolean;
+}
+
+export interface Campus {
+  id: string;
+  code: string;
+  name: string;
+  addressLine1?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  main: boolean;
+  status: 'ACTIVE' | 'ARCHIVED';
+  roomCount: number;
+  archivable?: boolean;
 }
 
 /* --------------------------------------------------------------- people */

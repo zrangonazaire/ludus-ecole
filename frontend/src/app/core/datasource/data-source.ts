@@ -47,7 +47,7 @@ import {
 } from '../models/family-request.models';
 import { OutstandingBoard, OutstandingQuery } from '../models/outstanding.models';
 import {
-  AcademicYear, Assessment, AttendanceSheet, Classroom, DashboardData, Enrollment,
+  AcademicYear, Assessment, AttendanceSheet, Classroom, Campus, DashboardData, Enrollment,
   EnrollmentCheckResult, FinancialSummary, Grade, GlobalSearchResult, LessonSlot, Level, Payment,
   ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term
 } from '../models/domain.models';
@@ -337,7 +337,7 @@ export interface ReferenceDataSource {
 }
 
 export interface LevelDataSource {
-  list(): Observable<Level[]>;
+  list(includeArchived?: boolean): Observable<Level[]>;
   get(id: string): Observable<Level>;
   create(payload: LevelUpsertPayload): Observable<Level>;
   update(id: string, payload: LevelUpsertPayload): Observable<Level>;
@@ -356,6 +356,27 @@ export interface LevelUpsertPayload {
 }
 
 export const LEVEL_DATA_SOURCE = new InjectionToken<LevelDataSource>('LevelDataSource');
+
+export interface CampusDataSource {
+  list(includeArchived?: boolean): Observable<Campus[]>;
+  get(id: string): Observable<Campus>;
+  create(payload: CampusUpsertPayload): Observable<Campus>;
+  update(id: string, payload: CampusUpsertPayload): Observable<Campus>;
+  archive(id: string): Observable<Campus>;
+  restore(id: string): Observable<Campus>;
+}
+
+export interface CampusUpsertPayload {
+  code: string;
+  name: string;
+  addressLine1?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  main?: boolean;
+}
+
+export const CAMPUS_DATA_SOURCE = new InjectionToken<CampusDataSource>('CampusDataSource');
 
 export interface AccessProfileDataSource {
   overview(): Observable<AccessProfileOverview>;

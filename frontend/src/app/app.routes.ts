@@ -341,15 +341,17 @@ export const routes: Routes = [
       },
       {
         path: 'levels',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Cycles et niveaux' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.LEVEL_VIEW], title: 'Cycles et niveaux' },
+        loadComponent: () => import('./features/levels/levels.component')
+          .then((m) => m.LevelsComponent)
       },
-      {
+            {
         path: 'campus',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Campus et salles' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.CAMPUS_VIEW], title: 'Campus et salles' },
+        loadComponent: () => import('./features/campus/campus.component')
+          .then((m) => m.CampusComponent)
       },
       {
         path: 'administration',

@@ -1,0 +1,94 @@
+# =====================================================================
+# PROD profile - real SMTP relay, strict logging, no demo data
+# External configuration: complete on the VPS, never commit the resulting secrets.
+# =====================================================================
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+  datasource:
+    # Docker Compose service names. Replace passwords before deployment.
+    url: jdbc:postgresql://postgres:5432/eduops
+    username: eduops
+    password: "A_COMPLETER"
+    hikari:
+      maximum-pool-size: 40
+      minimum-idle: 10
+  data:
+    redis:
+      host: redis
+      port: 6379
+      password: "A_COMPLETER"
+  mail:
+    # Mail desactive pour le demarrage (eduops.mail.enabled=false plus bas).
+    # Host local pour ne pas bloquer le demarrage sur un nom non resolvable.
+    host: "localhost"
+    port: 587
+    username: ""
+    password: "A_COMPLETER"
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+      mail.smtp.starttls.required: false
+
+server:
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+  servlet:
+    session:
+      cookie:
+        secure: true
+
+logging:
+  level:
+    root: WARN
+    ci.company.eduops: INFO
+    org.hibernate.SQL: WARN
+
+management:
+  health:
+    mail:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+eduops:
+  diagnostics:
+    # Ecrit, pas laisse par defaut : le jour ou la valeur par defaut change,
+    # c'est la production qui se mettrait a decrire ses entrailles.
+    expose-internal-errors: false
+  mail:
+    provider: SMTP
+    # No SMTP provider configured yet. Enable together with health.mail later.
+    enabled: false
+    from: "no-reply@soocloo.com"
+  cors:
+    allowed-origins: "https://soocloo.com,https://www.soocloo.com"
+  app:
+    base-url: "https://www.soocloo.com"
+    api-url: "https://www.soocloo.com"
+  storage:
+    location: /app/storage
+  bootstrap:
+    admin-email: "admin@soocloo.com"
+    admin-password: "A_COMPLETER_ADMIN_PASSWORD"
+  demo:
+    enabled: false
+  security:
+    require-https: true
+    jwt:
+      # Replace with a unique random secret of at least 64 characters.
+      secret: "A_COMPLETER_JWT_SECRET"

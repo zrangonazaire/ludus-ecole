@@ -6,8 +6,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Base class for integration tests.
@@ -28,7 +26,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@code HttpSecurity} only exists in one — but starts no Tomcat, so a port
  * clash or a servlet issue can never masquerade as a data problem.</p>
  */
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("test")
 @Tag("integration")
@@ -37,13 +34,18 @@ public abstract class AbstractIntegrationTest {
     private static final String APP_DB_USER = "eduops_app_test";
     private static final String APP_DB_PASSWORD = "eduops_app_test";
 
-    @Container
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:16-alpine")
                     .withDatabaseName("eduops_test")
                     .withUsername("eduops_admin_test")
                     .withPassword("eduops_admin_test")
                     .withInitScript("db/test/prepare-rls-role.sql");
+
+    static {
+        // Spring caches the context across test classes. Keep its database alive
+        // for the same JVM lifetime; Testcontainers' Ryuk cleans it up on exit.
+        POSTGRES.start();
+    }
 
     /**
      * Everything the application expects but that these tests do not exercise.

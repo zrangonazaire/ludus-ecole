@@ -15,6 +15,9 @@ public interface CurriculumRepository extends JpaRepository<Curriculum, UUID> {
 
     Optional<Curriculum> findByAcademicYearIdAndLevelId(UUID academicYearId, UUID levelId);
 
+    /** Any programme ever opened for a level: the archive guard. */
+    boolean existsByLevelId(UUID levelId);
+
     List<Curriculum> findByAcademicYearId(UUID academicYearId);
 
     /** Loads the curriculum with its subjects in one query (avoids N+1 on averages). */

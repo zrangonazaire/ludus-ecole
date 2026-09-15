@@ -54,5 +54,8 @@ public interface ClassroomRepository extends JpaRepository<Classroom, UUID> {
     @Query("SELECT COUNT(c) FROM Classroom c WHERE c.academicYear.id = :academicYearId AND c.status = 'ACTIVE'")
     long countActive(@Param("academicYearId") UUID academicYearId);
 
+    /** Active classes on a level, whatever the year: the archive guard. */
+    long countByLevelIdAndStatus(UUID levelId, ClassroomStatus status);
+
     boolean existsByAcademicYearIdAndCampusIdAndCode(UUID academicYearId, UUID campusId, String code);
 }

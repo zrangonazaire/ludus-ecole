@@ -33,10 +33,14 @@ public final class Permissions {
     // school / academic
     public static final String SCHOOL_VIEW = "SCHOOL_VIEW";
     public static final String SCHOOL_MANAGE = "SCHOOL_MANAGE";
+    public static final String CAMPUS_VIEW = "CAMPUS_VIEW";
+    public static final String CAMPUS_MANAGE = "CAMPUS_MANAGE";
     public static final String ACADEMIC_YEAR_VIEW = "ACADEMIC_YEAR_VIEW";
     public static final String ACADEMIC_YEAR_MANAGE = "ACADEMIC_YEAR_MANAGE";
     public static final String CLASS_VIEW = "CLASS_VIEW";
     public static final String CLASS_MANAGE = "CLASS_MANAGE";
+    public static final String LEVEL_VIEW = "LEVEL_VIEW";
+    public static final String LEVEL_MANAGE = "LEVEL_MANAGE";
     public static final String SUBJECT_VIEW = "SUBJECT_VIEW";
     public static final String SUBJECT_MANAGE = "SUBJECT_MANAGE";
     public static final String CURRICULUM_VIEW = "CURRICULUM_VIEW";
