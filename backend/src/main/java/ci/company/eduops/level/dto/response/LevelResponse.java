@@ -4,8 +4,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.UUID;
 
+<<<<<<< HEAD
 /** One grade level as the screens need it. */
 @Schema(name = "Level", description = "Un niveau d'enseignement")
+=======
+/** One level of the school's academic structure. */
+@Schema(name = "Level", description = "Un niveau de la structure académique")
+>>>>>>> 13f4202 (envoi de maj)
 public class LevelResponse {
 
     private UUID id;
@@ -20,12 +25,17 @@ public class LevelResponse {
     private boolean terminal;
     private String status;
 
+<<<<<<< HEAD
     @Schema(example = "2", description = "Nombre de classes actives rattachées au niveau")
     private int classroomCount;
 
     @Schema(description = "Vrai quand le niveau peut être archivé : "
             + "aucune classe active, aucun successeur, aucun programme ni candidature")
     private boolean archivable;
+=======
+    @Schema(description = "Vrai quand le niveau est le dernier d'un cycle")
+    private boolean lastInCycle;
+>>>>>>> 13f4202 (envoi de maj)
 
     public UUID getId() {
         return id;
@@ -115,6 +125,7 @@ public class LevelResponse {
         this.status = status;
     }
 
+<<<<<<< HEAD
     public int getClassroomCount() {
         return classroomCount;
     }
@@ -131,3 +142,13 @@ public class LevelResponse {
         this.archivable = archivable;
     }
 }
+=======
+    public boolean isLastInCycle() {
+        return lastInCycle;
+    }
+
+    public void setLastInCycle(boolean lastInCycle) {
+        this.lastInCycle = lastInCycle;
+    }
+}
+>>>>>>> 13f4202 (envoi de maj)

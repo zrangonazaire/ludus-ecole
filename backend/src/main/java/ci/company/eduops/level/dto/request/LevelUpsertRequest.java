@@ -1,7 +1,10 @@
 package ci.company.eduops.level.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+<<<<<<< HEAD
 import jakarta.validation.constraints.Min;
+=======
+>>>>>>> 13f4202 (envoi de maj)
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -9,28 +12,45 @@ import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 /**
+<<<<<<< HEAD
  * Creates or edits one grade level inside a cycle.
  *
  * <p>The level stays inside its cycle for life: moving a level across cycles
  * would orphan its classrooms, curricula and fee schedules, so the cycle can
  * only be chosen at creation.</p>
+=======
+ * Creates or updates a level.
+ *
+ * <p>Cycles (Primaire, Collège, Lycée…) are managed separately; this request
+ * only creates the grade levels that live inside an existing cycle.</p>
+>>>>>>> 13f4202 (envoi de maj)
  */
 @Schema(name = "LevelUpsertRequest", description = "Création ou modification d'un niveau")
 public class LevelUpsertRequest {
 
     @NotNull
+<<<<<<< HEAD
     @Schema(description = "Cycle d'accueil. Figé après la création.",
             requiredMode = Schema.RequiredMode.REQUIRED)
+=======
+    @Schema(description = "Cycle auquel le niveau appartient", requiredMode = Schema.RequiredMode.REQUIRED)
+>>>>>>> 13f4202 (envoi de maj)
     private UUID cycleId;
 
     @NotBlank
     @Size(max = 30)
+<<<<<<< HEAD
     @Schema(description = "Code court, unique dans le cycle",
             example = "6EME", requiredMode = Schema.RequiredMode.REQUIRED)
+=======
+    @Schema(description = "Code court, unique dans le cycle", example = "6EME",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+>>>>>>> 13f4202 (envoi de maj)
     private String code;
 
     @NotBlank
     @Size(max = 120)
+<<<<<<< HEAD
     @Schema(example = "Sixième", requiredMode = Schema.RequiredMode.REQUIRED)
     private String name;
 
@@ -51,6 +71,28 @@ public class LevelUpsertRequest {
             + "un passage y mène à la sortie, pas à un niveau suivant",
             example = "false")
     private boolean terminal;
+=======
+    @Schema(description = "Nom affiché du niveau", example = "Sixième",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+    private String name;
+
+    @Size(max = 30)
+    @Schema(description = "Abréviation utilisée dans les noms de classes générés automatiquement",
+            example = "6e")
+    private String shortName;
+
+    @Schema(description = "Rang du niveau dans le cycle (1 = premier niveau)",
+            example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Integer sequence;
+
+    /** Niveau de promotion : laissez vide pour un niveau terminal. */
+    @Schema(description = "Niveau vers lequel les élèves sont promus (vide = terminal)")
+    private UUID nextLevelId;
+
+    @Schema(description = "Ce niveau est terminal : aucun passage automatique n'est prévu",
+            example = "false")
+    private Boolean terminal = false;
+>>>>>>> 13f4202 (envoi de maj)
 
     public UUID getCycleId() {
         return cycleId;
@@ -84,11 +126,19 @@ public class LevelUpsertRequest {
         this.shortName = shortName;
     }
 
+<<<<<<< HEAD
     public int getSequence() {
         return sequence;
     }
 
     public void setSequence(int sequence) {
+=======
+    public Integer getSequence() {
+        return sequence;
+    }
+
+    public void setSequence(Integer sequence) {
+>>>>>>> 13f4202 (envoi de maj)
         this.sequence = sequence;
     }
 
@@ -100,6 +150,7 @@ public class LevelUpsertRequest {
         this.nextLevelId = nextLevelId;
     }
 
+<<<<<<< HEAD
     public boolean isTerminal() {
         return terminal;
     }
@@ -108,3 +159,13 @@ public class LevelUpsertRequest {
         this.terminal = terminal;
     }
 }
+=======
+    public Boolean getTerminal() {
+        return terminal;
+    }
+
+    public void setTerminal(Boolean terminal) {
+        this.terminal = terminal;
+    }
+}
+>>>>>>> 13f4202 (envoi de maj)

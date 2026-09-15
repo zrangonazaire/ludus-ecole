@@ -30,10 +30,15 @@ public interface LevelRepository extends JpaRepository<Level, UUID> {
 
     boolean existsByCycleIdAndCode(UUID cycleId, String code);
 
+<<<<<<< HEAD
     /**
      * How many levels point at this one as their promotion target. Archiving
      * a level that is somebody's « next » would break the promotion path the
      * class council follows, so the archive guard refuses it.
      */
     long countByNextLevelId(UUID nextLevelId);
+=======
+    @Query("SELECT COUNT(c) FROM Classroom c WHERE c.level.id = :levelId AND c.status = 'ACTIVE'")
+    long countByLevelIdAndStatus(@Param("levelId") UUID levelId, @Param("status") String status);
+>>>>>>> 13f4202 (envoi de maj)
 }
