@@ -100,6 +100,21 @@ const MESSAGES: Record<string, string> = {
   // timetable / attendance
   TIMETABLE_CONFLICT: "L'enseignant ou la classe est déjà occupe sur ce creneau.",
   ROOM_CONFLICT: 'La salle est deja reservee sur ce creneau.',
+
+  // campus et salles. Ces codes n'avaient pas de traduction : les permissions
+  // CAMPUS_* n'ayant jamais ete seedees, les refus correspondants n'avaient
+  // encore jamais pu remonter jusqu'a un ecran.
+  CAMPUS_NOT_FOUND: 'Ce campus est introuvable.',
+  CAMPUS_CODE_ALREADY_USED: 'Ce code est déjà utilisé par un autre campus.',
+  CAMPUS_IN_USE: 'Des salles actives sont encore rattachées à ce campus : '
+    + 'archivez-les ou déplacez-les avant d\'archiver le campus.',
+  CAMPUS_MAIN_EXISTS: "L'établissement a déjà un campus principal.",
+  ROOM_NOT_FOUND: 'Cette salle est introuvable.',
+  ROOM_CODE_ALREADY_USED: 'Ce code est déjà utilisé par une autre salle de ce campus.',
+  ROOM_IN_USE: "Cette salle est encore utilisée par l'emploi du temps ou par une classe : "
+    + "libérez-la avant de l'archiver.",
+  ROOM_ARCHIVED: 'Cette salle est archivée : réactivez-la avant de l\'utiliser.',
+  ROOM_TYPE_INVALID: "Ce type de salle n'existe pas.",
   INVALID_ATTENDANCE: 'Saisie de présence invalide.',
   ATTENDANCE_SESSION_LOCKED: 'Cette feuille de présence est verrouillée. Elle reste '
     + 'consultable, mais les marques ne peuvent plus changer : c\'est elle qui a servi '

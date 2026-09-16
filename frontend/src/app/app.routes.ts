@@ -361,6 +361,13 @@ export const routes: Routes = [
           .then((m) => m.CampusComponent)
       },
       {
+        path: 'rooms',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.ROOM_VIEW], title: 'Bâtiments et salles' },
+        loadComponent: () => import('./features/rooms/rooms.component')
+          .then((m) => m.RoomsComponent)
+      },
+      {
         path: 'administration',
         canActivate: [permissionGuard],
         data: { permissions: [PERMISSIONS.SCHOOL_VIEW], title: 'Paramètres' },

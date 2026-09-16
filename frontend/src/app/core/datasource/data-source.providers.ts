@@ -6,7 +6,8 @@ import {
   OFFICIAL_DOCUMENT_DATA_SOURCE, OPTION_DATA_SOURCE, REFERENCE_DATA_SOURCE, TRANSFER_DATA_SOURCE, REPORT_CARD_DATA_SOURCE, HEALTH_DATA_SOURCE, FAMILY_REQUEST_DATA_SOURCE,
   STUDENT_DATA_SOURCE, STUDENT_PORTAL_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE,
   CURRICULUM_DATA_SOURCE, FEE_DATA_SOURCE, ACCESS_PROFILE_DATA_SOURCE, ADMISSION_DATA_SOURCE,
-    GUARDIAN_DATA_SOURCE, COUNCIL_DATA_SOURCE, LEVEL_DATA_SOURCE, CAMPUS_DATA_SOURCE
+    GUARDIAN_DATA_SOURCE, COUNCIL_DATA_SOURCE, LEVEL_DATA_SOURCE, CAMPUS_DATA_SOURCE,
+  ROOM_DATA_SOURCE
 } from './data-source';
 import {
   MockAttendanceDataSource, MockClassroomDataSource, MockDashboardDataSource,
@@ -33,6 +34,8 @@ import { MockCampusDataSource } from './mock/mock-campus-data-source';
 import { ApiAdmissionDataSource } from './api/api-admission-data-source';
 import { ApiGuardianDataSource } from './api/api-guardian-data-source';
 import { ApiCampusDataSource } from './api/api-campus-data-source';
+import { MockRoomDataSource } from './mock/mock-room-data-source';
+import { ApiRoomDataSource } from './api/api-room-data-source';
 
 /**
  * The single switch between demo mode and the real backend (section 78).
@@ -73,6 +76,8 @@ export const dataSourceProviders: Provider[] = [
     useClass: useMock ? MockLevelDataSource : ApiLevelDataSource },
   { provide: CAMPUS_DATA_SOURCE,
     useClass: useMock ? MockCampusDataSource : ApiCampusDataSource },
+  { provide: ROOM_DATA_SOURCE,
+    useClass: useMock ? MockRoomDataSource : ApiRoomDataSource },
   { provide: GUARDIAN_DATA_SOURCE, useClass: ApiGuardianDataSource },
   { provide: REFERENCE_DATA_SOURCE, useClass: useMock ? MockReferenceDataSource : ApiReferenceDataSource }
 ];

@@ -111,6 +111,21 @@ public interface TimetableSlotRepository extends JpaRepository<TimetableSlot, UU
                                            @Param("endTime") LocalTime endTime,
                                            @Param("excludeSlotId") UUID excludeSlotId);
 
+    /**
+     * Nombre de cours actifs par salle, pour l'écran des salles.
+     *
+     * <p>Une seule requête pour toutes les salles : la liste affiche l'occupation
+     * de chaque ligne, et compter salle par salle ferait autant d'allers-retours
+     * que de salles. Les salles jamais placées n'apparaissent pas dans le
+     * résultat, le service les lit comme zéro.</p>
+     */
+    @Query("""
+           SELECT s.room.id, COUNT(s) FROM TimetableSlot s
+           WHERE s.room IS NOT NULL AND s.active = true
+           GROUP BY s.room.id
+           """)
+    List<Object[]> countActiveByRoom();
+
     /** checkRoomConflict(). */
     @Query("""
            SELECT s FROM TimetableSlot s

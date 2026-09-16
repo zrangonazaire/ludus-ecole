@@ -6,6 +6,7 @@ import ci.company.eduops.academicyear.repository.AcademicYearRepository;
 import ci.company.eduops.audit.service.AuditService;
 import ci.company.eduops.classroom.domain.Classroom;
 import ci.company.eduops.classroom.repository.ClassroomRepository;
+import ci.company.eduops.common.domain.CommonStatus;
 import ci.company.eduops.common.domain.DayOfWeekEnum;
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.exception.ErrorCode;
@@ -276,8 +277,16 @@ public class TimetableService {
         if (request.getRoomId() == null) {
             slot.setRoom(null);
         } else {
-            slot.setRoom(roomRepository.findById(request.getRoomId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND)));
+            Room room = roomRepository.findById(request.getRoomId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND));
+            // Une salle archivee n'accueille plus de cours : la reserver la
+            // ferait reapparaitre dans l'emploi du temps publie, alors que
+            // l'ecran des salles la presente comme hors service.
+            if (room.getStatus() != CommonStatus.ACTIVE) {
+                throw new BusinessException(ErrorCode.ROOM_ARCHIVED,
+                        "Cette salle est archivée : réactivez-la avant d'y placer un cours.");
+            }
+            slot.setRoom(room);
         }
         if (request.getTermId() == null) {
             slot.setTerm(null);

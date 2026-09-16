@@ -7,6 +7,9 @@
       </p>
     </div>
     <div class="page__actions">
+      @if (canViewRooms()) {
+        <a class="btn btn--secondary" routerLink="/rooms">Bâtiments et salles</a>
+      }
       <button type="button" class="btn btn--secondary" (click)="toggleArchived()">
         {{ showArchived() ? 'Masquer les archivés' : 'Voir les archivés' }}
       </button>

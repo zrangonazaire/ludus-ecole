@@ -1,0 +1,246 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Bâtiments et salles</h1>
+      <p class="page__meta numeric">
+        {{ activeRooms().length }} salle(s) active(s) · {{ totalSeats() }} place(s)
+        @if (unknownCapacityCount() > 0) {
+          · {{ unknownCapacityCount() }} capacité(s) à renseigner
+        }
+        @if (occupiedCount() > 0) {
+          · {{ occupiedCount() }} utilisée(s) par l'emploi du temps
+        }
+      </p>
+    </div>
+    <div class="page__actions">
+      <button type="button" class="btn btn--secondary" (click)="toggleArchived()">
+        {{ includeArchived() ? 'Masquer les archivées' : 'Voir les archivées' }}
+      </button>
+      @if (canManage()) {
+        <button type="button" class="btn btn--primary" (click)="openCreate()">
+          <span aria-hidden="true">+</span> Nouvelle salle
+        </button>
+      }
+    </div>
+  </header>
+
+  <p class="lead">
+    Une salle appartient à un campus et se repère par son bâtiment et son étage.
+    C'est ce que l'emploi du temps réserve et ce que les classes prennent par
+    défaut. La capacité compte les places assises : laissez 0 si elle n'a pas
+    encore été mesurée, les totaux le signaleront.
+  </p>
+
+  <div class="filters card">
+    <label class="field">
+      <span class="field__label">Campus</span>
+      <select class="select" (change)="setCampusFilter($any($event.target).value)">
+        <option value="">Tous les campus</option>
+        @for (campus of campuses(); track campus.id) {
+          <option [value]="campus.id">{{ campus.name }} ({{ campus.code }})</option>
+        }
+      </select>
+    </label>
+    <label class="field">
+      <span class="field__label">Bâtiment</span>
+      <select class="select" (change)="setBuildingFilter($any($event.target).value)">
+        <option value="">Tous les bâtiments</option>
+        @for (building of buildings(); track building) {
+          <option [value]="building">{{ building }}</option>
+        }
+      </select>
+    </label>
+    <label class="field">
+      <span class="field__label">Type</span>
+      <select class="select" (change)="setTypeFilter($any($event.target).value)">
+        <option value="">Tous les types</option>
+        @for (type of roomTypes(); track type) {
+          <option [value]="type">{{ typeLabel(type) }}</option>
+        }
+      </select>
+    </label>
+    <label class="field">
+      <span class="field__label">Recherche</span>
+      <input class="input" type="search" placeholder="Nom, code, bâtiment"
+             (change)="setSearch($any($event.target).value)" />
+    </label>
+    <button type="button" class="btn btn--ghost btn--sm filters__reset" (click)="resetFilters()">
+      Réinitialiser
+    </button>
+  </div>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des salles..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else if (rooms().length === 0) {
+    <div class="card">
+      <div class="card__body">
+        <h2 class="empty__title">Aucune salle</h2>
+        @if (campusFilter() || buildingFilter() || typeFilter() || search()) {
+          <p class="empty__text">Aucune salle ne correspond à ces filtres.</p>
+          <button type="button" class="btn btn--ghost btn--sm" (click)="resetFilters()">
+            Effacer les filtres
+          </button>
+        } @else {
+          <p class="empty__text">
+            Déclarez les salles de l'établissement pour que l'emploi du temps
+            puisse les réserver et que les classes aient un lieu par défaut.
+            Chaque salle se rattache à un campus.
+          </p>
+        }
+      </div>
+    </div>
+  } @else {
+    <section class="groups">
+      @for (group of groups(); track group.key) {
+        <article class="group card">
+          <header class="group__head">
+            <div>
+              <h2 class="group__title">{{ group.label }}</h2>
+              <p class="group__meta numeric">{{ group.campusLabel }}</p>
+            </div>
+            <div class="group__totals numeric">
+              <strong>{{ group.rooms.length }}</strong> salle(s)
+              <span class="muted">·</span>
+              <strong>{{ group.seats }}</strong> place(s)
+              @if (group.unknownCapacity) {
+                <span class="badge badge--warning badge--pill">capacité partielle</span>
+              }
+            </div>
+          </header>
+          <div class="group__rooms">
+            @for (room of group.rooms; track room.id) {
+              <div class="room" [class.room--archived]="room.status !== 'ACTIVE'">
+                <div class="room__identity">
+                  <h3 class="room__name">
+                    {{ room.name }}
+                    <span class="muted numeric">{{ room.code }}</span>
+                  </h3>
+                  <p class="room__sub numeric">
+                    {{ typeLabel(room.roomType) }}
+                    @if (room.floor) { · {{ room.floor }} }
+                    · {{ room.capacity }} place(s)
+                    @if (room.capacity === 0) { <em>à mesurer</em> }
+                  </p>
+                </div>
+                <div class="room__usage">
+                  @if (room.status !== 'ACTIVE') {
+                    <span class="badge badge--neutral badge--pill">archivée</span>
+                  } @else if (occupied(room)) {
+                    <span class="badge badge--info badge--pill numeric">{{ usageNote(room) }}</span>
+                  } @else {
+                    <span class="badge badge--success badge--pill">libre</span>
+                  }
+                </div>
+                <div class="room__side">
+                  @if (room.status !== 'ACTIVE') {
+                    @if (canManage()) {
+                      <button type="button" class="btn btn--ghost btn--sm"
+                              (click)="restore(room)">Restaurer</button>
+                    }
+                  } @else if (canManage()) {
+                    <button type="button" class="btn btn--secondary btn--sm"
+                            (click)="openEdit(room)">Modifier</button>
+                    <button type="button" class="btn btn--ghost btn--sm"
+                            [disabled]="!room.archivable"
+                            [title]="room.archivable
+                              ? 'Archiver cette salle'
+                              : 'Utilisée par ' + usageNote(room) + ' : libérez-la d\'abord'"
+                            (click)="archive(room)">Archiver</button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </section>
+  }
+
+  @if (showForm()) {
+    <div class="drawer-backdrop" (click)="closePanel()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="room-form-title">
+      <header class="drawer__head">
+        <h2 id="room-form-title">{{ formTitle() }}</h2>
+        <button type="button" class="btn btn--ghost btn--sm" (click)="closePanel()">✕</button>
+      </header>
+      <form class="drawer__body" [formGroup]="form" (ngSubmit)="submit()">
+        @if (campuses().length === 0) {
+          <p class="hint-block">
+            Aucun campus disponible. Les salles se rattachent à un campus :
+            créez-en un depuis « Campus et salles », ou demandez à un
+            administrateur de vous en ouvrir la lecture.
+          </p>
+        }
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label field__label--required">Campus</span>
+            <select class="select" formControlName="campusId">
+              <option value="">Choisir un campus</option>
+              @for (campus of campuses(); track campus.id) {
+                <option [value]="campus.id">{{ campus.name }} ({{ campus.code }})</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label field__label--required">Code</span>
+            <input class="input" formControlName="code" maxlength="30"
+                   placeholder="A-101" autocomplete="off" />
+            <span class="field__hint">Lettres, chiffres et tirets. Unique dans le campus.</span>
+            @if (form.controls.code.touched && form.controls.code.invalid) {
+              <span class="field__error">Saisissez un code de salle (lettres, chiffres, tirets).</span>
+            }
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label field__label--required">Nom</span>
+          <input class="input" formControlName="name" maxlength="120"
+                 placeholder="Salle A 101" autocomplete="off" />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <span class="field__error">Le nom de la salle est obligatoire.</span>
+          }
+        </label>
+
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Bâtiment</span>
+            <input class="input" formControlName="building" maxlength="120"
+                   placeholder="Bâtiment A" autocomplete="off" />
+            <span class="field__hint">C'est ce nom qui regroupe les salles dans la liste.</span>
+          </label>
+          <label class="field">
+            <span class="field__label">Étage</span>
+            <input class="input" formControlName="floor" maxlength="30"
+                   placeholder="1er étage" autocomplete="off" />
+          </label>
+        </div>
+
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Type</span>
+            <select class="select" formControlName="roomType">
+              @for (type of roomTypes(); track type) {
+                <option [value]="type">{{ typeLabel(type) }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Capacité (places)</span>
+            <input class="input numeric" type="number" min="0" step="1"
+                   formControlName="capacity" />
+            <span class="field__hint">0 = capacité non mesurée.</span>
+          </label>
+        </div>
+      </form>
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closePanel()">Annuler</button>
+        <button type="button" class="btn btn--primary"
+                [disabled]="form.invalid || saving()" (click)="submit()">
+          {{ saving() ? 'Enregistrement…' : (editing() ? 'Enregistrer' : 'Créer la salle') }}
+        </button>
+      </footer>
+    </aside>
+  }
+</div>

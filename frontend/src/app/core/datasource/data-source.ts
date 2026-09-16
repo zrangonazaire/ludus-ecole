@@ -47,6 +47,9 @@ import {
 } from '../models/family-request.models';
 import { OutstandingBoard, OutstandingQuery } from '../models/outstanding.models';
 import {
+  Room, RoomOptions, RoomQuery, RoomUpsertPayload
+} from '../models/room.models';
+import {
   AcademicYear, Assessment, AttendanceSheet, Classroom, Campus, DashboardData, Enrollment,
   EnrollmentCheckResult, FinancialSummary, Grade, GlobalSearchResult, LessonSlot, Level, Payment,
   ReportCard, StudentDetail, StudentSummary, Subject, Teacher, Term
@@ -379,6 +382,25 @@ export interface CampusUpsertPayload {
 }
 
 export const CAMPUS_DATA_SOURCE = new InjectionToken<CampusDataSource>('CampusDataSource');
+
+export interface RoomDataSource {
+  /** Les salles d'un établissement, filtrables par campus, bâtiment et type. */
+  list(query?: RoomQuery): Observable<Room[]>;
+  /**
+   * Campus et types de salle pour les listes déroulantes.
+   *
+   * <p>Servis par le module des salles et non par celui des campus : gérer les
+   * salles n'implique pas d'avoir le droit d'administrer les campus.</p>
+   */
+  options(): Observable<RoomOptions>;
+  get(id: string): Observable<Room>;
+  create(payload: RoomUpsertPayload): Observable<Room>;
+  update(id: string, payload: RoomUpsertPayload): Observable<Room>;
+  archive(id: string): Observable<Room>;
+  restore(id: string): Observable<Room>;
+}
+
+export const ROOM_DATA_SOURCE = new InjectionToken<RoomDataSource>('RoomDataSource');
 
 export interface AccessProfileDataSource {
   overview(): Observable<AccessProfileOverview>;

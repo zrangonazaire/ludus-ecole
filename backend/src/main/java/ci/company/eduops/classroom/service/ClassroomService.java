@@ -20,6 +20,7 @@ import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.enrollment.repository.EnrollmentRepository;
 import ci.company.eduops.level.domain.Level;
 import ci.company.eduops.level.repository.LevelRepository;
+import ci.company.eduops.room.domain.Room;
 import ci.company.eduops.room.repository.RoomRepository;
 import ci.company.eduops.teacher.domain.Teacher;
 import ci.company.eduops.teacher.repository.TeacherRepository;
@@ -321,8 +322,16 @@ public class ClassroomService {
         if (roomId == null) {
             classroom.setDefaultRoom(null);
         } else {
-            classroom.setDefaultRoom(roomRepository.findById(roomId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND)));
+            Room room = roomRepository.findById(roomId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND));
+            // Une classe ne peut pas elire une salle archivee : elle afficherait
+            // un lieu hors service sur ses listes et son emploi du temps.
+            if (room.getStatus() != CommonStatus.ACTIVE) {
+                throw new BusinessException(ErrorCode.ROOM_ARCHIVED,
+                        "Cette salle est archivée : réactivez-la avant de la donner "
+                                + "par défaut à une classe.");
+            }
+            classroom.setDefaultRoom(room);
         }
     }
 

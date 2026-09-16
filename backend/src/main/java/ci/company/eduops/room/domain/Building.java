@@ -2,7 +2,7 @@ package ci.company.eduops.room.domain;
 
 import ci.company.eduops.campus.domain.Campus;
 import ci.company.eduops.common.domain.CommonStatus;
-import ci.company.eduops.common.entity.BaseEntity;
+import ci.company.eduops.common.entity.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,12 +16,20 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** A bookable physical space; the timetable guarantees it is never double-booked. */
+/**
+ * Un bâtiment d'un campus : un nom écrit sur les portes, des étages, des salles.
+ *
+ * <p>Le bâtiment est rattaché à un campus unique, et son code est unique dans ce
+ * campus : deux sites peuvent chacun avoir leur « BAT-A » sans se marcher dessus.
+ * Les salles pointent vers lui ; tant qu'une salle active y reste rattachée, son
+ * archivage est refusé — sinon la liste des salles afficherait un bâtiment
+ * fantôme.</p>
+ */
 @Entity
-@Table(name = "room")
+@Table(name = "building")
 @Getter
 @Setter
-public class Room extends BaseEntity {
+public class Building extends AuditableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "campus_id", nullable = false)
@@ -33,21 +41,8 @@ public class Room extends BaseEntity {
     @Column(name = "name", nullable = false, length = 120)
     private String name;
 
-    @Column(name = "building", length = 120)
-    private String building;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "building_id")
-    private Building buildingRef;
-
-    @Column(name = "floor", length = 30)
-    private String floor;
-
-    @Column(name = "capacity", nullable = false)
-    private int capacity;
-
-    @Column(name = "room_type", nullable = false, length = 60)
-    private String roomType = "CLASSROOM";
+    @Column(name = "floors", nullable = false)
+    private int floors;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

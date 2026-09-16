@@ -35,6 +35,9 @@ public final class Permissions {
     public static final String SCHOOL_MANAGE = "SCHOOL_MANAGE";
     public static final String CAMPUS_VIEW = "CAMPUS_VIEW";
     public static final String CAMPUS_MANAGE = "CAMPUS_MANAGE";
+    // Salles physiques : bâtiments, étages, capacités, occupation.
+    public static final String ROOM_VIEW = "ROOM_VIEW";
+    public static final String ROOM_MANAGE = "ROOM_MANAGE";
     public static final String ACADEMIC_YEAR_VIEW = "ACADEMIC_YEAR_VIEW";
     public static final String ACADEMIC_YEAR_MANAGE = "ACADEMIC_YEAR_MANAGE";
     public static final String CLASS_VIEW = "CLASS_VIEW";

@@ -58,4 +58,19 @@ public interface ClassroomRepository extends JpaRepository<Classroom, UUID> {
     long countByLevelIdAndStatus(UUID levelId, ClassroomStatus status);
 
     boolean existsByAcademicYearIdAndCampusIdAndCode(UUID academicYearId, UUID campusId, String code);
+
+    /**
+     * Nombre de classes actives qui ont cette salle par défaut, pour l'écran
+     * des salles.
+     *
+     * <p>Une classe peut pointer sur une salle : si la salle est archivée, la
+     * classe se retrouve avec un lieu qui n'existe plus. Le compteur sert à la
+     * fois l'affichage et la règle d'archivage.</p>
+     */
+    @Query("""
+           SELECT c.defaultRoom.id, COUNT(c) FROM Classroom c
+           WHERE c.defaultRoom IS NOT NULL AND c.status = 'ACTIVE'
+           GROUP BY c.defaultRoom.id
+           """)
+    List<Object[]> countActiveByDefaultRoom();
 }

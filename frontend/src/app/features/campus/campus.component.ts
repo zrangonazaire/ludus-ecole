@@ -45,6 +45,7 @@ export class CampusComponent implements OnInit {
   readonly creating = signal(false);
 
   readonly canManage = computed(() => this.auth.has(PERMISSIONS.CAMPUS_MANAGE));
+  readonly canViewRooms = computed(() => this.auth.has(PERMISSIONS.ROOM_VIEW));
 
   readonly form = this.fb.nonNullable.group({
     code: ['', [Validators.required, Validators.maxLength(30)]],
