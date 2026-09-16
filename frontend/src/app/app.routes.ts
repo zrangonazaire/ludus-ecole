@@ -309,6 +309,13 @@ export const routes: Routes = [
       {
         path: 'users',
         canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.USER_MANAGE], title: 'Utilisateurs' },
+        loadComponent: () => import('./features/users/users.component')
+          .then((m) => m.UsersComponent)
+      },
+      {
+        path: 'access-profiles',
+        canActivate: [permissionGuard],
         data: { permissions: [PERMISSIONS.ROLE_MANAGE], title: 'Profils d’accès' },
         loadComponent: () => import('./features/access-profiles/access-profiles.component')
           .then((m) => m.AccessProfilesComponent)

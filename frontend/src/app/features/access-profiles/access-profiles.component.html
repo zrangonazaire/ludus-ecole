@@ -8,6 +8,9 @@
       </p>
     </div>
     <div class="page__actions">
+      @if (auth.has('USER_MANAGE')) {
+        <a class="btn btn--secondary" routerLink="/users">Gérer les utilisateurs</a>
+      }
       <button type="button" class="btn btn--primary" (click)="openCreate()">
         <span aria-hidden="true">+</span> Créer un profil
       </button>
@@ -78,7 +81,10 @@
               <button type="button" class="btn btn--secondary btn--sm"
                       (click)="openEdit(profile)">Modifier les droits</button>
             } @else {
-              <span class="locked"><span aria-hidden="true">◇</span> Profil protégé</span>
+              <button type="button" class="btn btn--secondary btn--sm"
+                      (click)="openEdit(profile)">Voir les droits</button>
+              <button type="button" class="btn btn--ghost btn--sm"
+                      (click)="duplicate(profile)">Créer une copie personnalisée</button>
             }
           </footer>
         </article>
@@ -101,13 +107,20 @@
       <div>
         <p class="eyebrow">Profil d’accès</p>
         <h2 class="drawer__title" id="profile-form-title">
-          {{ editing() ? 'Modifier le profil' : 'Créer un profil' }}
+          {{ viewing() ? 'Droits du profil système' : editing() ? 'Modifier le profil' : 'Créer un profil' }}
         </h2>
       </div>
       <button type="button" class="drawer__close" aria-label="Fermer" (click)="closePanel()">×</button>
     </header>
 
     <form class="drawer__body" [formGroup]="profileForm" (ngSubmit)="submit()">
+      @if (viewing()) {
+        <p class="permission-warning">Ce profil système est commun aux établissements. Créez une copie personnalisée pour adapter ses permissions, puis attribuez cette copie aux comptes concernés dans Utilisateurs.</p>
+      } @else {
+        @if (editing(); as profile) {
+          <p class="permission-warning">Les modifications s’appliqueront aux {{ profile.userCount }} compte(s) utilisant ce profil.</p>
+        }
+      }
       <div class="field">
         <label class="field__label field__label--required" for="profile-label">Nom du profil</label>
         <input id="profile-label" class="input" formControlName="label"
@@ -138,7 +151,7 @@
         <div class="permission-section__head">
           <div>
             <h3>Permissions</h3>
-            <p>Choisissez précisément ce que ce profil pourra faire.</p>
+            <p>{{ viewing() ? 'Permissions incluses dans ce profil.' : 'Choisissez précisément ce que ce profil pourra faire.' }}</p>
           </div>
           <strong class="permission-count numeric">{{ selectedPermissions().size }}</strong>
         </div>
@@ -153,6 +166,7 @@
               <header class="permission-group__head">
                 <label>
                   <input type="checkbox" [checked]="groupSelected(group.items)"
+                         [disabled]="viewing() || saving()"
                          (change)="toggleGroup(group.items)" />
                   <strong>{{ group.module }}</strong>
                 </label>
@@ -164,6 +178,7 @@
                 @for (permission of group.items; track permission.code) {
                   <label class="permission-item">
                     <input type="checkbox"
+                           [disabled]="viewing() || saving()"
                            [checked]="selectedPermissions().has(permission.code)"
                            (change)="togglePermission(permission.code)" />
                     <span>
@@ -180,12 +195,16 @@
     </form>
 
     <footer class="drawer__foot">
-      <button type="button" class="btn btn--secondary" (click)="closePanel()">Annuler</button>
+      <button type="button" class="btn btn--secondary" (click)="closePanel()">{{ viewing() ? 'Fermer' : 'Annuler' }}</button>
+      @if (viewing()) {
+        <button type="button" class="btn btn--primary" (click)="duplicate(editing()!)">Créer une copie personnalisée</button>
+      } @else {
       <button type="button" class="btn btn--primary"
               [disabled]="profileForm.invalid || selectedPermissions().size === 0 || saving()"
               (click)="submit()">
         {{ saving() ? 'Enregistrement…' : (editing() ? 'Enregistrer' : 'Créer le profil') }}
       </button>
+      }
     </footer>
   </aside>
 }

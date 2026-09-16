@@ -2,6 +2,8 @@ import {
   ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ACCESS_PROFILE_DATA_SOURCE } from '@core/datasource/data-source';
@@ -16,12 +18,13 @@ import { ErrorStateComponent } from '@shared/ui/error-state/error-state.componen
 @Component({
   selector: 'eduops-access-profiles',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LoadingStateComponent, ErrorStateComponent],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, LoadingStateComponent, ErrorStateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './access-profiles.component.html',
   styleUrl: './access-profiles.component.scss'
 })
 export class AccessProfilesComponent implements OnInit {
+  readonly auth = inject(AuthService);
   private readonly dataSource = inject(ACCESS_PROFILE_DATA_SOURCE);
   private readonly notifications = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
@@ -35,6 +38,7 @@ export class AccessProfilesComponent implements OnInit {
   readonly search = signal('');
   readonly editing = signal<AccessProfile | null>(null);
   readonly panelOpen = signal(false);
+  readonly viewing = signal(false);
   readonly selectedPermissions = signal<Set<string>>(new Set());
 
   readonly profileForm = this.fb.nonNullable.group({
@@ -88,6 +92,8 @@ export class AccessProfilesComponent implements OnInit {
   }
 
   openCreate(): void {
+    this.viewing.set(false);
+    this.profileForm.enable();
     this.editing.set(null);
     this.profileForm.reset({ label: '', code: '', description: '' });
     this.selectedPermissions.set(new Set());
@@ -95,9 +101,8 @@ export class AccessProfilesComponent implements OnInit {
   }
 
   openEdit(profile: AccessProfile): void {
-    if (!profile.editable) {
-      return;
-    }
+    this.viewing.set(!profile.editable);
+    this.profileForm.enable();
     this.editing.set(profile);
     this.profileForm.reset({
       label: profile.label,
@@ -105,7 +110,21 @@ export class AccessProfilesComponent implements OnInit {
       description: profile.description ?? ''
     });
     this.selectedPermissions.set(new Set(profile.permissionCodes));
+    if (!profile.editable) this.profileForm.disable();
     this.panelOpen.set(true);
+  }
+
+  duplicate(profile: AccessProfile): void {
+    this.openCreate();
+    const base = `${profile.code.slice(0, 45)}_COPIE`;
+    let code = base;
+    let suffix = 2;
+    while (this.profiles().some(item => item.code === code)) code = `${base}_${suffix++}`;
+    this.profileForm.reset({
+      label: `${profile.label.slice(0, 125)} (copie)`, code,
+      description: profile.description ?? ''
+    });
+    this.selectedPermissions.set(new Set(profile.permissionCodes));
   }
 
   closePanel(): void {
@@ -128,6 +147,7 @@ export class AccessProfilesComponent implements OnInit {
   }
 
   togglePermission(code: string): void {
+    if (this.viewing() || this.saving()) return;
     this.selectedPermissions.update((current) => {
       const next = new Set(current);
       next.has(code) ? next.delete(code) : next.add(code);
@@ -136,6 +156,7 @@ export class AccessProfilesComponent implements OnInit {
   }
 
   toggleGroup(items: AccessPermission[]): void {
+    if (this.viewing() || this.saving()) return;
     const allSelected = items.every((item) => this.selectedPermissions().has(item.code));
     this.selectedPermissions.update((current) => {
       const next = new Set(current);
@@ -150,6 +171,7 @@ export class AccessProfilesComponent implements OnInit {
   }
 
   submit(): void {
+    if (this.viewing()) return;
     if (this.profileForm.invalid || this.selectedPermissions().size === 0 || this.saving()) {
       this.profileForm.markAllAsTouched();
       return;

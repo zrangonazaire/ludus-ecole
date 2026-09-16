@@ -1,0 +1,98 @@
+<div class="page">
+  <header class="page__header">
+    <div><p class="eyebrow">Personnel et accès</p><h1 class="page__title">Utilisateurs</h1>
+      <p class="page__meta">Créez les comptes de connexion et attribuez leurs profils d’accès.</p></div>
+    <div class="page__actions">
+      @if (auth.has('ROLE_MANAGE')) { <a class="btn btn--secondary" routerLink="/access-profiles">Profils d’accès</a> }
+      <button class="btn btn--primary" type="button" (click)="open()" [disabled]="loading() || error()">+ Créer un utilisateur</button>
+    </div>
+  </header>
+  <section class="intro card"><div>
+    <h2>Donner accès à votre établissement</h2>
+    <p>Créez un compte, choisissez ses profils, puis communiquez personnellement son identifiant, son mot de passe et le lien de connexion. Aucun e-mail n’est envoyé automatiquement.</p>
+    <p>Les profils définissent les droits. Pour les portails élèves, parents et enseignants, le compte doit aussi être rattaché à la fiche de la personne concernée.</p>
+  </div></section>
+  @if (created(); as username) {
+    <section class="intro card" role="status"><div><h2>Compte {{ username }} créé</h2>
+      <p>Lien de connexion : <a [href]="loginUrl">{{ loginUrl }}</a></p>
+      <p>Transmettez l’identifiant « {{ username }} » et le mot de passe que vous avez choisi par un canal privé.</p>
+    </div><button class="btn btn--ghost" type="button" (click)="created.set(null)">Fermer</button></section>
+  }
+  <div class="toolbar"><label class="search-field"><span class="visually-hidden">Rechercher un utilisateur</span>
+    <input class="input" type="search" placeholder="Nom, identifiant, e-mail ou profil…" [value]="search()" (input)="search.set($any($event.target).value)" />
+  </label></div>
+  @if (loading()) { <eduops-loading-state message="Chargement des utilisateurs…" /> }
+  @else if (error()) { <eduops-error-state (retry)="load()" /> }
+  @else {
+    <section class="profile-grid" aria-label="Utilisateurs">
+      @for (user of visibleUsers(); track user.id) {
+        <article class="profile-card card user-card">
+          <header class="profile-card__head">
+            <span class="profile-card__mark" aria-hidden="true">{{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}</span>
+            <div class="profile-card__identity"><div class="profile-card__title-row"><h2>{{ user.firstName }} {{ user.lastName }}</h2></div><code>{{ user.username }}</code></div>
+          </header>
+          <div class="user-card__body">
+            <p class="user-card__email">{{ user.email }}</p>
+            <span class="user-card__status" [class.user-card__status--active]="user.status === 'ACTIVE'">{{ user.status === 'ACTIVE' ? 'Actif' : user.status === 'PENDING' ? 'En attente' : user.status === 'LOCKED' ? 'Verrouillé' : user.status === 'ARCHIVED' ? 'Archivé' : 'Désactivé' }}</span>
+            <div class="user-card__profiles" aria-label="Profils d’accès">@for (profile of user.profiles; track profile.id) { <span class="badge">{{ profile.label }}</span> } @empty { <span class="locked">Aucun profil attribué</span> }</div>
+          </div>
+          <footer class="profile-card__foot">
+            @if (canEdit(user)) { <button class="btn btn--secondary btn--sm" type="button" (click)="open(user)">Attribuer les profils</button> }
+            @else if (user.id === auth.currentUser()?.userId) { <button class="btn btn--secondary btn--sm" type="button" (click)="openAccount(user)">Votre compte</button> }
+            @else { <span class="locked">Compte protégé</span> }
+          </footer>
+        </article>
+      } @empty { <p class="empty card">Aucun utilisateur{{ search() ? ' ne correspond à votre recherche.' : '. Créez le premier compte.' }}</p> }
+    </section>
+  }
+</div>
+@if (account(); as user) {
+  <div class="drawer-backdrop" (click)="closeAccount()"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="account-title" (keydown.escape)="closeAccount()">
+    <header class="drawer__head"><h2 id="account-title" class="drawer__title">Votre compte</h2>
+      <button class="drawer__close" type="button" aria-label="Fermer" (click)="closeAccount()">×</button></header>
+    <div class="drawer__body">
+      <dl class="account-details"><div><dt>Nom</dt><dd>{{ user.firstName }} {{ user.lastName }}</dd></div>
+        <div><dt>Identifiant</dt><dd>{{ user.username }}</dd></div><div><dt>E-mail</dt><dd>{{ user.email }}</dd></div>
+        <div><dt>Profils d’accès</dt><dd class="user-card__profiles">@for (profile of user.profiles; track profile.id) { <span class="badge">{{ profile.label }}</span> }</dd></div>
+      </dl>
+      <p class="account-hint">Pour modifier vos propres droits, contactez un autre administrateur de l’établissement.</p>
+      <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" id="password-form" class="password-form">
+        <h3>Changer le mot de passe</h3>
+        <div class="field"><label class="field__label" for="current-password">Mot de passe actuel</label><input id="current-password" class="input" type="password" formControlName="currentPassword" autocomplete="current-password" /></div>
+        <div class="field"><label class="field__label" for="new-password">Nouveau mot de passe</label><input id="new-password" class="input" type="password" formControlName="newPassword" autocomplete="new-password" /><span class="field__hint">Entre 10 et 72 caractères.</span></div>
+        <div class="field"><label class="field__label" for="confirm-password">Confirmer le nouveau mot de passe</label><input id="confirm-password" class="input" type="password" formControlName="confirmation" autocomplete="new-password" /></div>
+        @if (passwordForm.controls.confirmation.touched && passwordForm.controls.newPassword.value !== passwordForm.controls.confirmation.value) { <p class="field__error">Les mots de passe ne correspondent pas.</p> }
+      </form>
+    </div>
+    <footer class="drawer__foot"><button class="btn btn--secondary" type="button" (click)="closeAccount()" [disabled]="passwordSaving()">Fermer</button>
+      <button class="btn btn--primary" type="submit" form="password-form" [disabled]="passwordSaving() || passwordForm.invalid || passwordForm.controls.newPassword.value !== passwordForm.controls.confirmation.value">{{ passwordSaving() ? 'Enregistrement…' : 'Modifier le mot de passe' }}</button></footer>
+  </aside>
+}
+@if (panelOpen()) {
+  <div class="drawer-backdrop" (click)="close()"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="user-title">
+    <header class="drawer__head"><h2 id="user-title">{{ editing() ? 'Attribuer les profils' : 'Créer un utilisateur' }}</h2>
+      <button class="drawer__close" type="button" aria-label="Fermer" (click)="close()">×</button></header>
+    <form class="drawer__body" [formGroup]="form" (ngSubmit)="submit()" id="user-form">
+      @if (editing(); as user) { <p>{{ user.firstName }} {{ user.lastName }} — {{ user.username }}</p> }
+      @else {
+        <div class="field"><label for="user-first" class="field__label">Prénom *</label><input id="user-first" class="input" formControlName="firstName" autocomplete="given-name" /></div>
+        <div class="field"><label for="user-last" class="field__label">Nom *</label><input id="user-last" class="input" formControlName="lastName" autocomplete="family-name" /></div>
+        <div class="field"><label for="user-email" class="field__label">E-mail *</label><input id="user-email" class="input" type="email" formControlName="email" autocomplete="email" /></div>
+        <div class="field"><label for="user-login" class="field__label">Identifiant de connexion *</label><input id="user-login" class="input" formControlName="username" autocomplete="off" />
+          <span class="field__hint">Lettres sans accents, chiffres, points, tirets ou tirets bas.</span></div>
+        <div class="field"><label for="user-password" class="field__label">Mot de passe *</label><input id="user-password" class="input" type="password" formControlName="password" autocomplete="new-password" />
+          <span class="field__hint">Entre 10 et 72 caractères. Notez-le pour le communiquer à la personne.</span></div>
+        @if (form.touched && form.invalid) { <p class="field__error">Complétez tous les champs avec un e-mail, un identifiant et un mot de passe valides.</p> }
+      }
+      <section class="permission-section"><h3>Profils d’accès *</h3><p>Sélectionnez au moins un profil. Les droits des profils sélectionnés se cumulent.</p>
+        <div class="permission-groups">@for (profile of profiles(); track profile.id) {
+          <label class="permission-item"><input type="checkbox" [checked]="selected().has(profile.id)" (change)="toggle(profile.id)" /><span>{{ profile.label }}</span></label>
+        } @empty { <p>Aucun profil attribuable. Un administrateur doit vous accorder les droits nécessaires.</p> }</div>
+      </section>
+    </form>
+    <footer class="drawer__foot"><button class="btn btn--secondary" type="button" (click)="close()" [disabled]="saving()">Annuler</button>
+      <button class="btn btn--primary" type="submit" form="user-form" [disabled]="saving() || !selected().size || (!editing() && form.invalid)">{{ saving() ? 'Enregistrement…' : editing() ? 'Enregistrer les profils' : 'Créer le compte' }}</button></footer>
+  </aside>
+}

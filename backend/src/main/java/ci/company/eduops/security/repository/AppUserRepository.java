@@ -15,6 +15,8 @@ import java.util.UUID;
 @Repository
 public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
 
+    java.util.List<AppUser> findBySchoolIdOrderByLastNameAscFirstNameAsc(UUID schoolId);
+
     @Query("""
            SELECT u FROM AppUser u
            WHERE lower(u.username) = lower(:login) OR lower(u.email) = lower(:login)

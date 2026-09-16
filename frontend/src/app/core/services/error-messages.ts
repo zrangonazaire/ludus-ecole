@@ -30,6 +30,8 @@ const MESSAGES: Record<string, string> = {
   INVALID_CREDENTIALS: 'Identifiant ou mot de passe incorrect.',
   ACCOUNT_LOCKED: 'Compte temporairement verrouillé après plusieurs échecs.',
   ACCOUNT_DISABLED: 'Ce compte est désactivé.',
+  USER_LOGIN_ALREADY_USED: 'Cet identifiant ou cet e-mail est déjà utilisé. Choisissez-en un autre.',
+  PASSWORD_POLICY_VIOLATION: 'Le mot de passe ne respecte pas la politique de sécurité. Utilisez au moins 10 caractères ; les caractères accentués et les emojis réduisent la longueur maximale autorisée.',
   TOKEN_EXPIRED: 'Votre session a expiré.',
   ACCESS_PROFILE_NOT_FOUND: 'Ce profil d’accès est introuvable.',
   ACCESS_PROFILE_CODE_ALREADY_USED: 'Un autre profil utilise déjà ce code.',

@@ -6,7 +6,7 @@ spring:
     name: eduops
   profiles:
     # Local fallback only. Docker selects prod explicitly at startup.
-    default: prod
+    default: dev
 
   datasource:
     # Local development ports. application-prod.yml uses Docker service names.
