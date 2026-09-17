@@ -3,9 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EMPTY, Observable, expand, reduce, tap } from 'rxjs';
 import { environment } from '@env/environment';
-import { CLASSROOM_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE } from '@core/datasource/data-source';
+import { CLASSROOM_DATA_SOURCE, ROOM_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE } from '@core/datasource/data-source';
 import { Classroom, Teacher } from '@core/models/domain.models';
+import { Room } from '@core/models/room.models';
 import {
   CONFLICT_LABELS, DAY_LABELS, PaletteEntry, SlotUpsertPayload, TimetableConflict,
   TimetableGrid, TimetableScope, TimetableSlot
@@ -32,6 +34,7 @@ interface DragPayload {
   subjectId: string;
   teacherId: string;
   slotId?: string;
+  roomId?: string;
   durationMinutes: number;
 }
 
@@ -55,6 +58,7 @@ export class TimetableComponent implements OnInit {
   private readonly timetables = inject(TIMETABLE_DATA_SOURCE);
   private readonly classrooms = inject(CLASSROOM_DATA_SOURCE);
   private readonly teachers = inject(TEACHER_DATA_SOURCE);
+  private readonly rooms = inject(ROOM_DATA_SOURCE);
   private readonly notifications = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -63,6 +67,7 @@ export class TimetableComponent implements OnInit {
   readonly palette = signal<PaletteEntry[]>([]);
   readonly classList = signal<Classroom[]>([]);
   readonly teacherList = signal<Teacher[]>([]);
+  readonly roomList = signal<Room[]>([]);
   readonly loading = signal(true);
   readonly error = signal(false);
   readonly saving = signal(false);
@@ -80,22 +85,50 @@ export class TimetableComponent implements OnInit {
 
   private dragged: DragPayload | null = null;
   private hoverToken = 0;
+  private loadToken = 0;
+  private readonly selections: Partial<Record<TimetableScope, string>> = {};
 
   ngOnInit(): void {
-    this.classrooms.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((list) => {
-      this.classList.set(list);
-      const requested = this.route.snapshot.queryParamMap.get('classroomId');
-      const target = requested ?? list[0]?.id ?? '';
-      if (target) {
-        this.scopeId.set(target);
-        this.load();
-      } else {
+    this.selections.CLASSROOM = this.route.snapshot.queryParamMap.get('classroomId') ?? '';
+    this.loadOptions();
+  }
+
+  private loadOptions(): void {
+    const scope = this.scope();
+    const token = ++this.loadToken;
+    this.grid.set(null);
+    this.palette.set([]);
+    this.scopeId.set('');
+    this.loading.set(true);
+    this.error.set(false);
+    const request: Observable<{ id: string }[]> = scope === 'TEACHER'
+      ? this.teachers.search({ page: 0, size: 100 }).pipe(
+          expand(page => page.page + 1 < page.totalPages
+            ? this.teachers.search({ page: page.page + 1, size: 100 }) : EMPTY),
+          reduce((list, page) => [...list, ...page.content], [] as Teacher[]),
+          tap(list => this.teacherList.set(list)))
+      : scope === 'ROOM'
+        ? this.rooms.list().pipe(tap(list => this.roomList.set(list)))
+        : this.classrooms.list().pipe(tap(list => this.classList.set(list)));
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: list => {
+        if (token !== this.loadToken) return;
+        const previous = this.selections[scope];
+        const id = list.find(item => item.id === previous)?.id ?? list[0]?.id ?? '';
+        this.scopeId.set(id);
+        if (id) {
+          this.selections[scope] = id;
+          this.load();
+        } else {
+          this.loading.set(false);
+        }
+      },
+      error: () => {
+        if (token !== this.loadToken) return;
         this.loading.set(false);
+        this.error.set(true);
       }
     });
-    this.teachers.search({ page: 0, size: 100 })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((page) => this.teacherList.set(page.content));
   }
 
   // ------------------------------------------------------------------ lecture
@@ -103,8 +136,12 @@ export class TimetableComponent implements OnInit {
   load(): void {
     const id = this.scopeId();
     if (!id) {
+      this.loadOptions();
       return;
     }
+    const token = ++this.loadToken;
+    this.grid.set(null);
+    this.palette.set([]);
     this.loading.set(true);
     this.error.set(false);
 
@@ -116,10 +153,12 @@ export class TimetableComponent implements OnInit {
 
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (grid) => {
+        if (token !== this.loadToken) return;
         this.grid.set(grid);
         this.loading.set(false);
       },
       error: () => {
+        if (token !== this.loadToken) return;
         this.loading.set(false);
         this.error.set(true);
       }
@@ -128,8 +167,8 @@ export class TimetableComponent implements OnInit {
     if (this.scope() === 'CLASSROOM') {
       this.timetables.palette(id).pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: (entries) => this.palette.set(entries),
-          error: () => this.palette.set([])
+          next: (entries) => { if (token === this.loadToken) this.palette.set(entries); },
+          error: () => { if (token === this.loadToken) this.palette.set([]); }
         });
     } else {
       this.palette.set([]);
@@ -137,18 +176,18 @@ export class TimetableComponent implements OnInit {
   }
 
   changeScope(scope: TimetableScope): void {
+    if (scope === this.scope()) return;
     this.scope.set(scope);
     this.selectedSlot.set(null);
-    const fallback = scope === 'TEACHER'
-      ? this.teacherList()[0]?.id
-      : this.classList()[0]?.id;
-    this.scopeId.set(fallback ?? '');
-    this.load();
+    this.endDrag();
+    this.loadOptions();
   }
 
   changeScopeId(id: string): void {
     this.scopeId.set(id);
+    this.selections[this.scope()] = id;
     this.selectedSlot.set(null);
+    this.endDrag();
     this.load();
   }
 
@@ -234,12 +273,15 @@ export class TimetableComponent implements OnInit {
       subjectId: slot.subjectId,
       teacherId: slot.teacherId,
       slotId: slot.id,
+      roomId: slot.roomId,
       durationMinutes: slot.durationMinutes
     };
     event.dataTransfer?.setData('text/plain', slot.id);
   }
 
   endDrag(): void {
+    ++this.hoverToken;
+    this.checking.set(false);
     this.dragged = null;
     this.hoverCell.set(null);
     this.hoverConflicts.set([]);
@@ -321,6 +363,7 @@ export class TimetableComponent implements OnInit {
       classroomId: this.scopeId(),
       subjectId: dragged.subjectId,
       teacherId: dragged.teacherId,
+      roomId: dragged.roomId,
       dayOfWeek: day,
       startTime: this.toLabel(start),
       endTime: this.toLabel(start + dragged.durationMinutes),

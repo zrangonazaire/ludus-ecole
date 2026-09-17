@@ -12,6 +12,7 @@
     </div>
     <div class="page__actions">
       <button type="button" class="btn btn--ghost screen-only"
+              [disabled]="loading() || !grid()"
               (click)="print()">
         <span aria-hidden="true">▨</span>
         Imprimer
@@ -56,15 +57,23 @@
         @if (scope() === 'CLASSROOM') {
           @for (classroom of classList(); track classroom.id) {
             <option [value]="classroom.id">{{ classroom.name }} — {{ classroom.levelName }}</option>
+          } @empty {
+            <option value="">Aucune classe enregistrée</option>
           }
         }
         @if (scope() === 'TEACHER') {
           @for (teacher of teacherList(); track teacher.id) {
             <option [value]="teacher.id">{{ teacher.fullName }}</option>
+          } @empty {
+            <option value="">Aucun professeur enregistré</option>
           }
         }
         @if (scope() === 'ROOM') {
-          <option value="">Aucune salle enregistrée</option>
+          @for (room of roomList(); track room.id) {
+            <option [value]="room.id">{{ room.name }} — {{ room.campusName }} ({{ room.code }})</option>
+          } @empty {
+            <option value="">Aucune salle enregistrée</option>
+          }
         }
       </select>
     </div>
@@ -75,6 +84,15 @@
   } @else if (error()) {
     <eduops-error-state (retry)="load()" />
   } @else {
+    @if (!scopeId()) {
+      <p class="board__empty">
+        @switch (scope()) {
+          @case ('CLASSROOM') { Aucune classe disponible pour afficher un emploi du temps. }
+          @case ('TEACHER') { Aucun professeur disponible pour afficher un emploi du temps. }
+          @case ('ROOM') { Aucune salle disponible pour afficher un emploi du temps. }
+        }
+      </p>
+    }
     @if (grid(); as g) {
 
     <div class="layout" [class.layout--with-palette]="g.editable">
@@ -273,6 +291,9 @@
                           {{ slot.subjectShortName || slot.subjectName }}
                         </span>
                         <span class="sheet__teacher">{{ slot.teacherName }}</span>
+                        @if (page.scope !== 'CLASSROOM') {
+                          <span class="sheet__where">{{ slot.classroomName }}</span>
+                        }
                         <span class="sheet__time numeric">
                           {{ hhmm(slot.startTime) }} – {{ hhmm(slot.endTime) }}
                         </span>
