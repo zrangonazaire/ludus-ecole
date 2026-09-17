@@ -40,6 +40,10 @@ public class Room extends BaseEntity {
     @JoinColumn(name = "building_id")
     private Building buildingRef;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "level_id")
+    private BuildingLevel level;
+
     @Column(name = "floor", length = 30)
     private String floor;
 

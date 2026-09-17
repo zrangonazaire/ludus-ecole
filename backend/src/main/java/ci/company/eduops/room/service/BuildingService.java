@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,11 +42,14 @@ public class BuildingService {
     private final CampusRepository campusRepository;
     private final RoomRepository roomRepository;
     private final AuditService auditService;
+    private final ci.company.eduops.room.repository.BuildingLevelRepository levels;
 
     public BuildingService(BuildingRepository buildingRepository,
                            CampusRepository campusRepository,
                            RoomRepository roomRepository,
-                           AuditService auditService) {
+                           AuditService auditService,
+                           ci.company.eduops.room.repository.BuildingLevelRepository levels) {
+        this.levels = levels;
         this.buildingRepository = buildingRepository;
         this.campusRepository = campusRepository;
         this.roomRepository = roomRepository;
@@ -65,10 +69,62 @@ public class BuildingService {
         return toResponse(require(id));
     }
 
+    @Transactional
+    public BuildingResponse create(BuildingUpsertRequest request) {
+        UUID schoolId = requireSchool();
+        var campus = campusRepository.findById(request.getCampusId())
+                .filter(item -> schoolId.equals(item.getSchool().getId()))
+                .filter(item -> item.getStatus() == CommonStatus.ACTIVE)
+                .orElseThrow(() -> BusinessException.of(ErrorCode.CAMPUS_NOT_FOUND));
+        String code = request.getCode().trim().toUpperCase(Locale.ROOT);
+        if (buildingRepository.existsByCampusIdAndCode(campus.getId(), code)) {
+            throw BusinessException.of(ErrorCode.BUILDING_CODE_ALREADY_USED);
+        }
+        Building building = new Building();
+        building.setCampus(campus);
+        building.setCode(code);
+        building.setName(request.getName().trim());
+        building.setFloors(request.getFloors());
+        building.setStatus(CommonStatus.ACTIVE);
+        Building saved;
+        try {
+            saved = buildingRepository.saveAndFlush(building);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(ErrorCode.BUILDING_CODE_ALREADY_USED,
+                    ErrorCode.BUILDING_CODE_ALREADY_USED.getDefaultMessage(), exception);
+        }
+        for (int number = 0; number <= saved.getFloors(); number++) {
+            createLevel(saved, number);
+        }
+        auditService.logCreate("Building", saved.getId(), saved.getName(),
+                Map.of("campusId", campus.getId(), "code", saved.getCode(),
+                        "name", saved.getName(), "floors", saved.getFloors()));
+        return toResponse(saved);
+    }
+
     private UUID requireSchool() {
         UUID schoolId = TenantContext.getSchoolId();
         if (schoolId == null) throw BusinessException.of(ErrorCode.SCHOOL_NOT_FOUND);
         return schoolId;
+    }
+
+    @Transactional
+    public BuildingResponse addLevel(UUID id) {
+        Building building = require(id);
+        if (building.getStatus() != CommonStatus.ACTIVE) throw BusinessException.of(ErrorCode.BUILDING_NOT_FOUND);
+        int next = levels.findByBuildingIdOrderByNumberAsc(id).stream()
+                .mapToInt(ci.company.eduops.room.domain.BuildingLevel::getNumber).max().orElse(-1) + 1;
+        createLevel(building, next);
+        building.setFloors(Math.max(building.getFloors(), next));
+        buildingRepository.saveAndFlush(building);
+        return toResponse(building);
+    }
+
+    private void createLevel(Building building, int number) {
+        var level = new ci.company.eduops.room.domain.BuildingLevel();
+        level.setBuilding(building); level.setNumber(number);
+        level.setLabel(number == 0 ? "Rez-de-chaussée" : number == 1 ? "1er étage" : number + "e étage");
+        levels.save(level);
     }
 
     private Building require(UUID id) {
@@ -85,6 +141,8 @@ public class BuildingService {
     private BuildingResponse toResponse(Building building) {
         BuildingResponse response = new BuildingResponse();
         response.setId(building.getId());
+        response.setLevels(levels.findByBuildingIdOrderByNumberAsc(building.getId()).stream()
+                .map(level -> new BuildingResponse.Level(level.getId(), level.getNumber(), level.getLabel())).toList());
         response.setCampusId(building.getCampus().getId());
         response.setCampusCode(building.getCampus().getCode());
         response.setCampusName(building.getCampus().getName());

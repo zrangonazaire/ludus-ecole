@@ -17,9 +17,70 @@ import static org.assertj.core.api.Assertions.*;
 class BuildingServiceTest {
     private final BuildingRepository buildings = mock(BuildingRepository.class);
     private final RoomRepository rooms = mock(RoomRepository.class);
+    private final CampusRepository campuses = mock(CampusRepository.class);
+    private final ci.company.eduops.room.repository.BuildingLevelRepository levels = mock(ci.company.eduops.room.repository.BuildingLevelRepository.class);
     private final BuildingService service = new BuildingService(buildings,
-            mock(CampusRepository.class), rooms, mock(AuditService.class));
+            campuses, rooms, mock(AuditService.class), levels);
     @AfterEach void cleanup() { TenantContext.clear(); }
+
+    private ci.company.eduops.room.dto.request.BuildingUpsertRequest request(UUID campusId) {
+        var request = new ci.company.eduops.room.dto.request.BuildingUpsertRequest();
+        request.setCampusId(campusId); request.setCode(" bat-a ");
+        request.setName(" Bâtiment A "); request.setFloors(2);
+        return request;
+    }
+
+    private Campus campus(UUID schoolId) {
+        var school = new ci.company.eduops.school.domain.School(); school.setId(schoolId);
+        Campus campus = new Campus(); campus.setId(UUID.randomUUID());
+        campus.setSchool(school); campus.setStatus(CommonStatus.ACTIVE);
+        return campus;
+    }
+
+    @Test void createsBuildingOnCurrentSchoolsCampus() {
+        UUID schoolId = UUID.randomUUID(); TenantContext.setSchoolId(schoolId);
+        Campus campus = campus(schoolId);
+        when(campuses.findById(campus.getId())).thenReturn(Optional.of(campus));
+        when(buildings.saveAndFlush(any(Building.class))).thenAnswer(invocation -> {
+            Building building = invocation.getArgument(0); building.setId(UUID.randomUUID()); return building;
+        });
+        var result = service.create(request(campus.getId()));
+        assertThat(result.getCode()).isEqualTo("BAT-A");
+        assertThat(result.getName()).isEqualTo("Bâtiment A");
+        assertThat(result.getFloors()).isEqualTo(2);
+        assertThat(result.getCampusId()).isEqualTo(campus.getId());
+        var captor = org.mockito.ArgumentCaptor.forClass(ci.company.eduops.room.domain.BuildingLevel.class);
+        verify(levels, times(3)).save(captor.capture());
+        assertThat(captor.getAllValues()).extracting(ci.company.eduops.room.domain.BuildingLevel::getNumber)
+                .containsExactly(0, 1, 2);
+        assertThat(captor.getAllValues()).extracting(ci.company.eduops.room.domain.BuildingLevel::getLabel)
+                .containsExactly("Rez-de-chaussée", "1er étage", "2e étage");
+    }
+
+    @Test void rejectsCampusOfAnotherSchool() {
+        TenantContext.setSchoolId(UUID.randomUUID());
+        Campus campus = campus(UUID.randomUUID());
+        when(campuses.findById(campus.getId())).thenReturn(Optional.of(campus));
+        assertThatThrownBy(() -> service.create(request(campus.getId()))).isInstanceOf(BusinessException.class);
+        verify(buildings, never()).saveAndFlush(any());
+    }
+
+    @Test void rejectsArchivedCampus() {
+        UUID schoolId = UUID.randomUUID(); TenantContext.setSchoolId(schoolId);
+        Campus campus = campus(schoolId); campus.setStatus(CommonStatus.ARCHIVED);
+        when(campuses.findById(campus.getId())).thenReturn(Optional.of(campus));
+        assertThatThrownBy(() -> service.create(request(campus.getId()))).isInstanceOf(BusinessException.class);
+        verify(buildings, never()).saveAndFlush(any());
+    }
+
+    @Test void rejectsDuplicateCodeWithinCampus() {
+        UUID schoolId = UUID.randomUUID(); TenantContext.setSchoolId(schoolId);
+        Campus campus = campus(schoolId);
+        when(campuses.findById(campus.getId())).thenReturn(Optional.of(campus));
+        when(buildings.existsByCampusIdAndCode(campus.getId(), "BAT-A")).thenReturn(true);
+        assertThatThrownBy(() -> service.create(request(campus.getId()))).isInstanceOf(BusinessException.class);
+        verify(buildings, never()).saveAndFlush(any());
+    }
 
     @Test void rejectsMissingSchoolBeforeReadingBuildings() {
         assertThatThrownBy(() -> service.list(null, "", false)).isInstanceOf(BusinessException.class);

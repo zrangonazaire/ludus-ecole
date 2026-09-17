@@ -13,6 +13,12 @@ import java.util.UUID;
  */
 @Schema(name = "Room", description = "Une salle physique d'un campus")
 public class RoomResponse {
+    private UUID levelId;
+    private UUID buildingId;
+    public UUID getLevelId() { return levelId; }
+    public void setLevelId(UUID value) { levelId = value; }
+    public UUID getBuildingId() { return buildingId; }
+    public void setBuildingId(UUID value) { buildingId = value; }
 
     private UUID id;
     private UUID campusId;

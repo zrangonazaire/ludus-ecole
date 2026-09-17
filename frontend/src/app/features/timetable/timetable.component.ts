@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { environment } from '@env/environment';
 import { CLASSROOM_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE } from '@core/datasource/data-source';
 import { Classroom, Teacher } from '@core/models/domain.models';
 import {
@@ -12,6 +13,18 @@ import {
 import { NotificationService } from '@core/services/notification.service';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
 import { ErrorStateComponent } from '@shared/ui/error-state/error-state.component';
+
+interface PrintPage {
+  label: string;
+  scopeId: string;
+  scope: TimetableScope;
+  days: string[];
+  hours: string[];
+  stepMinutes: number;
+  slots: TimetableSlot[];
+  totalMinutes: number;
+  totalHours: number;
+}
 
 /** Ce que l'on tient pendant un glisser : une matière neuve ou un cours à déplacer. */
 interface DragPayload {
@@ -63,6 +76,7 @@ export class TimetableComponent implements OnInit {
   readonly checking = signal(false);
 
   readonly selectedSlot = signal<TimetableSlot | null>(null);
+  readonly schoolName = signal<string>(environment.schoolName ?? 'Établissement');
 
   private dragged: DragPayload | null = null;
   private hoverToken = 0;
@@ -174,8 +188,8 @@ export class TimetableComponent implements OnInit {
    * Un cours de deux heures occupe deux lignes : sans cela, la grille mentirait
    * sur la durée réelle et deux cours consécutifs seraient indiscernables.
    */
-  spanOf(slot: TimetableSlot): number {
-    const step = this.grid()?.stepMinutes ?? 60;
+  spanOf(slot: TimetableSlot, stepMinutes = this.grid()?.stepMinutes ?? 60): number {
+    const step = stepMinutes > 0 ? stepMinutes : 60;
     return Math.max(1, Math.round(slot.durationMinutes / step));
   }
 
@@ -349,6 +363,65 @@ export class TimetableComponent implements OnInit {
 
   select(slot: TimetableSlot): void {
     this.selectedSlot.set(this.selectedSlot()?.id === slot.id ? null : slot);
+  }
+
+  // ------------------------------------------------------------------ impression
+
+  readonly printPages = computed<PrintPage[]>(() => {
+    const grid = this.grid();
+    if (!grid) {
+      return [];
+    }
+    return [this.buildPrintPage(grid)];
+  });
+
+  private buildPrintPage(grid: TimetableGrid): PrintPage {
+    const dayStartMin = this.toMinutes(grid.dayStart);
+    const dayEndMin = this.toMinutes(grid.dayEnd);
+    const hours: string[] = [];
+    for (let m = dayStartMin; m < dayEndMin; m += grid.stepMinutes) {
+      hours.push(this.toLabel(m));
+    }
+
+    return {
+      label: grid.scopeLabel,
+      scopeId: grid.scopeId,
+      scope: grid.scope,
+      days: grid.days,
+      hours,
+      stepMinutes: grid.stepMinutes,
+      slots: grid.slots,
+      totalMinutes: grid.totalMinutes,
+      totalHours: Math.round((grid.totalMinutes / 60) * 10) / 10,
+    };
+  }
+
+  print(): void {
+    if (!this.grid()) {
+      return;
+    }
+    // Le rendu de la feuille est fait par Angular : on attend un tour de boucle
+    // avant d'ouvrir le dialogue, sinon la page part vide à l'imprimante.
+    setTimeout(() => {
+      window.print();
+    }, 120);
+  }
+
+  slotsAtPrint(day: string, hour: string, slots: TimetableSlot[]): TimetableSlot[] {
+    const startMin = this.toMinutes(hour);
+    const endMin = startMin + (this.grid()?.stepMinutes ?? 60);
+    return slots.filter((slot) => {
+      const slotStart = this.toMinutes(slot.startTime);
+      return slot.dayOfWeek === day && slotStart >= startMin && slotStart < endMin;
+    });
+  }
+
+  generatedDate(): string {
+    return new Date().toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   }
 
   /** Part du volume horaire déjà posée, en pourcentage. */

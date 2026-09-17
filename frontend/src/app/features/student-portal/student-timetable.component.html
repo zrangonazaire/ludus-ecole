@@ -14,6 +14,12 @@
           <h1 id="timetable-title">Mon emploi du temps</h1>
           <p class="page-header__message">Ta semaine de cours, jour par jour.</p>
         </div>
+        <div class="page-header__actions screen-only">
+          <button type="button" class="btn btn--ghost" (click)="print()">
+            <span aria-hidden="true">▨</span>
+            Imprimer
+          </button>
+        </div>
       </header>
 
       <div class="week">
@@ -55,5 +61,71 @@
         }
       </div>
     </div>
+  }
+
+  <!-- ═══ Section d'impression ═══ -->
+  @if (printPages(); as pages) {
+    <section class="print-only" aria-hidden="true">
+      @for (page of pages; track page.label) {
+        <div class="timetable-sheet">
+          <header class="timetable-sheet__header">
+            <div>
+              <p class="timetable-sheet__school">{{ page.schoolName }}</p>
+              <h1 class="timetable-sheet__title">Mon emploi du temps</h1>
+            </div>
+            <p class="timetable-sheet__meta numeric">
+              {{ page.termLabel }}<br>
+              {{ page.label }}
+            </p>
+          </header>
+
+          <table class="timetable-sheet__grid">
+            <caption class="timetable-sheet__caption">
+              Semaine du {{ page.label }}, soit {{ page.totalHours }} h de cours par semaine.
+            </caption>
+            <thead>
+              <tr class="timetable-sheet__row">
+                <th class="timetable-sheet__hour" scope="col">Heure</th>
+                @for (day of page.days; track day.date) {
+                  <th class="timetable-sheet__day" scope="col">
+                    {{ dayTitle({ date: day.date }) }}
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (day of page.days; track day.date) {
+                @for (course of day.courses; track course.id) {
+                  <tr class="timetable-sheet__row timetable-sheet__course">
+                    <td class="timetable-sheet__hour">
+                      {{ courseTime(course, 'start') }} – {{ courseTime(course, 'end') }}
+                    </td>
+                    <td
+                      class="timetable-sheet__cell"
+                      [attr.colspan]="day.courses.length"
+                      [class.timetable-sheet__cell--highlight]="isToday({ date: day.date })">
+                      <div class="timetable-sheet__course-block">
+                        <span class="timetable-sheet__subject">{{ course.subjectName }}</span>
+                        <span class="timetable-sheet__teacher">{{ course.teacherName || 'Enseignant à confirmer' }}</span>
+                        @if (course.roomName) {
+                          <span class="timetable-sheet__room">Salle {{ course.roomName }}</span>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+
+          <footer class="timetable-sheet__footer">
+            <span class="timetable-sheet__total">
+              <strong>{{ page.totalHours }} h</strong> de cours cette semaine
+            </span>
+            <span class="timetable-sheet__generated">Généré le {{ generatedDate() }}</span>
+          </footer>
+        </div>
+      }
+    </section>
   }
 }

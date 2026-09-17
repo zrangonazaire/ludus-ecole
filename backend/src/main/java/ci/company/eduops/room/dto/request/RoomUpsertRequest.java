@@ -21,6 +21,9 @@ import java.util.UUID;
  */
 @Schema(name = "RoomUpsertRequest", description = "Création ou modification d'une salle")
 public class RoomUpsertRequest {
+    private UUID levelId;
+    public UUID getLevelId() { return levelId; }
+    public void setLevelId(UUID levelId) { this.levelId = levelId; }
 
     @NotNull
     @Schema(description = "Campus auquel la salle appartient", requiredMode = Schema.RequiredMode.REQUIRED)

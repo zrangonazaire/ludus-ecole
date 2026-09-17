@@ -10,6 +10,8 @@ const MESSAGES: Record<string, string> = {
   // generic
   VALIDATION_ERROR: 'Les données saisies sont invalides.',
   RESOURCE_NOT_FOUND: 'Élément introuvable.',
+  BUILDING_CODE_ALREADY_USED: 'Ce code de bâtiment est déjà utilisé sur ce campus. Choisissez un autre code.',
+  BUILDING_NOT_FOUND: 'Ce bâtiment est introuvable.',
   // Émis par le proxy du serveur de développement, pas par le backend :
   // personne n'écoute à l'adresse visée.
   BACKEND_UNREACHABLE: 'Le serveur ne répond pas. Vérifiez qu’il est bien '

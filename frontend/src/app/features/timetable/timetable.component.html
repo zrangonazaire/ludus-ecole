@@ -11,6 +11,11 @@
       </p>
     </div>
     <div class="page__actions">
+      <button type="button" class="btn btn--ghost screen-only"
+              (click)="print()">
+        <span aria-hidden="true">▨</span>
+        Imprimer
+      </button>
       @if (grid()?.editable) {
         <button type="button" class="btn btn--primary"
                 [disabled]="saving() || (grid()?.slots?.length ?? 0) === 0"
@@ -222,4 +227,76 @@
     </div>
     }
   }
+
+  <!-- ═══════════════ Feuille imprimable ═══════════════
+       Hors impression, ce bloc est vide : il n'est peuplé que le temps d'ouvrir
+       le dialogue d'impression. Une page A4 par vue. -->
+  <div class="print-only">
+    @for (page of printPages(); track page.label) {
+      <article class="timetable-sheet">
+        <header class="sheet__header">
+          <div class="sheet__identity">
+            <p class="sheet__school">{{ schoolName() }}</p>
+            <p class="sheet__meta">
+              @if (page.scope === 'CLASSROOM') { Classe : {{ page.label }} }
+              @else if (page.scope === 'TEACHER') { Professeur : {{ page.label }} }
+              @else if (page.scope === 'ROOM') { Salle : {{ page.label }} }
+              @else { Vue : {{ page.label }} }
+            </p>
+          </div>
+          <div class="sheet__title">
+            <h1>Emploi du temps</h1>
+            <p>{{ page.label }}</p>
+          </div>
+        </header>
+
+        <table class="sheet__grid">
+          <thead>
+            <tr>
+              <th class="sheet__corner"></th>
+              @for (day of page.days; track day) {
+                <th class="sheet__day">{{ dayLabel(day) }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (hour of page.hours; track hour) {
+              <tr>
+                <td class="sheet__hour">{{ hour }}</td>
+                @for (day of page.days; track day) {
+                  <td class="sheet__cell">
+                    @for (slot of slotsAtPrint(day, hour, page.slots); track slot.id) {
+                      <article class="sheet__course"
+                               [style.--course-color]="slot.subjectColor || 'var(--brand)'"
+                               [style.--span]="spanOf(slot, page.stepMinutes)">
+                        <span class="sheet__subject">
+                          {{ slot.subjectShortName || slot.subjectName }}
+                        </span>
+                        <span class="sheet__teacher">{{ slot.teacherName }}</span>
+                        <span class="sheet__time numeric">
+                          {{ hhmm(slot.startTime) }} – {{ hhmm(slot.endTime) }}
+                        </span>
+                        @if (slot.roomName) {
+                          <span class="sheet__where">{{ slot.roomName }}</span>
+                        }
+                      </article>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <footer class="sheet__footer">
+          <p class="sheet__total">
+            <strong>{{ page.totalHours }}</strong> heures par semaine
+          </p>
+          <p class="sheet__generated">
+            Généré le {{ generatedDate() }}
+          </p>
+        </footer>
+      </article>
+    }
+  </div>
 </div>

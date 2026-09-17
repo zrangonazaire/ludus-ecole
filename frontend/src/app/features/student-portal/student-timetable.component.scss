@@ -45,3 +45,145 @@
 @include mobile {
   .week { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════ Impression ═══════════════ */
+
+.print-only { display: none; }
+
+@media print {
+  .screen-only { display: none !important; }
+  .print-only { display: block; }
+}
+
+.timetable-sheet {
+  padding: 14mm 12mm;
+  font-family: var(--font-body, 'Calibri', 'Segoe UI', sans-serif);
+  font-size: 10pt;
+  color: #101828;
+  page-break-after: always;
+
+  &:last-child { page-break-after: auto; }
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding-bottom: 4mm;
+    border-bottom: 1.5pt solid #101828;
+    margin-bottom: 6mm;
+  }
+
+  &__school {
+    margin: 0;
+    font-size: 13pt;
+    font-weight: 600;
+    color: #101828;
+    line-height: 1.25;
+  }
+
+  &__title {
+    margin: 1mm 0 0;
+    font-size: 15pt;
+    font-weight: 700;
+  }
+
+  &__meta {
+    margin: 0;
+    text-align: right;
+    color: #4b5563;
+    font-size: 9pt;
+    line-height: 1.4;
+  }
+
+  &__caption {
+    caption-side: top;
+    text-align: left;
+    padding: 0 0 3mm;
+    font-size: 9pt;
+    color: #4b5563;
+    font-style: italic;
+  }
+
+  &__grid {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  &__row {
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  &__hour {
+    width: 48mm;
+    padding: 2mm 3mm;
+    font-size: 9pt;
+    white-space: nowrap;
+    color: #374151;
+    vertical-align: top;
+    text-align: left;
+    font-family: var(--font-mono, 'Consolas', monospace);
+  }
+
+  &__day {
+    width: auto;
+    padding: 2mm 3mm;
+    font-size: 9pt;
+    font-weight: 600;
+    text-align: center;
+    color: #101828;
+    background: #f9fafb;
+    vertical-align: top;
+  }
+
+  &__cell {
+    padding: 2mm 3mm;
+    vertical-align: top;
+    background: #fbfff8;
+    border-left: 4px solid var(--brand-tint);
+  }
+
+  &__cell--highlight {
+    background: #fef3c7;
+    border-left-color: #d97706;
+  }
+
+  &__course-block {
+    display: flex;
+    flex-direction: column;
+    gap: 1mm;
+  }
+
+  &__subject {
+    font-weight: 600;
+    font-size: 10pt;
+  }
+
+  &__teacher {
+    font-size: 9pt;
+    color: #4b5563;
+  }
+
+  &__room {
+    font-size: 8.5pt;
+    color: #6b7280;
+    font-style: italic;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5mm;
+    padding-top: 3mm;
+    border-top: 1pt solid #d1d5db;
+    font-size: 8.5pt;
+    color: #6b7280;
+  }
+
+  &__total { color: #374151; }
+
+  &__generated {
+    font-style: italic;
+  }
+}

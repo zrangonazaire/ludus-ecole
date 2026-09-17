@@ -31,6 +31,8 @@
     encore été mesurée, les totaux le signaleront.
   </p>
 
+  <eduops-buildings [campuses]="campuses()" (changed)="registeredBuildings.set($event)" />
+
   <div class="filters card">
     <label class="field">
       <span class="field__label">Campus</span>
@@ -176,7 +178,7 @@
         <div class="grid2">
           <label class="field">
             <span class="field__label field__label--required">Campus</span>
-            <select class="select" formControlName="campusId">
+            <select class="select" formControlName="campusId" (change)="resetLocation()">
               <option value="">Choisir un campus</option>
               @for (campus of campuses(); track campus.id) {
                 <option [value]="campus.id">{{ campus.name }} ({{ campus.code }})</option>
@@ -206,14 +208,26 @@
         <div class="grid2">
           <label class="field">
             <span class="field__label">Bâtiment</span>
-            <input class="input" formControlName="building" maxlength="120"
-                   placeholder="Bâtiment A" autocomplete="off" />
-            <span class="field__hint">C'est ce nom qui regroupe les salles dans la liste.</span>
+            <select class="select" formControlName="buildingId" (change)="selectBuilding()">
+              <option value="">Sans bâtiment affecté</option>
+              @for (building of registeredBuildings(); track building.id) {
+                @if (building.campusId === form.controls.campusId.value) { <option [value]="building.id">{{ building.name }}</option> }
+              }
+            </select>
+            @if (!form.controls.buildingId.value && form.controls.building.value) {
+              <span class="field__hint">Ancienne saisie conservée : {{ form.controls.building.value }} · {{ form.controls.floor.value }}</span>
+            }
           </label>
           <label class="field">
             <span class="field__label">Étage</span>
-            <input class="input" formControlName="floor" maxlength="30"
-                   placeholder="1er étage" autocomplete="off" />
+            <select class="select" formControlName="levelId">
+              <option value="">Choisir un niveau</option>
+              @for (building of registeredBuildings(); track building.id) {
+                @if (building.id === form.controls.buildingId.value && building.campusId === form.controls.campusId.value) {
+                  @for (level of building.levels; track level.id) { <option [value]="level.id">{{ level.label }}</option> }
+                }
+              }
+            </select>
           </label>
         </div>
 

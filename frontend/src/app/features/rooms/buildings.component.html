@@ -1,0 +1,36 @@
+<section class="buildings" aria-labelledby="buildings-title">
+  <header class="buildings__head"><div><h2 id="buildings-title">Bâtiments</h2><p>Créez vos bâtiments avant d’y ajouter des salles.</p></div>
+    @if (auth.has('ROOM_MANAGE')) { <button type="button" class="btn btn--secondary" (click)="open()">+ Nouveau bâtiment</button> }
+  </header>
+  @if (loading()) { <p role="status">Chargement des bâtiments…</p> }
+  @else if (error()) { <p role="alert">Impossible de charger les bâtiments. <button type="button" class="btn btn--ghost" (click)="load()">Réessayer</button></p> }
+  @else {
+    <div class="buildings__grid">@for (building of buildings(); track building.id) {
+      <article class="card buildings__card"><h3>{{ building.name }}</h3><p>{{ building.campusName }} · {{ building.code }}</p>
+        <p>{{ building.floors === 0 ? 'Plain-pied' : 'R+' + building.floors }}</p>
+        <ul>@for (level of building.levels; track level.id) { <li>{{ level.label }}</li> }</ul>
+        @if (auth.has('ROOM_MANAGE')) {
+          <button type="button" class="btn btn--ghost btn--sm" [disabled]="adding() !== null" (click)="addLevel(building)">{{ adding() === building.id ? 'Ajout…' : '+ Ajouter un étage' }}</button>
+        }
+      </article>
+    } @empty { <p>Aucun bâtiment enregistré. Utilisez « Nouveau bâtiment » pour en créer un.</p> }</div>
+  }
+</section>
+@if (opened()) {
+  <div class="drawer-backdrop" (click)="close()"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="building-form-title" (keydown.escape)="close()">
+    <header class="drawer__head"><h2 id="building-form-title">Nouveau bâtiment</h2><button type="button" class="btn btn--ghost" aria-label="Fermer" (click)="close()">×</button></header>
+    <form class="drawer__body" id="building-form" [formGroup]="form" (ngSubmit)="submit()">
+      <label class="field"><span class="field__label">Campus *</span><select class="select" formControlName="campusId"><option value="">Choisir un campus</option>
+        @for (campus of campuses(); track campus.id) { @if (campus.status === 'ACTIVE') { <option [value]="campus.id">{{ campus.name }}</option> } }
+      </select></label>
+      <p class="hint-block">Un campus actif est nécessaire. Si la liste est vide, vérifiez vos campus dans la configuration de l’établissement.</p>
+      <label class="field"><span class="field__label">Code *</span><input class="input" formControlName="code" maxlength="30" placeholder="BAT-A" /></label>
+      <label class="field"><span class="field__label">Nom *</span><input class="input" formControlName="name" maxlength="120" placeholder="Bâtiment A" /></label>
+      <label class="field"><span class="field__label">Nombre d’étages au-dessus du rez-de-chaussée *</span><input class="input" type="number" min="0" step="1" formControlName="floors" /></label>
+      <p class="hint-block">Le rez-de-chaussée est créé automatiquement. Saisissez 2 pour créer aussi le 1er et le 2e étage.</p>
+    </form>
+    <footer class="drawer__foot"><button type="button" class="btn btn--secondary" (click)="close()" [disabled]="saving()">Annuler</button>
+      <button type="submit" form="building-form" class="btn btn--primary" [disabled]="form.invalid || saving()">{{ saving() ? 'Création…' : 'Créer le bâtiment' }}</button></footer>
+  </aside>
+}

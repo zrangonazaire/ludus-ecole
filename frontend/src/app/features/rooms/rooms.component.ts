@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Building, BuildingsComponent } from './buildings.component';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@core/auth/auth.service';
@@ -20,15 +21,16 @@ import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.co
  * Bâtiments et salles : ce que l'emploi du temps réserve et ce qu'un élève
  * traverse dans une journée.
  *
- * <p>Un bâtiment n'est pas une entité : c'est le nom écrit sur les portes, et
- * l'écran regroupe les salles par ce nom. La question à laquelle cet écran
+ * <p>Les bâtiments se créent indépendamment des salles. Pour conserver les
+ * anciens libellés libres, l'écran regroupe encore les salles par leur nom de bâtiment.
+ * La question à laquelle cet écran
  * répond est « combien de places assises ai-je, et où » — d'où les totaux par
  * bâtiment et le comptage des salles dont la capacité n'est pas renseignée.</p>
  */
 @Component({
   selector: 'eduops-rooms',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LoadingStateComponent, ErrorStateComponent],
+  imports: [CommonModule, BuildingsComponent, ReactiveFormsModule, LoadingStateComponent, ErrorStateComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './rooms.component.html',
   styleUrl: './rooms.component.scss'
@@ -41,6 +43,7 @@ export class RoomsComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly rooms = signal<Room[]>([]);
+  readonly registeredBuildings = signal<Building[]>([]);
   readonly campuses = signal<RoomCampusOption[]>([]);
   readonly roomTypes = signal<RoomType[]>([...ROOM_TYPE_ORDER]);
   readonly loading = signal(true);
@@ -62,6 +65,8 @@ export class RoomsComponent implements OnInit {
   });
 
   readonly form = this.fb.nonNullable.group({
+    buildingId: [''],
+    levelId: [''],
     campusId: ['', [Validators.required]],
     code: ['', [Validators.required, Validators.maxLength(30),
       Validators.pattern(/^[a-zA-Z0-9-]+$/)]],
@@ -242,6 +247,8 @@ export class RoomsComponent implements OnInit {
     this.creating.set(false);
     this.editing.set(room);
     this.form.reset({
+      buildingId: room.buildingId ?? '',
+      levelId: room.levelId ?? '',
       campusId: room.campusId,
       code: room.code,
       name: room.name,
@@ -260,7 +267,18 @@ export class RoomsComponent implements OnInit {
     this.creating.set(false);
   }
 
+  resetLocation(): void {
+    this.form.patchValue({ buildingId: '', levelId: '', building: '', floor: '' });
+  }
+
+  selectBuilding(): void {
+    this.form.patchValue({ levelId: '', building: '', floor: '' });
+  }
+
   submit(): void {
+    if (this.form.controls.buildingId.value && !this.form.controls.levelId.value) {
+      this.notifications.error('Choisissez un niveau dans ce bâtiment.'); return;
+    }
     if (this.form.invalid || this.saving()) {
       this.form.markAllAsTouched();
       return;
@@ -268,6 +286,7 @@ export class RoomsComponent implements OnInit {
     const current = this.editing();
     const value = this.form.getRawValue();
     const payload: RoomUpsertPayload = {
+      levelId: value.levelId || undefined,
       campusId: value.campusId,
       code: value.code.trim().toUpperCase(),
       name: value.name.trim(),

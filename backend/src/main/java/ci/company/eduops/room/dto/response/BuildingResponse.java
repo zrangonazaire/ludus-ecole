@@ -13,6 +13,10 @@ import java.util.UUID;
  */
 @Schema(name = "Building", description = "Un bâtiment d'un campus")
 public class BuildingResponse {
+    public record Level(UUID id, int number, String label) { }
+    private java.util.List<Level> levels = java.util.List.of();
+    public java.util.List<Level> getLevels() { return levels; }
+    public void setLevels(java.util.List<Level> value) { levels = value; }
 
     private UUID id;
     private UUID campusId;

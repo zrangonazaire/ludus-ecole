@@ -42,8 +42,9 @@ class RoomServiceTest {
     private final ClassroomRepository classrooms = mock(ClassroomRepository.class);
     private final TimetableSlotRepository timetableSlots = mock(TimetableSlotRepository.class);
     private final AuditService audit = mock(AuditService.class);
+    private final ci.company.eduops.room.repository.BuildingLevelRepository levels = mock(ci.company.eduops.room.repository.BuildingLevelRepository.class);
     private final RoomService service = new RoomService(rooms, campuses, classrooms,
-            timetableSlots, audit);
+            timetableSlots, audit, levels);
 
     private final School school = new School();
     private final Campus campus = new Campus();

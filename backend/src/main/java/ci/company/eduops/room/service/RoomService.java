@@ -51,12 +51,15 @@ public class RoomService {
     private final ClassroomRepository classroomRepository;
     private final TimetableSlotRepository timetableSlotRepository;
     private final AuditService auditService;
+    private final ci.company.eduops.room.repository.BuildingLevelRepository levels;
 
     public RoomService(RoomRepository roomRepository,
                        CampusRepository campusRepository,
                        ClassroomRepository classroomRepository,
                        TimetableSlotRepository timetableSlotRepository,
-                       AuditService auditService) {
+                       AuditService auditService,
+                       ci.company.eduops.room.repository.BuildingLevelRepository levels) {
+        this.levels = levels;
         this.roomRepository = roomRepository;
         this.campusRepository = campusRepository;
         this.classroomRepository = classroomRepository;
@@ -270,6 +273,8 @@ public class RoomService {
                                     Map<UUID, Integer> defaults) {
         RoomResponse response = new RoomResponse();
         response.setId(room.getId());
+        response.setLevelId(room.getLevel() == null ? null : room.getLevel().getId());
+        response.setBuildingId(room.getBuildingRef() == null ? null : room.getBuildingRef().getId());
         response.setCampusId(room.getCampus().getId());
         response.setCampusCode(room.getCampus().getCode());
         response.setCampusName(room.getCampus().getName());
@@ -302,6 +307,19 @@ public class RoomService {
         room.setName(request.getName().trim());
         room.setBuilding(blankToNull(request.getBuilding()));
         room.setFloor(blankToNull(request.getFloor()));
+        room.setLevel(null);
+        room.setBuildingRef(null);
+        if (request.getLevelId() != null) {
+            var level = levels.findById(request.getLevelId())
+                    .filter(item -> item.getBuilding().getCampus().getId().equals(room.getCampus().getId()))
+                    .filter(item -> item.getBuilding().getCampus().getSchool().getId().equals(requireSchool()))
+                    .filter(item -> item.getBuilding().getStatus() == CommonStatus.ACTIVE)
+                    .orElseThrow(() -> BusinessException.of(ErrorCode.VALIDATION_ERROR));
+            room.setLevel(level);
+            room.setBuildingRef(level.getBuilding());
+            room.setBuilding(level.getBuilding().getName());
+            room.setFloor(level.getLabel());
+        }
         room.setCapacity(request.getCapacity());
         room.setRoomType(RoomType.parse(request.getRoomType()).name());
     }

@@ -1,10 +1,8 @@
 /**
  * Salles physiques : bâtiments, étages, capacités.
  *
- * <p>Un bâtiment n'est pas une entité à part : c'est le nom écrit sur les
- * portes du même campus, et l'écran regroupe les salles par ce nom. Une école
- * qui nomme ses bâtiments « A », « B » ou « Bloc sciences » n'a pas besoin
- * d'une table pour cela.</p>
+ * <p>Les bâtiments sont enregistrés séparément. Les salles conservent leur
+ * libellé de bâtiment pour rester compatibles avec les anciennes saisies.</p>
  *
  * <p>Ces salles-ci sont des lieux (emploi du temps, salle par défaut d'une
  * classe). La capacité d'une <em>classe</em> est une autre notion, gérée par
@@ -42,6 +40,8 @@ export const ROOM_TYPE_ORDER: RoomType[] = [
 ];
 
 export interface Room {
+  levelId?: string;
+  buildingId?: string;
   id: string;
   campusId: string;
   campusCode: string;
@@ -83,6 +83,7 @@ export interface RoomQuery {
 }
 
 export interface RoomUpsertPayload {
+  levelId?: string;
   campusId: string;
   code: string;
   name: string;
