@@ -12,6 +12,20 @@ import java.util.UUID;
 @Repository
 public interface BuildingRepository extends JpaRepository<Building, UUID> {
 
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT b FROM Building b JOIN FETCH b.campus c
+            WHERE c.school.id = :schoolId
+              AND (:campusId IS NULL OR c.id = :campusId)
+              AND (:status = '' OR CAST(b.status AS String) = :status)
+              AND (:search = '' OR lower(b.name) LIKE lower(concat('%', :search, '%'))
+                   OR lower(b.code) LIKE lower(concat('%', :search, '%')))
+            ORDER BY c.name, b.code
+            """)
+    List<Building> search(@org.springframework.data.repository.query.Param("schoolId") UUID schoolId,
+                          @org.springframework.data.repository.query.Param("campusId") UUID campusId,
+                          @org.springframework.data.repository.query.Param("status") String status,
+                          @org.springframework.data.repository.query.Param("search") String search);
+
     List<Building> findByCampusSchoolId(UUID schoolId);
 
     List<Building> findByCampusSchoolIdAndStatus(UUID schoolId, CommonStatus status);

@@ -15,6 +15,7 @@ import java.util.UUID;
 
 @Repository
 public interface RoomRepository extends JpaRepository<Room, UUID> {
+    List<Room> findByBuildingRefIdAndStatus(UUID buildingId, CommonStatus status);
 
     List<Room> findByCampusIdAndStatus(UUID campusId, CommonStatus status);
 

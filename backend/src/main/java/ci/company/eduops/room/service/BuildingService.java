@@ -1,5 +1,8 @@
 package ci.company.eduops.room.service;
 
+import ci.company.eduops.campus.repository.CampusRepository;
+import ci.company.eduops.audit.service.AuditService;
+
 import ci.company.eduops.common.domain.CommonStatus;
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.exception.ErrorCode;
@@ -61,4 +64,40 @@ public class BuildingService {
     public BuildingResponse getById(UUID id) {
         return toResponse(require(id));
     }
+
+    private UUID requireSchool() {
+        UUID schoolId = TenantContext.getSchoolId();
+        if (schoolId == null) throw BusinessException.of(ErrorCode.SCHOOL_NOT_FOUND);
+        return schoolId;
+    }
+
+    private Building require(UUID id) {
+        UUID schoolId = requireSchool();
+        return buildingRepository.findById(id)
+                .filter(building -> schoolId.equals(building.getCampus().getSchool().getId()))
+                .orElseThrow(() -> BusinessException.of(ErrorCode.BUILDING_NOT_FOUND));
+    }
+
+    private String blankToEmpty(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private BuildingResponse toResponse(Building building) {
+        BuildingResponse response = new BuildingResponse();
+        response.setId(building.getId());
+        response.setCampusId(building.getCampus().getId());
+        response.setCampusCode(building.getCampus().getCode());
+        response.setCampusName(building.getCampus().getName());
+        response.setCode(building.getCode());
+        response.setName(building.getName());
+        response.setFloors(building.getFloors());
+        response.setStatus(building.getStatus().name());
+        var rooms = roomRepository.findByBuildingRefIdAndStatus(building.getId(), CommonStatus.ACTIVE);
+        response.setRoomCount(rooms.size());
+        response.setSeatCount(rooms.stream().mapToInt(room -> Math.max(0, room.getCapacity())).sum());
+        response.setUnknownCapacityCount((int) rooms.stream().filter(room -> room.getCapacity() <= 0).count());
+        response.setArchivable(building.getStatus() == CommonStatus.ACTIVE && rooms.isEmpty());
+        return response;
+    }
+}
 
