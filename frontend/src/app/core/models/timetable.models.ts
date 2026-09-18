@@ -65,6 +65,9 @@ export interface PaletteEntry {
   weeklyHours?: number;
   placedMinutes: number;
   complete: boolean;
+  /** Salle habituelle de la classe, proposée quand le cours est posé. */
+  roomId?: string;
+  roomName?: string;
 }
 
 export interface SlotUpsertPayload {

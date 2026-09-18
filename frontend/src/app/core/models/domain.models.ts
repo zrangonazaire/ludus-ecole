@@ -60,6 +60,9 @@ export interface Classroom {
   capacityStatus: CapacityStatus;
   mainTeacherId?: string;
   mainTeacherName?: string;
+  /** Salle habituelle, proposée par défaut dans l'emploi du temps. */
+  defaultRoomId?: string;
+  defaultRoomName?: string;
   status: 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'ARCHIVED';
 }
 

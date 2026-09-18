@@ -2,9 +2,27 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { CLASSROOM_DATA_SOURCE, ROOM_DATA_SOURCE, TEACHER_DATA_SOURCE, TIMETABLE_DATA_SOURCE } from '@core/datasource/data-source';
+import { AuthService } from '@core/auth/auth.service';
 import { NotificationService } from '@core/services/notification.service';
-import { TimetableGrid } from '@core/models/timetable.models';
+import { PaletteEntry, TimetableGrid, TimetableSlot } from '@core/models/timetable.models';
 import { TimetableComponent } from './timetable.component';
+
+/** Un évènement de glisser minimal : le composant n'utilise que preventDefault. */
+function dragEvent(): DragEvent {
+  return { preventDefault: () => {}, dataTransfer: { setData: () => {} } } as unknown as DragEvent;
+}
+
+const paletteEntry = (): PaletteEntry => ({
+  subjectId: 's-mat', subjectName: 'Maths', teacherId: 'teacher-1',
+  teacherName: 'M. Koffi', placedMinutes: 0, complete: false
+});
+
+const slotFixture = (): TimetableSlot => ({
+  id: 'slot-1', dayOfWeek: 'MONDAY', startTime: '08:00:00', endTime: '10:00:00',
+  durationMinutes: 120, subjectId: 's-mat', subjectName: 'Maths', teacherId: 'teacher-1',
+  teacherName: 'M. Koffi', roomId: 'room-1', roomName: 'Salle A 101',
+  classroomId: 'class-1', classroomName: '6eme A', slotType: 'COURSE'
+});
 
 describe('Timetable scope selection', () => {
   const grid = (scope: TimetableGrid['scope'], id: string): TimetableGrid => ({
@@ -19,7 +37,10 @@ describe('Timetable scope selection', () => {
   let classrooms: jasmine.SpyObj<any>;
 
   beforeEach(() => {
-    timetables = jasmine.createSpyObj('timetables', ['classroomGrid', 'teacherGrid', 'roomGrid', 'palette']);
+    timetables = jasmine.createSpyObj('timetables', ['classroomGrid', 'teacherGrid', 'roomGrid',
+      'palette', 'check', 'createSlot', 'updateSlot', 'deleteSlot']);
+    timetables.deleteSlot.and.returnValue(of(undefined));
+    timetables.check.and.returnValue(of([]));
     timetables.classroomGrid.and.returnValue(of(grid('CLASSROOM', 'class-1')));
     timetables.teacherGrid.and.callFake((id: string) => of(grid('TEACHER', id)));
     timetables.roomGrid.and.callFake((id: string) => of(grid('ROOM', id)));
@@ -27,15 +48,20 @@ describe('Timetable scope selection', () => {
     teachers = jasmine.createSpyObj('teachers', ['search']);
     teachers.search.and.returnValue(of({ content: [{ id: 'teacher-1' }], page: 0, totalPages: 1 }));
     rooms = jasmine.createSpyObj('rooms', ['list']);
-    rooms.list.and.returnValue(of([{ id: 'room-1' }, { id: 'room-2' }]));
+    rooms.list.and.returnValue(of([
+      { id: 'room-1', name: 'Salle A 101', campusName: 'Campus Principal', status: 'ACTIVE' },
+      { id: 'room-2', name: 'Salle B 201', campusName: 'Campus Principal', status: 'ACTIVE' }
+    ]));
     classrooms = jasmine.createSpyObj('classrooms', ['list']);
     classrooms.list.and.returnValue(of([{ id: 'class-1' }]));
     TestBed.configureTestingModule({ providers: [
+      { provide: AuthService, useValue: { has: jasmine.createSpy('has').and.returnValue(true) } },
       { provide: CLASSROOM_DATA_SOURCE, useValue: classrooms },
       { provide: TEACHER_DATA_SOURCE, useValue: teachers },
       { provide: ROOM_DATA_SOURCE, useValue: rooms },
       { provide: TIMETABLE_DATA_SOURCE, useValue: timetables },
-      { provide: NotificationService, useValue: {} },
+      { provide: NotificationService, useValue: {
+        success: jasmine.createSpy('success'), error: jasmine.createSpy('error') } },
       { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } }
     ] });
     component = TestBed.runInInjectionContext(() => new TimetableComponent());
@@ -109,5 +135,218 @@ describe('Timetable scope selection', () => {
     component.load();
     expect(component.error()).toBeFalse();
     expect(component.grid()?.scopeId).toBe('teacher-1');
+  });
+
+  // ------------------------------------------------------- annulation des cours
+
+  for (const scope of ['CLASSROOM', 'TEACHER', 'ROOM'] as const) {
+    it(`cancels a published course from the ${scope} view and reloads it`, () => {
+      const slot = slotFixture();
+      component.ngOnInit();
+      component.scope.set(scope);
+      component.grid.set({ ...grid(scope, 'class-1'), status: 'PUBLISHED', slots: [slot] });
+      component.select(slot);
+      const confirm = spyOn(window, 'confirm').and.returnValue(true);
+      const reload = spyOn(component, 'load').and.callThrough();
+
+      component.removeSlot(slot);
+
+      expect(confirm).toHaveBeenCalledWith(jasmine.stringContaining('créneau hebdomadaire'));
+      expect(timetables.deleteSlot).toHaveBeenCalledOnceWith('slot-1');
+      expect(reload).toHaveBeenCalledTimes(1);
+      expect(component.grid()?.slots).toEqual([]);
+      expect(component.selectedSlot()).toBeNull();
+      expect(component.cancelling()).toBeFalse();
+    });
+  }
+
+  it('keeps the course when confirmation is declined', () => {
+    const slot = slotFixture();
+    component.ngOnInit();
+    component.grid.set({ ...grid('CLASSROOM', 'class-1'), slots: [slot] });
+    spyOn(window, 'confirm').and.returnValue(false);
+
+    component.removeSlot(slot);
+
+    expect(timetables.deleteSlot).not.toHaveBeenCalled();
+    expect(component.grid()?.slots).toEqual([slot]);
+    expect(component.cancelling()).toBeFalse();
+  });
+
+  it('prevents duplicate cancellation and allows retry after failure', () => {
+    const slot = slotFixture();
+    const request = new Subject<void>();
+    timetables.deleteSlot.and.returnValue(request);
+    component.ngOnInit();
+    component.grid.set({ ...grid('CLASSROOM', 'class-1'), slots: [slot] });
+    component.select(slot);
+    const confirm = spyOn(window, 'confirm').and.returnValue(true);
+
+    component.removeSlot(slot);
+    component.removeSlot(slot);
+    expect(component.cancelling()).toBeTrue();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(timetables.deleteSlot).toHaveBeenCalledTimes(1);
+
+    request.error(new Error('Network'));
+    expect(component.cancelling()).toBeFalse();
+    expect(component.grid()?.slots).toEqual([slot]);
+    expect(component.selectedSlot()).toBe(slot);
+    expect(TestBed.inject(NotificationService).success).not.toHaveBeenCalled();
+
+    timetables.deleteSlot.and.returnValue(of(undefined));
+    component.removeSlot(slot);
+    expect(timetables.deleteSlot).toHaveBeenCalledTimes(2);
+    expect(component.grid()?.slots).toEqual([]);
+  });
+
+  it('does not cancel without manage permission', () => {
+    (TestBed.inject(AuthService).has as jasmine.Spy).and.returnValue(false);
+    const slot = slotFixture();
+    component.ngOnInit();
+    component.grid.set({ ...grid('CLASSROOM', 'class-1'), slots: [slot] });
+    const confirm = spyOn(window, 'confirm');
+
+    component.removeSlot(slot);
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(timetables.deleteSlot).not.toHaveBeenCalled();
+  });
+
+  for (const scope of ['CLASSROOM', 'TEACHER', 'ROOM'] as const) {
+    it(`exposes the cancellation action after selecting a course in ${scope}`, () => {
+      const fixture = TestBed.createComponent(TimetableComponent);
+      fixture.detectChanges();
+      const slot = slotFixture();
+      fixture.componentInstance.grid.set({ ...grid(scope, 'class-1'), slots: [slot] });
+      fixture.detectChanges();
+      const confirm = spyOn(window, 'confirm').and.returnValue(true);
+      fixture.nativeElement.querySelector('.course__select').click();
+      fixture.detectChanges();
+      const button = fixture.nativeElement.querySelector('[data-testid="cancel-course"]');
+      expect(button).not.toBeNull();
+      button.click();
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(timetables.deleteSlot).toHaveBeenCalledOnceWith(slot.id);
+    });
+  }
+
+  it('hides the cancellation action for a read-only account', () => {
+    (TestBed.inject(AuthService).has as jasmine.Spy).and.returnValue(false);
+    const fixture = TestBed.createComponent(TimetableComponent);
+    fixture.detectChanges();
+    const slot = slotFixture();
+    fixture.componentInstance.grid.set({ ...grid('CLASSROOM', 'class-1'), slots: [slot] });
+    fixture.componentInstance.select(slot);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="cancel-course"]')).toBeNull();
+  });
+
+  for (const scope of ['CLASSROOM', 'TEACHER', 'ROOM'] as const) {
+    it(`shows the assigned room and class in ${scope} course details for a read-only user`, () => {
+      (TestBed.inject(AuthService).has as jasmine.Spy).and.returnValue(false);
+      const fixture = TestBed.createComponent(TimetableComponent);
+      fixture.detectChanges();
+      const slot = slotFixture();
+      fixture.componentInstance.grid.set({ ...grid(scope, 'class-1'), editable: false, slots: [slot] });
+      fixture.componentInstance.select(slot);
+      fixture.detectChanges();
+
+      const detail = fixture.nativeElement.querySelector('[data-testid="course-room"]');
+      expect(detail.textContent).toContain('Salle : Salle A 101');
+      expect(detail.textContent).toContain('Classe : 6eme A');
+    });
+  }
+
+  it('explicitly identifies a course with no assigned room', () => {
+    const fixture = TestBed.createComponent(TimetableComponent);
+    fixture.detectChanges();
+    const slot = { ...slotFixture(), roomId: undefined, roomName: undefined };
+    fixture.componentInstance.grid.set({ ...grid('CLASSROOM', 'class-1'), slots: [slot] });
+    fixture.componentInstance.select(slot);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="course-room"]').textContent)
+      .toContain('Salle : Non affectée');
+  });
+
+  for (const scope of ['CLASSROOM', 'TEACHER', 'ROOM'] as const) {
+    it(`renders room and cancellation inside a one-hour card without selecting it in ${scope}`, () => {
+      const fixture = TestBed.createComponent(TimetableComponent);
+      fixture.detectChanges();
+      const slot = { ...slotFixture(), endTime: '09:00:00', durationMinutes: 60 };
+      fixture.componentInstance.grid.set({ ...grid(scope, 'class-1'), slots: [slot] });
+      fixture.detectChanges();
+      const card: HTMLElement = fixture.nativeElement.querySelector('.course');
+      const room: HTMLElement = card.querySelector('[data-testid="card-room"]')!;
+      const button: HTMLButtonElement = card.querySelector('[data-testid="card-cancel-course"]')!;
+      expect(room.textContent).toContain('Salle : Salle A 101');
+      expect(fixture.componentInstance.selectedSlot()).toBeNull();
+      const bounds = card.getBoundingClientRect();
+      expect(bounds.height).toBeGreaterThan(0);
+      for (const element of [room, button]) {
+        const rect = element.getBoundingClientRect();
+        expect(rect.height).toBeGreaterThan(0);
+        expect(rect.top).toBeGreaterThanOrEqual(bounds.top);
+        expect(rect.bottom).toBeLessThanOrEqual(bounds.bottom);
+      }
+      const confirm = spyOn(window, 'confirm').and.returnValue(true);
+      button.click();
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(timetables.deleteSlot).toHaveBeenCalledOnceWith(slot.id);
+      expect(fixture.componentInstance.selectedSlot()).toBeNull();
+    });
+  }
+
+  // ------------------------------------------------------- affectation des salles
+
+  it('places a dropped course in the room chosen in the palette', () => {
+    timetables.createSlot.and.callFake((payload: any) => of({ id: 'slot-new', ...payload }));
+    component.ngOnInit();
+    component.changeRoomChoice('room-2');
+
+    component.startPaletteDrag(paletteEntry(), dragEvent());
+    component.onDrop('MONDAY', '10:00', dragEvent());
+
+    expect(timetables.createSlot).toHaveBeenCalledWith(
+      jasmine.objectContaining({ roomId: 'room-2', dayOfWeek: 'MONDAY', startTime: '10:00' }));
+  });
+
+  it('uses the class usual room when the palette names none', () => {
+    classrooms.list.and.returnValue(of([{ id: 'class-1', defaultRoomId: 'room-1' }]));
+    timetables.createSlot.and.callFake((payload: any) => of({ id: 'slot-new', ...payload }));
+    component.ngOnInit();
+
+    expect(component.roomChoice()).toBe('room-1');
+    expect(component.defaultRoom()?.id).toBe('room-1');
+    component.startPaletteDrag(paletteEntry(), dragEvent());
+    component.onDrop('MONDAY', '10:00', dragEvent());
+
+    expect(timetables.createSlot).toHaveBeenCalledWith(
+      jasmine.objectContaining({ roomId: 'room-1' }));
+  });
+
+  it('moves a placed course to another room with the whole payload', () => {
+    const slot = slotFixture();
+    timetables.classroomGrid.and.returnValue(of({ ...grid('CLASSROOM', 'class-1'), slots: [slot] }));
+    timetables.updateSlot.and.returnValue(of(slot));
+    component.ngOnInit();
+
+    component.changeSlotRoom(slot, 'room-2');
+
+    expect(timetables.updateSlot).toHaveBeenCalledWith('slot-1', jasmine.objectContaining({
+      classroomId: 'class-1', subjectId: 's-mat', teacherId: 'teacher-1',
+      roomId: 'room-2', startTime: '08:00', endTime: '10:00'
+    }));
+  });
+
+  it('does nothing when the room of a placed course does not change', () => {
+    const slot = slotFixture();
+    timetables.classroomGrid.and.returnValue(of({ ...grid('CLASSROOM', 'class-1'), slots: [slot] }));
+    component.ngOnInit();
+
+    component.changeSlotRoom(slot, 'room-1');
+
+    expect(timetables.updateSlot).not.toHaveBeenCalled();
   });
 });

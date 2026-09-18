@@ -80,6 +80,14 @@
 
   &__title { margin: 0 0 var(--space-1); font-size: var(--text-md); }
 
+  /* La salle des cours posés : le premier choix à faire, avant même la matière. */
+  &__room {
+    margin-bottom: var(--space-3);
+
+    .field__label { display: block; margin-bottom: 4px; }
+    .select { width: 100%; }
+  }
+
   &__hint {
     margin: 0 0 var(--space-3);
     font-size: var(--text-xs);
@@ -216,9 +224,9 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  height: calc((62px * var(--span, 1)) - 6px);
+  min-height: calc((62px * var(--span, 1)) - 6px);
   padding: var(--space-2);
-  overflow: hidden;
+  /* Let short courses grow: room and actions must not be clipped. */
   color: var(--text-strong);
   background: color-mix(in srgb, var(--course-color, var(--brand)) 14%, transparent);
   border-left: 3px solid var(--course-color, var(--brand));
@@ -233,6 +241,33 @@
     font-size: var(--text-sm);
     font-weight: 600;
     line-height: 1.2;
+  }
+
+  &__select {
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+
+    &:focus-visible { outline: 2px solid var(--brand); }
+  }
+
+  &__cancel {
+    align-self: flex-start;
+    margin-top: var(--space-1);
+    padding: 2px 4px;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-input);
+    color: var(--danger);
+    background: var(--surface-card);
+    font: inherit;
+    font-size: var(--text-xs);
+    cursor: pointer;
+
+    &:disabled { opacity: .5; cursor: wait; }
+    &:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   }
 
   &__teacher,
@@ -282,6 +317,7 @@
 
 .detail {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
@@ -293,6 +329,16 @@
 
   &__title { margin: 0; font-weight: 600; color: var(--text-strong); }
   &__meta { margin: 2px 0 0; font-size: var(--text-sm); color: var(--text-muted); }
+
+  /* Changer la salle d'un cours déjà posé, sans le retirer puis le reposer. */
+  &__room {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+
+    .field__label { margin: 0; white-space: nowrap; }
+    .select { min-width: 200px; }
+  }
 }
 
 /* ═══════════════ Impression ═══════════════

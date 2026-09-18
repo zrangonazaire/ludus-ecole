@@ -32,6 +32,7 @@ import { MOCK_TRANSFERS } from './mock-transfer-store';
 import { MOCK_HEALTH } from './mock-health-store';
 import { MOCK_FAMILY_REQUESTS } from './mock-family-request-store';
 import { MOCK_COUNCILS } from './mock-council-store';
+import { mockRoomId, mockRoomName } from './mock-room-data-source';
 import { AuthService } from '@core/auth/auth.service';
 import { PERMISSIONS } from '@core/models/auth.models';
 import {
@@ -863,6 +864,15 @@ export class MockReferenceDataSource implements ReferenceDataSource {
 @Injectable()
 export class MockTimetableDataSource implements TimetableDataSource {
   private readonly days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
+
+  /**
+   * Salles de la démo, reprises de l'écran Salles par leur code.
+   *
+   * <p>La classe suit ses cours dans sa salle habituelle, sauf les sciences :
+   * c'est ce qui rend la vue « par salle » démonstrative plutôt que vide.</p>
+   */
+  private readonly usualRoomId = mockRoomId('B-201');
+  private readonly labRoomId = mockRoomId('A-SCI');
   private slots: TimetableSlot[] = this.seed();
   private sequence = 100;
 
@@ -879,7 +889,7 @@ export class MockTimetableDataSource implements TimetableDataSource {
   }
 
   roomGrid(roomId: string): Observable<TimetableGrid> {
-    return of(this.grid('ROOM', roomId, `Salle ${roomId}`, false,
+    return of(this.grid('ROOM', roomId, mockRoomName(roomId) ?? 'Salle inconnue', false,
       this.slots.filter((s) => s.roomId === roomId))).pipe(delay(LATENCY));
   }
 
@@ -899,7 +909,11 @@ export class MockTimetableDataSource implements TimetableDataSource {
         teacherName: teacher.fullName,
         weeklyHours,
         placedMinutes: placed,
-        complete: placed >= weeklyHours * 60
+        complete: placed >= weeklyHours * 60,
+        // La salle habituelle part avec la matière : le glisser ne laisse plus
+        // le cours sans lieu, et le contrôle de conflit de salle s'applique.
+        roomId: this.usualRoomId,
+        roomName: mockRoomName(this.usualRoomId)
       };
     });
     return of(entries).pipe(delay(LATENCY));
@@ -985,6 +999,7 @@ export class MockTimetableDataSource implements TimetableDataSource {
       teacherId: teacher.id,
       teacherName: teacher.fullName,
       roomId: payload.roomId,
+      roomName: payload.roomId ? mockRoomName(payload.roomId) : undefined,
       classroomId: classroom.id,
       classroomName: classroom.name,
       slotType: payload.slotType ?? 'COURSE',
@@ -1026,6 +1041,9 @@ export class MockTimetableDataSource implements TimetableDataSource {
     return plan.map(([day, start, end, subjectIndex, teacherIndex], i) => {
       const subject = MOCK_SUBJECTS[subjectIndex];
       const teacher = MOCK_TEACHERS[teacherIndex];
+      // Les sciences quittent la salle habituelle : une salle n'accueille qu'un
+      // cours à la fois, et la vue « par salle » doit le montrer.
+      const roomId = subject.code === 'SVT' ? this.labRoomId : this.usualRoomId;
       return {
         id: `slot-${i + 1}`,
         dayOfWeek: day,
@@ -1038,6 +1056,8 @@ export class MockTimetableDataSource implements TimetableDataSource {
         subjectColor: subject.colorHex,
         teacherId: teacher.id,
         teacherName: teacher.fullName,
+        roomId,
+        roomName: mockRoomName(roomId),
         classroomId: classroom.id,
         classroomName: classroom.name,
         slotType: 'COURSE'

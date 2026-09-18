@@ -41,6 +41,12 @@ public class ClassroomResponse {
 
     private UUID mainTeacherId;
     private String mainTeacherName;
+
+    @Schema(description = "Salle habituelle de la classe : celle que l'emploi du temps "
+            + "propose par défaut, quand la classe en a une")
+    private UUID defaultRoomId;
+    private String defaultRoomName;
+
     private String languageOfInstruction;
     private String status;
 
@@ -173,6 +179,22 @@ public class ClassroomResponse {
 
     public void setMainTeacherName(String mainTeacherName) {
         this.mainTeacherName = mainTeacherName;
+    }
+
+    public UUID getDefaultRoomId() {
+        return defaultRoomId;
+    }
+
+    public void setDefaultRoomId(UUID defaultRoomId) {
+        this.defaultRoomId = defaultRoomId;
+    }
+
+    public String getDefaultRoomName() {
+        return defaultRoomName;
+    }
+
+    public void setDefaultRoomName(String defaultRoomName) {
+        this.defaultRoomName = defaultRoomName;
     }
 
     public String getLanguageOfInstruction() {

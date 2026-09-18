@@ -193,6 +193,12 @@ public class TimetableService {
     @Transactional(readOnly = true)
     public List<TimetablePaletteEntryResponse> palette(UUID classroomId, UUID academicYearId) {
         AcademicYear year = resolveYear(academicYearId);
+        Classroom classroom = classroomRepository.findById(classroomId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLASS_NOT_FOUND));
+        // La salle habituelle accompagne chaque matière de la palette : sans
+        // elle, la personne qui construit la grille devrait choisir un lieu pour
+        // chaque cours, et les cours finiraient sans salle du tout.
+        Room defaultRoom = classroom.getDefaultRoom();
 
         Map<String, Integer> placed = new HashMap<>();
         for (TimetableSlot slot : slotRepository.findGridByClassroom(classroomId, year.getId())) {
@@ -214,6 +220,8 @@ public class TimetableService {
             entry.setTeacherId(teacher.getId());
             entry.setTeacherName(teacher.fullName());
             entry.setWeeklyHours(assignment.getWeeklyHours());
+            entry.setRoomId(defaultRoom == null ? null : defaultRoom.getId());
+            entry.setRoomName(defaultRoom == null ? null : defaultRoom.getName());
 
             int done = placed.getOrDefault(subject.getId() + "/" + teacher.getId(), 0);
             entry.setPlacedMinutes(done);
@@ -232,6 +240,11 @@ public class TimetableService {
     /**
      * Places a new course, or moves an existing one when {@code slotId} is given.
      *
+     * <p>When the request carries no room, the course takes the class's usual
+     * room: that is where its students expect it, and that is what fills the
+     * "par salle" view. The room is resolved before the conflict check so it is
+     * validated like any other — see {@link #effectiveRoomId}.</p>
+     *
      * @throws BusinessException with the full conflict list attached, so the
      *         screen can explain all the reasons at once
      */
@@ -244,6 +257,7 @@ public class TimetableService {
                     .detail("conflicts", found);
         }
 
+        UUID roomId = effectiveRoomId(request);
         Classroom classroom = classroomRepository.findById(request.getClassroomId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLASS_NOT_FOUND));
         Subject subject = subjectRepository.findById(request.getSubjectId())
@@ -274,10 +288,10 @@ public class TimetableService {
         slot.setNote(request.getNote());
         slot.setActive(true);
 
-        if (request.getRoomId() == null) {
+        if (roomId == null) {
             slot.setRoom(null);
         } else {
-            Room room = roomRepository.findById(request.getRoomId())
+            Room room = roomRepository.findById(roomId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND));
             // Une salle archivee n'accueille plus de cours : la reserver la
             // ferait reapparaitre dans l'emploi du temps publie, alors que
@@ -366,6 +380,30 @@ public class TimetableService {
 
     // ------------------------------------------------------------- conflicts
 
+    /**
+     * The room the course will really occupy here.
+     *
+     * <p>Falls back to the class's usual room. Without this, a course dropped
+     * without a room would skip the room check and still land in a room — the
+     * two views would then disagree about what occupies the place.</p>
+     *
+     * <p>An archived default room is ignored rather than rejected: a stale
+     * setting on the class must not make placing a course impossible.</p>
+     */
+    private UUID effectiveRoomId(SlotUpsertRequest request) {
+        if (request.getRoomId() != null) {
+            return request.getRoomId();
+        }
+        if (request.getClassroomId() == null) {
+            return null;
+        }
+        return classroomRepository.findById(request.getClassroomId())
+                .map(Classroom::getDefaultRoom)
+                .filter(room -> room.getStatus() == CommonStatus.ACTIVE)
+                .map(Room::getId)
+                .orElse(null);
+    }
+
     private List<TimetableConflictResponse> conflicts(SlotUpsertRequest request,
                                                       UUID excludeSlotId,
                                                       UUID academicYearId) {
@@ -380,6 +418,7 @@ public class TimetableService {
         }
 
         DayOfWeekEnum day = parseDay(request.getDayOfWeek());
+        UUID roomId = effectiveRoomId(request);
 
         for (TimetableSlot busy : slotRepository.findTeacherConflicts(request.getTeacherId(),
                 academicYearId, day, request.getStartTime(), request.getEndTime(), excludeSlotId)) {
@@ -397,8 +436,8 @@ public class TimetableService {
                             + busy.getStartTime() + " à " + busy.getEndTime() + "."));
         }
 
-        if (request.getRoomId() != null) {
-            for (TimetableSlot busy : slotRepository.findRoomConflicts(request.getRoomId(),
+        if (roomId != null) {
+            for (TimetableSlot busy : slotRepository.findRoomConflicts(roomId,
                     academicYearId, day, request.getStartTime(), request.getEndTime(),
                     excludeSlotId)) {
                 found.add(describe("ROOM_BUSY", busy,

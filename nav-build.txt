@@ -1,0 +1,50 @@
+[33m❯[39m Building...
+[32m✔[39m Building...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m                  [2m | [22m [1mRaw size[22m
+[32mchunk-JG2SKLVH.js[39m  [2m | [22m[2m-[22m                      [2m | [22m[36m983.77 kB[39m[2m | [22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m                   [2m | [22m[36m334.11 kB[39m[2m | [22m
+[32mchunk-D7ECDD56.js[39m  [2m | [22m[2m-[22m                      [2m | [22m[36m256.43 kB[39m[2m | [22m
+[32mpolyfills.js[39m       [2m | [22m[2mpolyfills[22m              [2m | [22m [36m90.20 kB[39m[2m | [22m
+[32mchunk-YVZCRL7V.js[39m  [2m | [22m[2m-[22m                      [2m | [22m [36m70.83 kB[39m[2m | [22m
+[32mchunk-4OLL4ORE.js[39m  [2m | [22m[2m-[22m                      [2m | [22m [36m43.91 kB[39m[2m | [22m
+[32mchunk-4YXXC4YR.js[39m  [2m | [22m[2m-[22m                      [2m | [22m [36m19.56 kB[39m[2m | [22m
+[32mchunk-W4IDKXX4.js[39m  [2m | [22m[2m-[22m                      [2m | [22m [36m14.83 kB[39m[2m | [22m
+[32mchunk-I7UYM32R.js[39m  [2m | [22m[2m-[22m                      [2m | [22m [36m13.91 kB[39m[2m | [22m
+[32mstyles.css[39m         [2m | [22m[2mstyles[22m                 [2m | [22m [36m13.33 kB[39m[2m | [22m
+[32mchunk-Z25TC62V.js[39m  [2m | [22m[2m-[22m                      [2m | [22m [36m12.89 kB[39m[2m | [22m
+[32mchunk-JCRT4MPV.js[39m  [2m | [22m[2m-[22m                      [2m | [22m  [36m3.67 kB[39m[2m | [22m
+[32mchunk-U7GXL5QM.js[39m  [2m | [22m[2m-[22m                      [2m | [22m  [36m2.62 kB[39m[2m | [22m
+[32mchunk-3OV72XIM.js[39m  [2m | [22m[2m-[22m                      [2m | [22m  [36m2.16 kB[39m[2m | [22m
+[32mchunk-WSIUWY57.js[39m  [2m | [22m[2m-[22m                      [2m | [22m  [36m1.30 kB[39m[2m | [22m
+[32mchunk-SAOCRVKR.js[39m  [2m | [22m[2m-[22m                      [2m | [22m  [36m1.16 kB[39m[2m | [22m
+[32mchunk-VRDDYRFI.js[39m  [2m | [22m[2m-[22m                      [2m | [22m  [36m1.16 kB[39m[2m | [22m
+[32mchunk-SR55VPY3.js[39m  [2m | [22m[2m-[22m                      [2m | [22m  [36m1.13 kB[39m[2m | [22m
+[32mchunk-ZW6VYJQ7.js[39m  [2m | [22m[2m-[22m                      [2m | [22m[36m863 bytes[39m[2m | [22m
+[32mchunk-SLXSJE2N.js[39m  [2m | [22m[2m-[22m                      [2m | [22m[36m832 bytes[39m[2m | [22m
+[32mchunk-HCWX64TV.js[39m  [2m | [22m[2m-[22m                      [2m | [22m[36m640 bytes[39m[2m | [22m
+[32mchunk-3B2ATKZE.js[39m  [2m | [22m[2m-[22m                      [2m | [22m[36m568 bytes[39m[2m | [22m
+
+[1m [22m                  [2m | [22m[1mInitial total[22m          [2m | [22m  [1m1.87 MB[22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m                  [2m | [22m [1mRaw size[22m
+[32mchunk-PJTTYV2M.js[39m  [2m | [22m[2mapexcharts-common[22m      [2m | [22m[36m839.33 kB[39m[2m | [22m
+[32mchunk-T3TPI3I3.js[39m  [2m | [22m[2m-[22m                      [2m | [22m[36m209.87 kB[39m[2m | [22m
+[32mchunk-OCFA6H6B.js[39m  [2m | [22m[2mbrowser[22m                [2m | [22m[36m158.15 kB[39m[2m | [22m
+[32mchunk-JZMLUMTY.js[39m  [2m | [22m[2mstudent-files-component[22m[2m | [22m[36m139.37 kB[39m[2m | [22m
+[32mchunk-KBPF4UPQ.js[39m  [2m | [22m[2massessments-component[22m  [2m | [22m[36m132.08 kB[39m[2m | [22m
+[32mchunk-MINGVHLH.js[39m  [2m | [22m[2mentry[22m                  [2m | [22m[36m124.90 kB[39m[2m | [22m
+[32mchunk-GQCLFBUK.js[39m  [2m | [22m[2mhealth-component[22m       [2m | [22m[36m123.55 kB[39m[2m | [22m
+[32mchunk-DMSGPKOF.js[39m  [2m | [22m[2mfinance-component[22m      [2m | [22m[36m111.77 kB[39m[2m | [22m
+[32mchunk-FQ3S7OPW.js[39m  [2m | [22m[2mattendance-component[22m   [2m | [22m[36m104.74 kB[39m[2m | [22m
+[32mchunk-TRWRCF3B.js[39m  [2m | [22m[2mpayment-list-component[22m [2m | [22m [36m96.55 kB[39m[2m | [22m
+[32mchunk-RSZ5DFDK.js[39m  [2m | [22m[2moptions-component[22m      [2m | [22m [36m95.68 kB[39m[2m | [22m
+[32mchunk-BHYWWKTZ.js[39m  [2m | [22m[2mlanding-component[22m      [2m | [22m [36m89.83 kB[39m[2m | [22m
+[32mchunk-ZQ3GVW2D.js[39m  [2m | [22m[2mtransfers-component[22m    [2m | [22m [36m87.64 kB[39m[2m | [22m
+[32mchunk-IFETLXXX.js[39m  [2m | [22m[2mdemo-setup-component[22m   [2m | [22m [36m87.11 kB[39m[2m | [22m
+[32mchunk-44LUD5AW.js[39m  [2m | [22m[2mreport-cards-component[22m [2m | [22m [36m85.99 kB[39m[2m | [22m
+[2m...and 78 more lazy chunks files. Use "--verbose" to show all the files.[22m
+
+Application bundle generation complete. [15.382 seconds]
+
+Output location: C:\PROJET\LUDUS-ECOLE\frontend\dist\eduops
+

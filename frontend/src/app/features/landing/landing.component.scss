@@ -36,8 +36,9 @@
 .brand__mark span:nth-child(2) { height: 16px; }
 .brand__mark span:nth-child(3) { height: 12px; opacity: .85; }
 .nav__links { display: flex; align-items: center; gap: 28px; margin-left: auto; }
-.nav__links button, .footer button { border: 0; padding: 0; background: none; color: #59677f; font: 600 13px/1 var(--font-body); cursor: pointer; }
-.nav__links button:hover { color: var(--brand); }
+.nav__links button, .nav__links a, .footer button { border: 0; padding: 0; background: none; color: #59677f; font: 600 13px/1 var(--font-body); cursor: pointer; }
+.nav__links a { text-decoration: none; white-space: nowrap; }
+.nav__links button:hover, .nav__links a:hover { color: var(--brand); }
 .nav__actions { display: flex; align-items: center; gap: 18px; }
 .nav__login { color: #4e5c74; font-size: 13px; font-weight: 600; }
 .nav__toggle { display: none; width: 42px; height: 42px; border: 0; border-radius: 10px; background: var(--surface-sunken); padding: 11px; }
@@ -235,7 +236,7 @@
 @include mobile {
   .nav { height: 64px; }.nav__inner { width: calc(100% - 28px); }.nav__toggle { display: block; margin-left: auto; }.nav__links, .nav__actions { display: none; }
   .nav--open { height: auto; }.nav--open .nav__inner { min-height: 64px; flex-wrap: wrap; padding-bottom: 16px; }.nav--open .nav__links, .nav--open .nav__actions { flex: 1 0 100%; display: flex; }
-  .nav--open .nav__links { align-items: stretch; flex-direction: column; gap: 0; }.nav--open .nav__links button { min-height: 42px; text-align: left; border-bottom: 1px solid var(--border-light); }
+  .nav--open .nav__links { align-items: stretch; flex-direction: column; gap: 0; }.nav--open .nav__links button, .nav--open .nav__links a { min-height: 42px; display: flex; align-items: center; text-align: left; border-bottom: 1px solid var(--border-light); }
   .nav--open .nav__actions { justify-content: space-between; }.hero { min-height: 0; padding: 112px 0 65px; }.hero__inner { width: calc(100% - 28px); gap: 32px; }.eyebrow { max-width: 310px; font-size: 9px; line-height: 1.4; }
   .hero h1 { font-size: 41px; }.hero__lead { margin: 20px 0 24px; font-size: 15px; }.hero__actions { width: 100%; }.hero__actions .button { width: 100%; }.assurances { justify-content: center; gap: 7px 13px; }.price { align-self: center; }
   .hero__experience { padding-top: 51px; }.profile-picker { width: 100%; }.profile-picker button { flex: 1; padding: 0 6px; }.console { transform: none; }.console__body { grid-template-columns: 1fr; min-height: 0; }.console__side { display: none; }.console__main { padding: 14px; }

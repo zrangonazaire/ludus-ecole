@@ -1,0 +1,26 @@
+A  _menu_status.txt
+M  backend/src/main/java/ci/company/eduops/classroom/dto/response/ClassroomResponse.java
+M  backend/src/main/java/ci/company/eduops/classroom/service/ClassroomService.java
+M  backend/src/main/java/ci/company/eduops/timetable/dto/response/TimetablePaletteEntryResponse.java
+M  backend/src/main/java/ci/company/eduops/timetable/service/TimetableService.java
+A  backend/src/test/java/ci/company/eduops/timetable/TimetableCancellationTest.java
+A  backend/src/test/java/ci/company/eduops/timetable/TimetableRoomPlacementTest.java
+M  frontend/src/app/app.routes.ts
+M  frontend/src/app/core/datasource/mock/mock-data-sources.ts
+M  frontend/src/app/core/datasource/mock/mock-room-data-source.ts
+M  frontend/src/app/core/models/domain.models.ts
+M  frontend/src/app/core/models/timetable.models.ts
+ M frontend/src/app/features/landing/landing.component.html
+ M frontend/src/app/features/landing/landing.component.scss
+A  frontend/src/app/features/roadmap/roadmap.component.html
+A  frontend/src/app/features/roadmap/roadmap.component.scss
+A  frontend/src/app/features/roadmap/roadmap.component.spec.ts
+A  frontend/src/app/features/roadmap/roadmap.component.ts
+M  frontend/src/app/features/timetable/timetable.component.html
+M  frontend/src/app/features/timetable/timetable.component.scss
+M  frontend/src/app/features/timetable/timetable.component.spec.ts
+M  frontend/src/app/features/timetable/timetable.component.ts
+ M frontend/src/app/layouts/admin-layout/admin-layout.component.html
+MM frontend/src/app/layouts/admin-layout/admin-layout.component.ts
+?? nav-layouts.txt
+?? nav-status.txt

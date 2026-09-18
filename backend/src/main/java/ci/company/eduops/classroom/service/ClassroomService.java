@@ -466,6 +466,13 @@ public class ClassroomService {
             response.setMainTeacherId(mainTeacher.getId());
             response.setMainTeacherName(mainTeacher.fullName());
         }
+        // La salle habituelle sert a l'ecran de l'emploi du temps, qui la propose
+        // par defaut : la classe y suit ses cours sans avoir a la ressaisir.
+        Room defaultRoom = classroom.getDefaultRoom();
+        if (defaultRoom != null) {
+            response.setDefaultRoomId(defaultRoom.getId());
+            response.setDefaultRoomName(defaultRoom.getName());
+        }
         return response;
     }
 

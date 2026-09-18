@@ -55,6 +55,12 @@ export const routes: Routes = [
       .then((m) => m.AdminLayoutComponent),
     children: [
       {
+        path: 'roadmap',
+        data: { title: 'Roadmap — Guide d’utilisation' },
+        loadComponent: () => import('./features/roadmap/roadmap.component')
+          .then((m) => m.RoadmapComponent)
+      },
+      {
         path: 'dashboard',
         canActivate: [permissionGuard],
         data: { permissions: [PERMISSIONS.DASHBOARD_VIEW], title: 'Tableau de bord' },

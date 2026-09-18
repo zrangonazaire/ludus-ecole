@@ -33,6 +33,11 @@ public class TimetablePaletteEntryResponse {
     @Schema(description = "Vrai quand le volume prévu est atteint ou dépassé")
     private boolean complete;
 
+    @Schema(description = "Salle habituelle de la classe, proposée au moment de poser "
+            + "le cours. Nul quand la classe n'a pas de salle par défaut.")
+    private UUID roomId;
+    private String roomName;
+
     public UUID getSubjectId() {
         return subjectId;
     }
@@ -103,5 +108,21 @@ public class TimetablePaletteEntryResponse {
 
     public void setComplete(boolean complete) {
         this.complete = complete;
+    }
+
+    public UUID getRoomId() {
+        return roomId;
+    }
+
+    public void setRoomId(UUID roomId) {
+        this.roomId = roomId;
+    }
+
+    public String getRoomName() {
+        return roomName;
+    }
+
+    public void setRoomName(String roomName) {
+        this.roomName = roomName;
     }
 }

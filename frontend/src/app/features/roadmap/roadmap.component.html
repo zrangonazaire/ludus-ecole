@@ -1,0 +1,47 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Roadmap — Guide d’utilisation</h1>
+      <p class="page__meta">Les étapes à suivre, de la préparation de l’année au suivi quotidien.</p>
+    </div>
+    <a class="btn btn--ghost" routerLink="/setup">Vérifier ma configuration</a>
+  </header>
+
+  <p class="guide-note">Ce guide indique l’ordre conseillé, pas votre progression réelle.
+    Les inscriptions et la préparation des frais peuvent avancer en parallèle du planning.
+    Les liens vers les écrans sont proposés selon vos droits ; les modifications nécessitent les droits de gestion.</p>
+
+  <nav aria-label="Étapes du guide" class="overview">
+    @for (step of steps; track step.id; let i = $index) {
+      <a routerLink="/roadmap" [fragment]="step.id">
+        <span class="marker" aria-hidden="true">{{ i + 1 }}</span>{{ step.title }}
+      </a>
+    }
+  </nav>
+
+  <ol class="roadmap">
+    @for (step of steps; track step.id; let i = $index) {
+      <li class="step" [id]="step.id">
+        <span class="marker step__marker" aria-hidden="true">{{ i + 1 }}</span>
+        <section [attr.aria-labelledby]="step.id + '-title'">
+          <h2 [id]="step.id + '-title'">{{ step.title }}</h2>
+          <p class="prerequisite"><strong>Avant de commencer :</strong> {{ step.prerequisite }}</p>
+          <ul>
+            @for (instruction of step.instructions; track instruction) {
+              <li>{{ instruction }}</li>
+            }
+          </ul>
+          <div class="step__links">
+            @for (link of step.links; track link.route) {
+              @if (auth.has(link.permission)) {
+                <a class="btn btn--ghost btn--sm" [routerLink]="link.route">{{ link.label }} →</a>
+              } @else {
+                <span class="restricted">{{ link.label }} — accès selon votre profil</span>
+              }
+            }
+          </div>
+        </section>
+      </li>
+    }
+  </ol>
+</div>

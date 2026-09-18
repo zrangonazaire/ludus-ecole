@@ -11,6 +11,7 @@
       </p>
     </div>
     <div class="page__actions">
+      <a class="btn btn--ghost screen-only" routerLink="/roadmap" fragment="planning">Guide de planification</a>
       <button type="button" class="btn btn--ghost screen-only"
               [disabled]="loading() || !grid()"
               (click)="print()">
@@ -101,9 +102,25 @@
       @if (g.editable) {
         <aside class="palette">
           <h2 class="palette__title">Matières à poser</h2>
+
+          <div class="palette__room">
+            <label class="field__label" for="paletteRoom">Salle des cours posés</label>
+            <select id="paletteRoom" class="select"
+                    [ngModel]="roomChoice()" name="paletteRoom"
+                    (ngModelChange)="changeRoomChoice($event)">
+              <option value="">{{ defaultRoomOptionLabel() }}</option>
+              @for (room of activeRooms(); track room.id) {
+                <option [value]="room.id">
+                  {{ room.name }} — {{ room.campusName }} ({{ room.code }})
+                </option>
+              }
+            </select>
+          </div>
+
           <p class="palette__hint">
-            Faites glisser une matière sur la grille. Une case qui ne peut pas
-            l'accueillir devient rouge avant que vous ne lâchiez.
+            Faites glisser une matière sur la grille. Une case que la salle ou
+            l'enseignant ne peuvent pas accueillir devient rouge avant que vous
+            ne lâchiez.
           </p>
 
           <ul class="palette__list">
@@ -172,9 +189,12 @@
                                  (dragstart)="startSlotDrag(slot, $event)"
                                  (dragend)="endDrag()"
                                  (click)="select(slot)">
-                          <span class="course__subject">
+                          <button type="button" class="course__subject course__select"
+                                  [attr.aria-label]="'Détails du cours : ' + slot.subjectName"
+                                  [attr.aria-pressed]="selectedSlot()?.id === slot.id"
+                                  (click)="$event.stopPropagation(); select(slot)">
                             {{ slot.subjectShortName || slot.subjectName }}
-                          </span>
+                          </button>
                           <span class="course__teacher">{{ slot.teacherName }}</span>
                           <span class="course__time numeric">
                             {{ hhmm(slot.startTime) }} – {{ hhmm(slot.endTime) }}
@@ -182,8 +202,15 @@
                           @if (g.scope !== 'CLASSROOM') {
                             <span class="course__where">{{ slot.classroomName }}</span>
                           }
-                          @if (slot.roomName) {
-                            <span class="course__where">{{ slot.roomName }}</span>
+                          <span class="course__where" data-testid="card-room">
+                            Salle : {{ slot.roomName || 'Non affectée' }}
+                          </span>
+                          @if (canCancel()) {
+                            <button type="button" class="course__cancel" data-testid="card-cancel-course"
+                                    [disabled]="saving() || cancelling()"
+                                    (click)="$event.stopPropagation(); removeSlot(slot)">
+                              Annuler ce cours
+                            </button>
                           }
                         </article>
                       }
@@ -221,12 +248,30 @@
               <p class="detail__meta numeric">
                 {{ dayLabel(slot.dayOfWeek) }} {{ hhmm(slot.startTime) }} –
                 {{ hhmm(slot.endTime) }} · {{ slot.teacherName }}
-                @if (slot.roomName) { · {{ slot.roomName }} }
+              </p>
+              <p class="detail__meta" data-testid="course-room">
+                Classe : {{ slot.classroomName }} · Salle : {{ slot.roomName || 'Non affectée' }}
               </p>
             </div>
             @if (g.editable) {
-              <button type="button" class="btn btn--ghost btn--sm" (click)="removeSlot(slot)">
-                Retirer de la grille
+              <div class="detail__room">
+                <label class="field__label" for="detailRoom">Salle</label>
+                <select id="detailRoom" class="select"
+                        [ngModel]="slot.roomId ?? ''" name="detailRoom"
+                        [disabled]="saving()"
+                        (ngModelChange)="changeSlotRoom(slot, $event)">
+                  <option value="">{{ defaultRoomOptionLabel() }}</option>
+                  @for (room of activeRooms(); track room.id) {
+                    <option [value]="room.id">{{ room.name }} — {{ room.campusName }}</option>
+                  }
+                </select>
+              </div>
+            }
+            @if (canCancel()) {
+              <button type="button" class="btn btn--ghost btn--sm" data-testid="cancel-course"
+                      [disabled]="saving() || cancelling()"
+                      (click)="removeSlot(slot)">
+                {{ cancelling() ? 'Annulation...' : 'Annuler ce cours' }}
               </button>
             }
           </div>

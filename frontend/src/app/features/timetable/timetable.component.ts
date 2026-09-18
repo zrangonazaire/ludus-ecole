@@ -12,6 +12,8 @@ import {
   CONFLICT_LABELS, DAY_LABELS, PaletteEntry, SlotUpsertPayload, TimetableConflict,
   TimetableGrid, TimetableScope, TimetableSlot
 } from '@core/models/timetable.models';
+import { AuthService } from '@core/auth/auth.service';
+import { PERMISSIONS } from '@core/models/auth.models';
 import { NotificationService } from '@core/services/notification.service';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
 import { ErrorStateComponent } from '@shared/ui/error-state/error-state.component';
@@ -55,6 +57,10 @@ interface DragPayload {
   styleUrl: './timetable.component.scss'
 })
 export class TimetableComponent implements OnInit {
+  private readonly auth = inject(AuthService);
+  readonly canCancel = computed(() => this.auth.has(PERMISSIONS.TIMETABLE_MANAGE));
+  readonly cancelling = signal(false);
+
   private readonly timetables = inject(TIMETABLE_DATA_SOURCE);
   private readonly classrooms = inject(CLASSROOM_DATA_SOURCE);
   private readonly teachers = inject(TEACHER_DATA_SOURCE);
@@ -74,6 +80,9 @@ export class TimetableComponent implements OnInit {
 
   readonly scope = signal<TimetableScope>('CLASSROOM');
   readonly scopeId = signal<string>('');
+
+  /** Salle que les prochains cours posés prendront ; vide = salle habituelle. */
+  readonly roomChoice = signal<string>('');
 
   /** Case actuellement survolée pendant un glisser, et son verdict serveur. */
   readonly hoverCell = signal<string | null>(null);
@@ -110,6 +119,13 @@ export class TimetableComponent implements OnInit {
       : scope === 'ROOM'
         ? this.rooms.list().pipe(tap(list => this.roomList.set(list)))
         : this.classrooms.list().pipe(tap(list => this.classList.set(list)));
+
+    // Le constructeur d'emploi du temps choisit une salle : la liste des salles
+    // ne sert donc plus seulement à l'onglet « Par salle ».
+    if (scope === 'CLASSROOM') {
+      this.loadRooms();
+    }
+
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: list => {
         if (token !== this.loadToken) return;
@@ -118,6 +134,10 @@ export class TimetableComponent implements OnInit {
         this.scopeId.set(id);
         if (id) {
           this.selections[scope] = id;
+          if (scope === 'CLASSROOM') {
+            this.syncRoomChoice(id);
+          }
+
           this.load();
         } else {
           this.loading.set(false);
@@ -129,6 +149,32 @@ export class TimetableComponent implements OnInit {
         this.error.set(true);
       }
     });
+  }
+
+  /**
+   * Les salles actives, pour les sélecteurs de salle.
+   *
+   * <p>Un échec n'est pas bloquant : sans salles, le sélecteur n'offre que la
+   * salle habituelle et le serveur reste seul juge.</p>
+   */
+  private loadRooms(): void {
+    this.rooms.list().pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => this.roomList.set(list),
+        error: () => this.roomList.set([])
+      });
+  }
+
+  /**
+   * Aligne la salle proposée sur la classe choisie.
+   *
+   * <p>Appelée au changement de classe, pas à chaque rechargement : après avoir
+   * posé un cours au laboratoire, on enchaîne souvent avec le même lieu, et le
+   * ramener à la salle habituelle à chaque fois serait une brimade.</p>
+   */
+  private syncRoomChoice(classroomId: string): void {
+    this.roomChoice.set(
+      this.classList().find((item) => item.id === classroomId)?.defaultRoomId ?? '');
   }
 
   // ------------------------------------------------------------------ lecture
@@ -186,9 +232,24 @@ export class TimetableComponent implements OnInit {
   changeScopeId(id: string): void {
     this.scopeId.set(id);
     this.selections[this.scope()] = id;
+    if (this.scope() === 'CLASSROOM') {
+      this.syncRoomChoice(id);
+    }
+
     this.selectedSlot.set(null);
     this.endDrag();
     this.load();
+  }
+
+  /**
+   * Choisit la salle que les prochains cours posés prendront.
+   *
+   * <p>Le verdict affiché portait sur l'ancienne salle : on l'efface plutôt que
+   * de laisser une case verte qui ne l'est plus.</p>
+   */
+  changeRoomChoice(roomId: string): void {
+    this.roomChoice.set(roomId);
+    this.endDrag();
   }
 
   // -------------------------------------------------------------- géométrie
@@ -210,6 +271,29 @@ export class TimetableComponent implements OnInit {
   });
 
   readonly days = computed<string[]>(() => this.grid()?.days ?? []);
+
+  /** Salles proposables : une salle archivée n'accueille plus de cours. */
+  readonly activeRooms = computed<Room[]>(
+    () => this.roomList().filter((room) => room.status === 'ACTIVE'));
+
+  /** Salle habituelle de la classe affichée, quand elle en a une. */
+  readonly defaultRoom = computed<Room | undefined>(() => {
+    const classroomId = this.scopeId();
+    const roomId = this.classList().find((item) => item.id === classroomId)?.defaultRoomId;
+    return this.activeRooms().find((room) => room.id === roomId);
+  });
+
+  /**
+   * Libellé de l'option « laisser la salle habituelle ».
+   *
+   * <p>Vide veut dire « le serveur décide » : il retombe sur la salle habituelle
+   * de la classe. Afficher « Aucune salle » quand la classe en a une ferait
+   * croire à un choix qui n'existe pas.</p>
+   */
+  defaultRoomOptionLabel(): string {
+    const room = this.defaultRoom();
+    return room ? `Salle habituelle — ${room.name}` : 'Aucune salle';
+  }
 
   dayLabel(day: string): string {
     return DAY_LABELS[day] ?? day;
@@ -262,6 +346,10 @@ export class TimetableComponent implements OnInit {
       kind: 'PALETTE',
       subjectId: entry.subjectId,
       teacherId: entry.teacherId,
+      // La salle choisie dans la palette, sinon celle que la matière proposait
+      // déjà (la salle habituelle de la classe) : sans cela le cours partirait
+      // sans lieu et échapperait au contrôle de conflit de salle.
+      roomId: this.roomChoice() || entry.roomId || undefined,
       durationMinutes: this.grid()?.stepMinutes ?? 60
     };
     event.dataTransfer?.setData('text/plain', entry.subjectId);
@@ -328,7 +416,7 @@ export class TimetableComponent implements OnInit {
   onDrop(day: string, hour: string, event: DragEvent): void {
     event.preventDefault();
     const dragged = this.dragged;
-    if (!dragged || !this.grid()?.editable || this.saving()) {
+    if (!dragged || !this.grid()?.editable || this.saving() || this.cancelling()) {
       return;
     }
     if (this.hoverConflicts().length > 0) {
@@ -374,20 +462,85 @@ export class TimetableComponent implements OnInit {
   // ------------------------------------------------------------------ actions
 
   removeSlot(slot: TimetableSlot): void {
+    if (!this.canCancel() || this.saving() || this.cancelling() || this.loading()
+        || !this.grid()?.slots.some((item) => item.id === slot.id)) {
+      return;
+    }
+    // Le planning représente un créneau récurrent, pas une séance datée.
+    const message =
+      `Annuler « ${slot.subjectName} » du ${this.dayLabel(slot.dayOfWeek).toLowerCase()} ` +
+      `${this.hhmm(slot.startTime)}–${this.hhmm(slot.endTime)} ?\n\n` +
+      'Ce créneau hebdomadaire sera retiré de toutes les vues de l\'emploi du temps. ' +
+      'Les séances d\'appel déjà enregistrées sont conservées.';
+    if (!window.confirm(message)) {
+      return;
+    }
+    this.cancelling.set(true);
     this.timetables.deleteSlot(slot.id).pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
+          this.cancelling.set(false);
           this.notifications.success(
-            `${slot.subjectName} retiré du ${this.dayLabel(slot.dayOfWeek).toLowerCase()}.`);
+            `${slot.subjectName} annulé le ${this.dayLabel(slot.dayOfWeek).toLowerCase()} ` +
+            `${this.hhmm(slot.startTime)}–${this.hhmm(slot.endTime)}.`,
+            'Cours annulé');
           this.selectedSlot.set(null);
           this.load();
-        }
+        },
+        // L'échec ne doit pas laisser un bouton mort : on remet le bouton
+        // actif pour retenter, et l'erreur remonte en notif (intercepteur).
+        error: () => this.cancelling.set(false)
       });
   }
 
+  /**
+   * Déplace un cours déjà posé vers une autre salle.
+   *
+   * <p>Le point d'entrée de modification attend le cours entier, pas seulement le
+   * champ modifié : on renvoie l'horaire et le couple matière/enseignant tels
+   * quels, avec la nouvelle salle. Le serveur revérifie alors les trois règles —
+   * dont celle de la salle — et refuse en disant laquelle est enfreinte.</p>
+   */
+  changeSlotRoom(slot: TimetableSlot, roomId: string): void {
+    if (!this.grid()?.editable || this.saving() || this.cancelling() || (slot.roomId ?? '') === roomId) {
+      return;
+    }
+    this.saving.set(true);
+    const payload: SlotUpsertPayload = {
+      classroomId: slot.classroomId,
+      subjectId: slot.subjectId,
+      teacherId: slot.teacherId,
+      // Vide veut dire « la salle habituelle de la classe » : le serveur tranche.
+      roomId: roomId || undefined,
+      dayOfWeek: slot.dayOfWeek,
+      startTime: this.hhmm(slot.startTime),
+      endTime: this.hhmm(slot.endTime),
+      slotType: slot.slotType,
+      note: slot.note
+    };
+    this.timetables.updateSlot(slot.id, payload).pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.notifications.success(
+            `${slot.subjectName} — ${roomId ? this.roomLabel(roomId) : 'salle habituelle'}.`,
+            'Salle du cours mise à jour');
+          this.selectedSlot.set(null);
+          this.load();
+        },
+        error: () => this.saving.set(false)
+      });
+  }
+
+  /** Nom lisible d'une salle, pour les messages. */
+  private roomLabel(roomId: string): string {
+    return this.roomList().find((room) => room.id === roomId)?.name ?? 'nouvelle salle';
+  }
+
+
   publish(): void {
     const grid = this.grid();
-    if (!grid || this.saving()) {
+    if (!grid || this.saving() || this.cancelling()) {
       return;
     }
     this.saving.set(true);

@@ -1,0 +1,3 @@
+warning: in the working copy of 'frontend/src/app/features/landing/landing.component.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/app/layouts/admin-layout/admin-layout.component.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/app/layouts/admin-layout/admin-layout.component.ts', LF will be replaced by CRLF the next time Git touches it

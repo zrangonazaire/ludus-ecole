@@ -41,7 +41,7 @@ function room(code: string, name: string, building: string | undefined,
               campusId = 'campus-us', campusCode = 'CAMP-US',
               campusName = 'Campus Principal'): Room {
   return {
-    id: createUuid(),
+    id: mockRoomId(code),
     campusId,
     campusCode,
     campusName,
@@ -56,6 +56,22 @@ function room(code: string, name: string, building: string | undefined,
     defaultClassroomCount,
     archivable: timetableSlotCount === 0 && defaultClassroomCount === 0
   };
+}
+
+/**
+ * Identifiant stable d'une salle de démonstration, dérivé de son code.
+ *
+ * <p>Un identifiant aléatoire obligerait l'emploi du temps de démonstration à
+ * deviner où sont les salles. Dérivé du code, il est prévisible des deux côtés
+ * et identique d'un rechargement à l'autre.</p>
+ */
+export function mockRoomId(code: string): string {
+  return 'room-' + code.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+}
+
+/** Nom affichable d'une salle de démonstration, par identifiant. */
+export function mockRoomName(roomId: string): string | undefined {
+  return rooms.find((item) => item.id === roomId)?.name;
 }
 
 @Injectable()
