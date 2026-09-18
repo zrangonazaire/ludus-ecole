@@ -1,421 +1,970 @@
 <div class="page">
+
   <header class="page__header">
+
     <div>
+
       <h1 class="page__title">Paiements</h1>
+
       @if (page(); as result) {
+
         <p class="page__meta numeric">{{ result.totalElements }} paiement(s)</p>
+
       }
+
     </div>
+
     <div class="page__actions">
+
       <button type="button" class="btn btn--secondary" [disabled]="exporting()" (click)="exportPayments()">
+
         {{ exporting() ? 'Export en cours…' : 'Exporter' }}
+
       </button>
+
       <button type="button" class="btn btn--primary"
+
               *eduopsHasPermission="createPermission" (click)="openCollection()">
+
         <span aria-hidden="true">+</span> Encaisser un paiement
+
       </button>
+
     </div>
+
   </header>
 
   <section class="card">
+
     <div class="card__header">
+
       <label class="visually-hidden" for="payment-search">Rechercher un paiement</label>
+
       <input id="payment-search" class="input register-search" type="search"
+
              placeholder="Élève, matricule, référence ou numéro de reçu"
+
              (input)="onSearch($any($event.target).value)" />
+
     </div>
+
     @if (loadError()) {
+
       <p role="alert">Impossible de charger les paiements.
+
         <button type="button" class="btn btn--secondary" (click)="load()">Réessayer</button>
+
       </p>
+
     }
+
     <eduops-data-table
+
       [columns]="columns" [page]="page()" [loading]="loading()"
+
       caption="Registre des paiements"
+
       (pageChange)="onPageChange($event)" />
+
   </section>
+
 </div>
 
 <ng-template #amountTpl let-payment>
+
   <span class="money amount-cell">{{ payment.amount | money:payment.currency }}</span>
+
 </ng-template>
 
 <ng-template #methodTpl let-payment>
+
   {{ payment.paymentMethod | statusLabel }}
+
 </ng-template>
 
 <ng-template #statusTpl let-payment>
+
   <eduops-status-badge [status]="payment.status" />
+
 </ng-template>
 
 <ng-template #actionsTpl let-payment>
+
   <div class="row">
+
     <button type="button" class="btn btn--ghost btn--sm" (click)="showReceipt(payment)">Reçu</button>
+
     @if (payment.status === 'VALIDATED') {
+
       <button type="button" class="btn btn--ghost btn--sm"
+
               *eduopsHasPermission="cancelPermission"
+
               [disabled]="cancelling()"
+
               (click)="askCancel(payment)">Annuler</button>
+
     }
+
   </div>
+
 </ng-template>
 
 @if (panelOpen()) {
+
   <button type="button" class="drawer-backdrop" aria-label="Fermer le formulaire"
+
           (click)="closeCollection()"></button>
+
   <aside class="drawer drawer--wide" role="dialog" aria-modal="true"
+
          aria-labelledby="collection-title">
+
     <header class="drawer__head">
+
       <div>
+
         @if (paymentResult()) {
+
           <span class="drawer__eyebrow">Opération terminée</span>
+
         } @else {
+
           <span class="drawer__eyebrow">Nouvel encaissement</span>
+
         }
+
         <h2 class="drawer__title" id="collection-title">
+
           {{ paymentResult() ? 'Paiement encaissé' : 'Encaisser un paiement' }}
+
         </h2>
+
         @if (!paymentResult()) {
+
           <p class="drawer__meta">Sélectionnez l'élève, puis vérifiez le montant avant validation.</p>
+
         }
+
       </div>
+
       <button type="button" class="drawer__close" aria-label="Fermer"
+
               [disabled]="saving()" (click)="closeCollection()">×</button>
+
     </header>
 
     @if (paymentResult(); as result) {
+
       <div class="drawer__body success-view" aria-live="polite">
+
         <div class="success-view__icon" aria-hidden="true">✓</div>
+
         <h3>Le paiement est bien enregistré</h3>
+
         <p>Le solde de l'élève et ses échéances ont été mis à jour.</p>
 
         <section class="receipt-card" aria-label="Récapitulatif du reçu">
+
           <div class="receipt-card__head">
+
             <div>
+
               <span>Reçu</span>
+
               <strong class="numeric">{{ result.receiptNumber ?? result.paymentReference }}</strong>
+
             </div>
+
             <eduops-status-badge [status]="result.status" />
+
           </div>
+
           <div class="receipt-card__amount money">{{ result.amount | money:result.currency }}</div>
+
           <dl class="receipt-card__details">
+
             <div><dt>Élève</dt><dd>{{ result.studentName }}</dd></div>
+
             <div><dt>Matricule</dt><dd class="numeric">{{ result.studentNumber }}</dd></div>
+
             <div><dt>Mode</dt><dd>{{ result.paymentMethod | statusLabel }}</dd></div>
+
             <div><dt>Date</dt><dd class="numeric">{{ result.paymentDate | date:'dd/MM/yyyy' }}</dd></div>
+
             @if (result.outstandingAfterPayment !== undefined) {
+
               <div class="receipt-card__balance">
+
                 <dt>Solde restant</dt>
+
                 <dd class="money">{{ result.outstandingAfterPayment | money:result.currency }}</dd>
+
               </div>
+
             }
+
           </dl>
+
         </section>
+
       </div>
+
       <footer class="drawer__foot drawer__foot--success">
+
         <button type="button" class="btn btn--secondary" (click)="showReceipt(result)">Voir le reçu</button>
+
         <button type="button" class="btn btn--secondary" (click)="collectAnother()">
+
           Encaisser un autre paiement
+
         </button>
+
         <button type="button" class="btn btn--primary" (click)="closeCollection()">Terminer</button>
+
       </footer>
+
     } @else {
+
       <form class="drawer__form" [formGroup]="paymentForm" (ngSubmit)="submitPayment()">
+
         <div class="drawer__body">
+
           <section class="form-section" aria-labelledby="student-section-title">
+
             <div class="section-heading">
+
               <span class="section-heading__step">1</span>
+
               <div>
+
                 <h3 id="student-section-title">Quel élève règle ?</h3>
+
                 <p>Recherchez par nom ou matricule.</p>
+
               </div>
+
             </div>
 
             @if (selectedStudent(); as student) {
+
               <div class="selected-student">
+
                 <eduops-avatar [name]="student.fullName" [photoUrl]="student.photoUrl" size="md" />
+
                 <div class="selected-student__identity">
+
                   <strong>{{ student.fullName }}</strong>
+
                   <span class="numeric">{{ student.studentNumber }} · {{ student.classroomName ?? 'Sans classe' }}</span>
+
                 </div>
+
                 <button type="button" class="btn btn--ghost btn--sm" (click)="changeStudent()">
+
                   Changer
+
                 </button>
+
               </div>
 
               @if (summaryLoading()) {
+
                 <div class="summary-loading" role="status">
+
                   <span class="spinner spinner--sm" aria-hidden="true"></span>
+
                   Lecture de la situation financière…
+
                 </div>
+
               } @else {
+
                 @if (financialSummary(); as summary) {
+
                   <div class="balance-card" [class.balance-card--settled]="summary.outstandingAmount === 0">
+
                     <div>
+
                       <span>Solde restant</span>
+
                       <strong class="money">{{ summary.outstandingAmount | money:summary.currency }}</strong>
+
                     </div>
+
                     <div class="balance-card__secondary">
+
                       <span>Déjà réglé</span>
+
                       <strong class="money">{{ summary.totalPaid | money:summary.currency }}</strong>
+
                     </div>
+
                   </div>
+
                   @if (summary.outstandingAmount === 0) {
+
                     <p class="inline-message inline-message--success">
+
                       <span aria-hidden="true">✓</span> Le compte de cet élève est déjà soldé.
+
                     </p>
+
                   }
+
                 }
+
               }
+
             } @else {
+
               <div class="student-picker">
+
                 <label class="visually-hidden" for="collection-student-search">Rechercher un élève</label>
+
                 <span class="student-picker__icon" aria-hidden="true">⌕</span>
+
                 <input id="collection-student-search" class="input student-picker__input"
+
                        type="search" autocomplete="off"
+
                        placeholder="Nom, prénom ou matricule"
+
                        [value]="studentSearch()"
+
                        (input)="onStudentSearch($any($event.target).value)" />
+
               </div>
 
               <div class="student-results" aria-live="polite">
+
                 @if (studentsLoading()) {
+
                   <div class="student-results__state">
+
                     <span class="spinner spinner--sm" aria-hidden="true"></span> Recherche…
+
                   </div>
+
                 } @else if (studentResults().length) {
+
                   @for (student of studentResults(); track student.id) {
+
                     <button type="button" class="student-result" (click)="selectStudent(student)">
+
                       <eduops-avatar [name]="student.fullName" [photoUrl]="student.photoUrl" size="sm" />
+
                       <span class="student-result__identity">
+
                         <strong>{{ student.fullName }}</strong>
+
                         <small class="numeric">{{ student.studentNumber }}</small>
+
                       </span>
+
                       <span class="student-result__class">{{ student.classroomName ?? 'Sans classe' }}</span>
+
                       <span class="student-result__arrow" aria-hidden="true">›</span>
+
                     </button>
+
                   }
+
                 } @else {
+
                   <p class="student-results__state">Aucun élève actif trouvé.</p>
+
                 }
+
               </div>
+
             }
+
           </section>
 
           @if (financialSummary(); as summary) {
+
             <section class="form-section form-section--spaced" aria-labelledby="amount-section-title">
+
               <div class="section-heading">
+
                 <span class="section-heading__step">2</span>
+
                 <div>
+
                   <h3 id="amount-section-title">Combien est encaissé ?</h3>
+
                   <p>Le montant sera affecté aux échéances les plus anciennes.</p>
+
                 </div>
+
               </div>
 
               <div class="field amount-field">
+
                 <label class="field__label field__label--required" for="payment-amount">Montant reçu</label>
+
                 <div class="amount-input">
+
                   <input id="payment-amount" class="input" type="number" inputmode="decimal"
+
                          min="0.01" step="0.01" formControlName="amount"
+
                          [class.is-invalid]="paymentForm.controls.amount.touched && paymentForm.controls.amount.invalid" />
+
                   <span>{{ summary.currency }}</span>
+
                 </div>
+
                 @if (paymentForm.controls.amount.touched && paymentForm.controls.amount.invalid) {
+
                   <span class="field__error">Saisissez un montant supérieur à zéro.</span>
+
                 }
+
               </div>
 
               @if (summary.outstandingAmount > 0) {
+
                 <div class="quick-amounts" aria-label="Montants suggérés">
+
                   @if (suggestedAmount() > 0 && suggestedAmount() !== summary.outstandingAmount) {
+
                     <button type="button" class="quick-amount"
+
                             [class.quick-amount--active]="amountEntered() === suggestedAmount()"
+
                             (click)="chooseAmount(suggestedAmount())">
+
                       Prochaine échéance
+
                       <strong>{{ suggestedAmount() | money:summary.currency }}</strong>
+
                     </button>
+
                   }
+
                   <button type="button" class="quick-amount"
+
                           [class.quick-amount--active]="amountEntered() === summary.outstandingAmount"
+
                           (click)="chooseAmount(summary.outstandingAmount)">
+
                     Tout solder
+
                     <strong>{{ summary.outstandingAmount | money:summary.currency }}</strong>
+
                   </button>
+
                 </div>
+
               }
 
               @if (amountEntered() > 0 && allocationPreview().length) {
+
                 <div class="allocation-card">
+
                   <div class="allocation-card__head">
+
                     <span>Affectation automatique</span>
+
                     <strong class="money">Reste {{ remainingAfterPayment() | money:summary.currency }}</strong>
+
                   </div>
+
                   <ul>
+
                     @for (allocation of allocationPreview(); track allocation.fee.id) {
+
                       <li>
+
                         <span>
+
                           <strong>{{ allocation.fee.label }}</strong>
+
                           <small>Échéance du {{ allocation.fee.dueDate | date:'dd/MM/yyyy' }}</small>
+
                         </span>
+
                         <strong class="money">{{ allocation.amount | money:summary.currency }}</strong>
+
                       </li>
+
                     }
+
                   </ul>
+
                 </div>
+
               }
 
               @if (unallocatedAmount() > 0) {
+
                 <p class="inline-message inline-message--warning">
+
                   <span aria-hidden="true">!</span>
+
                   {{ unallocatedAmount() | money:summary.currency }} restera en avance non affectée.
+
                 </p>
+
               }
+
+            </section>
+
+            <section class="form-section form-section--spaced" aria-labelledby="fees-section-title">
+
+              <div class="section-heading">
+
+                <span class="section-heading__step">2b</span>
+
+                <div>
+
+                  <h3 id="fees-section-title">Quels frais règler ?</h3>
+
+                  <p>Sélectionnez les échéances à affecter, puis ajustez le montant alloué à chacune.</p>
+
+                </div>
+
+              </div>
+
+              @if (outstandingFees().length === 0) {
+
+                <p class="inline-message inline-message--success">
+
+                  <span aria-hidden="true">✓</span> Aucun frais dû pour cet élève.
+
+                </p>
+
+              } @else {
+
+                <div class="fee-selection">
+
+                  <div class="fee-selection__header">
+
+                    <span class="fee-selection__summary">
+
+                      <strong>{{ outstandingFees().length }}</strong> échéance(s) disponible(s)
+
+                    </span>
+
+                    <button
+
+                      type="button"
+
+                      class="btn btn--ghost btn--sm"
+
+                      [class.btn--text] = "selectedFees().length > 0"
+
+                      (click)="selectAllFees()"
+
+                      [attr.aria-pressed]="selectedFees().length === outstandingFees().length">
+
+                      {{ selectedFees().length === outstandingFees().length ? 'Tout désélectionner' : 'Tout sélectionner' }}
+
+                    </button>
+
+                  </div>
+
+                  <ul class="fee-list">
+
+                    @for (fee of outstandingFees(); track fee.id) {
+
+                      <li class="fee-item" [class.fee-item--selected]="isFeeSelected(fee.id)">
+
+                    <label class="fee-item__check">
+
+                      <input
+
+                        type="checkbox"
+
+                        [checked]="isFeeSelected(fee.id)"
+
+                        (change)="toggleFee(fee)"
+
+                        [attr.aria-label]="'Sélectionner ' + fee.label" />
+
+                      <span class="fee-item__checkbox"></span>
+
+                    </label>
+
+                    <div class="fee-item__info">
+
+                      <span class="fee-item__label">{{ fee.label }}</span>
+
+                      <span class="fee-item__meta">
+
+                        Échéance du {{ fee.dueDate | date:'dd/MM/yyyy' }}
+
+                        · {{ fee.amountRemaining | money:summary.currency }} restant
+
+                      </span>
+
+                    </div>
+
+                    <div class="fee-item__amount">
+
+                      @if (isFeeSelected(fee.id)) {
+
+                        <div class="fee-amount-control">
+
+                          <span class="fee-amount-control__label">Allouer</span>
+
+                          <div class="fee-amount-input">
+
+                            <input
+
+                              type="number"
+
+                              class="input fee-amount-input__field"
+
+                              min="0"
+
+                              [max]="fee.amountRemaining"
+
+                              step="0.01"
+
+                              [value]="getAllocatedAmount(fee.id)"
+
+                              (input)="onAllocationInput(fee.id, $any($event.target).value, summary.currency)" />
+
+                            <span class="fee-amount-input__currency">{{ summary.currency }}</span>
+
+                          </div>
+
+                          <button
+
+                            type="button"
+
+                            class="btn btn--ghost btn--sm fee-amount-control__fill"
+
+                            (click)="fillAllocation(fee.id, fee.amountRemaining)"
+
+                            title="Allouer le montant restant">
+
+                            Plein
+
+                          </button>
+
+                        </div>
+
+                      } @else {
+
+                        <span class="fee-item__remaining money">
+
+                          {{ fee.amountRemaining | money:summary.currency }}
+
+                        </span>
+
+                      }
+
+                    </div>
+
+                  </li>
+
+                  }
+
+                </ul>
+
+                </div>
+
+              }
+
+              @if (selectedFees().length > 0) {
+
+                <div class="allocation-summary">
+
+                  <div class="allocation-summary__row">
+                    <p>
+                      Le montant entré ({{ amountEntered() | money:summary.currency }}) est différent
+                      du total alloué — le reste sera affecté automatiquement aux échéances non sélectionnées.
+                    </p>
+                  </div>
+
+                </div>
+
+              }
+
             </section>
 
             <section class="form-section form-section--spaced" aria-labelledby="method-section-title">
+
               <div class="section-heading">
+
                 <span class="section-heading__step">3</span>
+
                 <div>
+
                   <h3 id="method-section-title">Comment le paiement a-t-il été reçu ?</h3>
+
                   <p>Choisissez le mode et ajoutez sa référence si nécessaire.</p>
+
                 </div>
+
               </div>
 
               <div class="method-grid">
+
                 @for (method of paymentMethods; track method.value) {
+
                   <label class="method-card"
+
                          [class.method-card--selected]="paymentForm.controls.paymentMethod.value === method.value">
-                    <input type="radio" formControlName="paymentMethod" [value]="method.value" />
+
+<input type="radio" formControlName="paymentMethod" [value]="method.value" />
+
                     <span class="method-card__icon" aria-hidden="true">{{ method.icon }}</span>
+
                     <span><strong>{{ method.label }}</strong><small>{{ method.hint }}</small></span>
+
                     <span class="method-card__check" aria-hidden="true">✓</span>
+
                   </label>
+
                 }
+
               </div>
 
               <div class="grid2 payment-details">
+
                 <div class="field">
+
                   <label class="field__label field__label--required" for="payment-date">Date d'encaissement</label>
+
                   <input id="payment-date" class="input" type="date" [max]="today"
+
                          formControlName="paymentDate" />
+
                 </div>
+
                 <div class="field">
+
                   <label class="field__label" [class.field__label--required]="referenceRequired()"
+
                          for="payment-reference">{{ referenceLabel() }}</label>
+
                   <input id="payment-reference" class="input" type="text"
+
                          formControlName="externalReference" maxlength="120"
+
                          [class.is-invalid]="paymentForm.controls.externalReference.touched && referenceRequired() && !paymentForm.controls.externalReference.value.trim()"
+
                          [placeholder]="referenceRequired() ? 'Obligatoire pour ce mode' : 'Facultatif'" />
+
                   @if (paymentForm.controls.externalReference.touched && referenceRequired()
+
                     && !paymentForm.controls.externalReference.value.trim()) {
+
                     <span class="field__error">Ajoutez la référence qui permettra de retrouver l'opération.</span>
+
                   }
+
                 </div>
+
               </div>
 
               <details class="optional-details">
+
                 <summary>Informations complémentaires <span>facultatif</span></summary>
+
                 <div class="optional-details__content">
+
                   <div class="field">
+
                     <label class="field__label" for="payment-payer">Nom de la personne qui règle</label>
+
                     <input id="payment-payer" class="input" type="text" maxlength="200"
+
                            formControlName="payerName" placeholder="Ex. Mariam Traoré" />
+
                   </div>
+
                   <div class="field">
+
                     <label class="field__label" for="payment-notes">Note interne</label>
+
                     <textarea id="payment-notes" class="textarea" rows="2" maxlength="1000"
+
                               formControlName="notes"
+
                               placeholder="Une précision utile pour la caisse"></textarea>
+
                   </div>
+
                 </div>
+
               </details>
+
             </section>
+
           }
+
         </div>
 
         <footer class="drawer__foot">
+
           @if (financialSummary(); as summary) {
+
             <div class="footer-total">
+
               <span>Total à encaisser</span>
+
               <strong class="money">{{ amountEntered() | money:summary.currency }}</strong>
+
             </div>
+
           }
+
           <button type="button" class="btn btn--secondary" [disabled]="saving()"
+
                   (click)="closeCollection()">Annuler</button>
+
           <button type="submit" class="btn btn--primary btn--collect" [disabled]="!canSubmit()">
+
             @if (saving()) {
+
               <span class="spinner spinner--button" aria-hidden="true"></span> Encaissement…
+
             } @else {
+
               <span aria-hidden="true">✓</span> Valider l'encaissement
+
             }
+
           </button>
+
         </footer>
+
       </form>
+
     }
+
   </aside>
+
 }
 
 @if (receipt() || receiptLoading()) {
+
   <div class="receipt-overlay">
+
     <button type="button" class="drawer-backdrop" aria-label="Fermer le reçu" (click)="closeReceipt()"></button>
+
     <aside class="drawer drawer--wide" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
+
       <header class="drawer__head">
+
         <h2 id="receipt-title">Reçu de paiement</h2>
+
         <button type="button" class="drawer__close" aria-label="Fermer le reçu" (click)="closeReceipt()">×</button>
+
       </header>
+
       <div class="drawer__body">
+
         @if (receiptLoading()) { <p role="status">Chargement du reçu…</p> }
+
         @if (receipt(); as payment) {
+
           <article id="payment-receipt" class="receipt-card">
+
             <div class="receipt-card__head">
+
               <strong>{{ payment.receiptNumber ?? payment.paymentReference }}</strong>
+
               <strong>{{ payment.status | statusLabel }}</strong>
+
             </div>
+
             @if (payment.status === 'CANCELLED') {
+
               <p class="inline-message inline-message--warning">ANNULÉ — Ce reçu ne justifie plus un règlement.</p>
+
             }
+
             <div class="receipt-card__amount money">{{ payment.amount | money:payment.currency }}</div>
+
             <dl class="receipt-card__details">
+
               <div><dt>Élève</dt><dd>{{ payment.studentName }}</dd></div>
+
               <div><dt>Matricule</dt><dd>{{ payment.studentNumber }}</dd></div>
+
               <div><dt>Date</dt><dd>{{ payment.paymentDate | date:'dd/MM/yyyy' }}</dd></div>
+
               <div><dt>Mode</dt><dd>{{ payment.paymentMethod | statusLabel }}</dd></div>
+
               <div><dt>Référence du paiement</dt><dd>{{ payment.paymentReference }}</dd></div>
+
               @if (payment.payerName) { <div><dt>Payeur</dt><dd>{{ payment.payerName }}</dd></div> }
+
               @if (payment.externalReference) { <div><dt>Référence externe</dt><dd>{{ payment.externalReference }}</dd></div> }
+
               @if (payment.status === 'VALIDATED') {
+
                 <div><dt>Montant affecté</dt><dd>{{ payment.allocatedAmount | money:payment.currency }}</dd></div>
+
                 <div><dt>Avance non affectée</dt><dd>{{ payment.unallocatedAmount | money:payment.currency }}</dd></div>
+
               }
+
             </dl>
+
             @if (payment.allocations.length) {
+
               <section class="allocation-card">
+
                 <h3>Affectations</h3>
+
                 <ul>
+
                   @for (allocation of payment.allocations; track allocation.id) {
+
                     <li><span>{{ allocation.feeLabel }}</span><strong>{{ allocation.amount | money:payment.currency }}</strong></li>
+
                   }
+
                 </ul>
+
               </section>
+
             }
+
           </article>
+
         }
+
       </div>
+
       <footer class="drawer__foot">
+
         <button type="button" class="btn btn--secondary" (click)="closeReceipt()">Fermer</button>
+
         <button type="button" class="btn btn--primary" [disabled]="!receipt()" (click)="printReceipt()">Imprimer / PDF</button>
+
       </footer>
+
     </aside>
+
   </div>
+
 }
 
 <eduops-confirm-dialog
+
   [open]="cancelTarget() !== null"
+
   title="Annuler ce paiement"
+
   [message]="cancelMessage()"
+
   confirmLabel="Annuler le paiement"
+
   [danger]="true"
+
   [requireReason]="true"
+
   reasonLabel="Motif de l'annulation"
+
   (confirm)="confirmCancel($event)"
+
   (cancel)="cancelTarget.set(null)" />

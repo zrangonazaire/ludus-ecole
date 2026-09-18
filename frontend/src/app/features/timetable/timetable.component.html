@@ -11,7 +11,13 @@
       </p>
     </div>
     <div class="page__actions">
-      <a class="btn btn--ghost screen-only" routerLink="/roadmap" fragment="planning">Guide de planification</a>
+      @if (canManageSettings()) {
+        <button type="button" class="btn btn--ghost screen-only"
+                [disabled]="loading() || !grid()"
+                (click)="toggleSettings()">
+          {{ settingsOpen() ? 'Fermer les réglages' : 'Réglages de la grille' }}
+        </button>
+      }
       <button type="button" class="btn btn--ghost screen-only"
               [disabled]="loading() || !grid()"
               (click)="print()">
@@ -80,6 +86,72 @@
     </div>
   </section>
 
+  <!-- ═══ Réglages de la grille horaire ═══ -->
+  @if (settingsOpen() && canManageSettings()) {
+    <section class="settings" role="region" aria-label="Réglages de la grille horaire">
+      <h2 class="settings__title">Réglages de la grille horaire</h2>
+      @if (settingsLoading()) {
+        <p class="settings__hint">Chargement des réglages…</p>
+      } @else {
+        <p class="settings__hint">
+          Ces réglages s'appliquent à toutes les grilles (classes, professeurs, salles).
+          Les cours déjà posés ne sont pas déplacés.
+        </p>
+        <div class="settings__days">
+          @for (day of allDays; track day) {
+            <label class="settings__day" [class.settings__day--on]="dayToggled(day)">
+              <input type="checkbox" [checked]="dayToggled(day)" (change)="toggleDay(day)">
+              {{ dayLabel(day) }}
+            </label>
+          }
+        </div>
+        <div class="settings__times">
+          <div>
+            <label class="field__label" for="settingsStart">Début de la journée</label>
+            <select id="settingsStart" class="select"
+                    [ngModel]="settingsStart()" name="settingsStart"
+                    (ngModelChange)="settingsStart.set($event)">
+              @for (time of settingsTimeChoices; track time) {
+                <option [value]="time">{{ time }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="field__label" for="settingsEnd">Fin de la journée</label>
+            <select id="settingsEnd" class="select"
+                    [ngModel]="settingsEnd()" name="settingsEnd"
+                    (ngModelChange)="settingsEnd.set($event)">
+              @for (time of settingsTimeChoices; track time) {
+                <option [value]="time">{{ time }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="field__label" for="settingsStep">Pas de la grille</label>
+            <select id="settingsStep" class="select"
+                    [ngModel]="settingsStep()" name="settingsStep"
+                    (ngModelChange)="changeSettingsStep($event)">
+              @for (step of settingsStepChoices; track step) {
+                <option [value]="step">{{ step }} min</option>
+              }
+            </select>
+          </div>
+        </div>
+        @if (settingsError()) {
+          <p class="settings__error" role="alert">{{ settingsError() }}</p>
+        }
+        <div class="settings__actions">
+          <button type="button" class="btn btn--ghost" (click)="toggleSettings()">Annuler</button>
+          <button type="button" class="btn btn--primary"
+                  [disabled]="savingSettings() || !settingsDirty()"
+                  (click)="saveSettings()">
+            {{ savingSettings() ? 'Enregistrement…' : 'Enregistrer' }}
+          </button>
+        </div>
+      }
+    </section>
+  }
+
   @if (loading()) {
     <eduops-loading-state message="Chargement de l'emploi du temps..." />
   } @else if (error()) {
@@ -118,10 +190,87 @@
           </div>
 
           <p class="palette__hint">
-            Faites glisser une matière sur la grille. Une case que la salle ou
-            l'enseignant ne peuvent pas accueillir devient rouge avant que vous
-            ne lâchiez.
+            Faites glisser une matière sur la grille, ou utilisez le formulaire
+            ci-dessous pour choisir le jour, l'heure et la durée exacts.
           </p>
+
+          <!-- ═══ Formulaire d'ajout manuel ═══ -->
+          <div class="palette__form">
+            <label class="field__label" for="manualSubject">Matière &amp; enseignant</label>
+            <select id="manualSubject" class="select"
+                    [ngModel]="formSubjectKey()" name="manualSubject"
+                    (ngModelChange)="formSubjectKey.set($event)">
+              <option value="">— Choisir —</option>
+              @for (entry of palette(); track entry.subjectId + entry.teacherId) {
+                <option [value]="entry.subjectId + '|' + entry.teacherId">
+                  {{ entry.subjectName }} — {{ entry.teacherName }}
+                </option>
+              }
+            </select>
+
+            <label class="field__label" for="manualDay">Jour</label>
+            <select id="manualDay" class="select"
+                    [ngModel]="formDay()" name="manualDay"
+                    (ngModelChange)="formDay.set($event)">
+              <option value="">— Choisir —</option>
+              @for (day of days(); track day) {
+                <option [value]="day">{{ dayLabel(day) }}</option>
+              }
+            </select>
+
+            <div class="palette__form-row">
+              <div>
+                <label class="field__label" for="manualHour">Heure de départ</label>
+                <select id="manualHour" class="select"
+                        [ngModel]="formHour()" name="manualHour"
+                        (ngModelChange)="formHour.set($event)">
+                  <option value="">— h —</option>
+                  @for (hour of hourChoices(); track hour) {
+                    <option [value]="hour">{{ hour }} heures</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <label class="field__label" for="manualMinute">Minutes</label>
+                <select id="manualMinute" class="select"
+                        [ngModel]="formMinute()" name="manualMinute"
+                        (ngModelChange)="formMinute.set($event)">
+                  <option value="">— mn —</option>
+                  @for (minute of minuteChoices; track minute) {
+                    <option [value]="minute">{{ minute }} mn</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            @if (formSummary()) {
+              <p class="palette__form-summary">{{ formSummary() }}</p>
+            }
+
+            <label class="field__label" for="manualDuration">Durée</label>
+            <select id="manualDuration" class="select"
+                    [ngModel]="formDuration()" name="manualDuration"
+                    (ngModelChange)="formDuration.set($event)">
+              @for (duration of durationChoices; track duration) {
+                <option [value]="duration">{{ duration }} min</option>
+              }
+            </select>
+
+            @if (formError()) {
+              <p class="palette__form-error" role="alert">{{ formError() }}</p>
+            }
+            @for (conflict of formConflicts(); track conflict.kind + conflict.message) {
+              <p class="palette__form-error" role="alert">
+                {{ conflictLabel(conflict) }} — {{ conflict.message }}
+              </p>
+            }
+
+            <button type="button" class="btn btn--primary palette__form-submit"
+                    [disabled]="!canSubmitForm()"
+                    (click)="createSlotManually()">
+              {{ saving() ? 'Enregistrement…' : 'Ajouter le cours' }}
+            </button>
+          </div>
 
           <ul class="palette__list">
             @for (entry of palette(); track entry.subjectId + entry.teacherId) {
@@ -185,6 +334,7 @@
                                  [class.course--selected]="selectedSlot()?.id === slot.id"
                                  [style.--course-color]="slot.subjectColor || 'var(--brand)'"
                                  [style.--span]="spanOf(slot)"
+                                 [style.--off]="offsetOf(slot, hour)"
                                  [draggable]="g.editable"
                                  (dragstart)="startSlotDrag(slot, $event)"
                                  (dragend)="endDrag()"
@@ -316,7 +466,6 @@
         <table class="sheet__grid">
           <thead>
             <tr>
-              <th class="sheet__corner"></th>
               @for (day of page.days; track day) {
                 <th class="sheet__day">{{ dayLabel(day) }}</th>
               }
@@ -325,13 +474,13 @@
           <tbody>
             @for (hour of page.hours; track hour) {
               <tr>
-                <td class="sheet__hour">{{ hour }}</td>
                 @for (day of page.days; track day) {
                   <td class="sheet__cell">
                     @for (slot of slotsAtPrint(day, hour, page.slots); track slot.id) {
                       <article class="sheet__course"
                                [style.--course-color]="slot.subjectColor || 'var(--brand)'"
-                               [style.--span]="spanOf(slot, page.stepMinutes)">
+                               [style.--span]="spanOf(slot, page.stepMinutes)"
+                               [style.--off]="offsetOf(slot, hour, page.stepMinutes)">
                         <span class="sheet__subject">
                           {{ slot.subjectShortName || slot.subjectName }}
                         </span>

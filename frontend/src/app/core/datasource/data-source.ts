@@ -5,7 +5,8 @@ import {
   ClassroomBulkCreatePayload, ClassroomCreatePayload, ClassroomUpdatePayload, LevelCapacity
 } from '../models/classroom.models';
 import {
-  PaletteEntry, SlotUpsertPayload, TimetableConflict, TimetableGrid, TimetableSlot
+  PaletteEntry, SlotUpsertPayload, TimetableConflict, TimetableGrid, TimetableSlot,
+  TimetableSettings, TimetableSettingsPayload
 } from '../models/timetable.models';
 import {
   CurriculumApplyPayload, CurriculumSubjectPayload, LevelCurriculum,
@@ -191,6 +192,9 @@ export interface TimetableDataSource {
   updateSlot(slotId: string, payload: SlotUpsertPayload): Observable<TimetableSlot>;
   deleteSlot(slotId: string): Observable<void>;
   publish(classroomId: string): Observable<TimetableGrid>;
+  /** Réglages de la grille horaire de l'établissement. */
+  settings(): Observable<TimetableSettings>;
+  updateSettings(payload: TimetableSettingsPayload): Observable<TimetableSettings>;
 }
 
 export interface CurriculumDataSource {

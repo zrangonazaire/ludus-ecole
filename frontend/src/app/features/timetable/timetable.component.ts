@@ -61,6 +61,101 @@ export class TimetableComponent implements OnInit {
   readonly canCancel = computed(() => this.auth.has(PERMISSIONS.TIMETABLE_MANAGE));
   readonly cancelling = signal(false);
 
+  // ─── Réglages de la grille (jours, heures de la journée, pas) ───
+  readonly canManageSettings = computed(() => this.auth.has(PERMISSIONS.TIMETABLE_MANAGE));
+  readonly settingsOpen = signal(false);
+  readonly settingsLoading = signal(false);
+  readonly savingSettings = signal(false);
+  readonly settingsError = signal('');
+  readonly settingsDays = signal<string[]>([]);
+  readonly settingsStart = signal('07:00');
+  readonly settingsEnd = signal('18:00');
+  readonly settingsStep = signal(60);
+  /** Choix d'heures pour les bornes de journée : quarts d'heure de 06:00 à 20:00. */
+  readonly settingsTimeChoices: string[] = Array.from({ length: 57 }, (_, i) => {
+    const minutes = 6 * 60 + i * 15;
+    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  });
+  readonly settingsStepChoices = [15, 30, 45, 60];
+  /** Tous les jours proposés, dans l'ordre de la semaine. */
+  readonly allDays = Object.keys(DAY_LABELS);
+  readonly settingsDirty = computed(() =>
+    this.settingsStart() !== this.grid()?.dayStart
+    || this.settingsEnd() !== this.grid()?.dayEnd
+    || this.settingsStep() !== this.grid()?.stepMinutes
+    || this.settingsDays().join(',') !== this.grid()?.days.join(','));
+
+  toggleDay(day: string): void {
+    const current = this.settingsDays();
+    const order = Object.keys(DAY_LABELS);
+    this.settingsDays.set(current.includes(day)
+      ? current.filter(d => d !== day)
+      : [...current, day].sort((a, b) => order.indexOf(a) - order.indexOf(b)));
+  }
+
+  dayToggled(day: string): boolean {
+    return this.settingsDays().includes(day);
+  }
+
+  /** Le select renvoie une chaîne : on repasse en nombre pour la comparaison et l'API. */
+  changeSettingsStep(value: string | number): void {
+    this.settingsStep.set(Number(value));
+  }
+
+  /** Ouvre (et charge au premier appel) ou ferme le panneau de réglages. */
+  toggleSettings(): void {
+    if (this.settingsOpen()) {
+      this.settingsOpen.set(false);
+      return;
+    }
+    this.settingsOpen.set(true);
+    this.settingsLoading.set(true);
+    this.settingsError.set('');
+    this.timetables.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (s) => {
+        this.settingsDays.set([...s.days]);
+        this.settingsStart.set(s.dayStart.slice(0, 5));
+        this.settingsEnd.set(s.dayEnd.slice(0, 5));
+        this.settingsStep.set(s.stepMinutes);
+        this.settingsLoading.set(false);
+      },
+      error: () => {
+        this.settingsLoading.set(false);
+        this.settingsError.set('Impossible de charger les réglages.');
+      }
+    });
+  }
+
+  saveSettings(): void {
+    if (!this.settingsDays().length) {
+      this.settingsError.set('Choisissez au moins un jour ouvré.');
+      return;
+    }
+    if (this.settingsStart() >= this.settingsEnd()) {
+      this.settingsError.set("L'heure de fin de journée doit être postérieure à l'heure de début.");
+      return;
+    }
+    this.savingSettings.set(true);
+    this.settingsError.set('');
+    this.timetables.updateSettings({
+      days: this.settingsDays(),
+      dayStart: this.settingsStart(),
+      dayEnd: this.settingsEnd(),
+      stepMinutes: Number(this.settingsStep())
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.savingSettings.set(false);
+        this.settingsOpen.set(false);
+        this.notifications.success('Réglages de la grille enregistrés.');
+        this.load();
+      },
+      error: (err) => {
+        this.savingSettings.set(false);
+        this.settingsError.set(err?.error?.message ?? 'Enregistrement impossible.');
+      }
+    });
+  }
+
   private readonly timetables = inject(TIMETABLE_DATA_SOURCE);
   private readonly classrooms = inject(CLASSROOM_DATA_SOURCE);
   private readonly teachers = inject(TEACHER_DATA_SOURCE);
@@ -299,10 +394,22 @@ export class TimetableComponent implements OnInit {
     return DAY_LABELS[day] ?? day;
   }
 
-  /** Les cours qui commencent dans cette case. */
+  /**
+   * Les cours qui tombent dans cette tranche horaire.
+   *
+   * <p>La grille suit le pas des réglages de l'école (souvent une heure
+   * pleine) mais un cours peut commencer à 07:30 : on l'affiche dans la
+   * tranche qui le contient, sinon il serait enregistré sans jamais paraître.
+   * C'est la même règle que la feuille d'impression.</p>
+   */
   slotsAt(day: string, hour: string): TimetableSlot[] {
-    return (this.grid()?.slots ?? []).filter(
-      (slot) => slot.dayOfWeek === day && this.hhmm(slot.startTime) === hour);
+    const step = this.grid()?.stepMinutes ?? 60;
+    const startMin = this.toMinutes(hour);
+    return (this.grid()?.slots ?? []).filter((slot) => {
+      return slot.dayOfWeek === day
+        && this.toMinutes(slot.startTime) >= startMin
+        && this.toMinutes(slot.startTime) < startMin + step;
+    });
   }
 
   /**
@@ -314,6 +421,18 @@ export class TimetableComponent implements OnInit {
   spanOf(slot: TimetableSlot, stepMinutes = this.grid()?.stepMinutes ?? 60): number {
     const step = stepMinutes > 0 ? stepMinutes : 60;
     return Math.max(1, Math.round(slot.durationMinutes / step));
+  }
+
+  /**
+   * Décalage vertical de la carte dans sa cellule conteneur, entre 0 et 1.
+   *
+   * Un cours de 07:30 logé dans la ligne 07:00 doit démarrer à mi-case,
+   * sinon la grille le présenterait comme commençant à l'heure pleine.
+   */
+  offsetOf(slot: TimetableSlot, hour: string, stepMinutes = this.grid()?.stepMinutes ?? 60): number {
+    const step = stepMinutes > 0 ? stepMinutes : 60;
+    const offset = (this.toMinutes(slot.startTime) - this.toMinutes(hour)) / step;
+    return Math.max(0, Math.min(1, offset));
   }
 
   cellKey(day: string, hour: string): string {
@@ -338,6 +457,143 @@ export class TimetableComponent implements OnInit {
     const minutes = this.grid()?.totalMinutes ?? 0;
     return (minutes / 60).toFixed(minutes % 60 === 0 ? 0 : 1);
   });
+
+  // --------------------------------------------------------- création manuelle
+
+  /** Clé « subjectId|teacherId » choisie dans le formulaire d'ajout. */
+  readonly formSubjectKey = signal('');
+  readonly formDay = signal('');
+  /** Heure et minute de départ saisies séparément (ex. 07 h 30). */
+  readonly formHour = signal('');
+  readonly formMinute = signal('');
+  readonly formDuration = signal(60);
+  readonly formConflicts = signal<TimetableConflict[]>([]);
+  readonly formError = signal('');
+
+  /** Les heures pleines de la journée, d'après les réglages de l'école. */
+  readonly hourChoices = computed<string[]>(() => {
+    const grid = this.grid();
+    if (!grid) {
+      return [];
+    }
+    const start = this.toMinutes(grid.dayStart);
+    const end = this.toMinutes(grid.dayEnd);
+    const choices: string[] = [];
+    for (let m = start; m < end; m += 60) {
+      choices.push(this.toLabel(m).slice(0, 2));
+    }
+    return choices;
+  });
+
+  /** Les minutes proposées, au quart d'heure. */
+  readonly minuteChoices = ['00', '15', '30', '45'];
+
+  /** L'heure de départ reconstituée, au format HH:mm. */
+  readonly formStartTime = computed<string>(() => {
+    const hour = this.formHour();
+    const minute = this.formMinute();
+    return hour && minute ? `${hour}:${minute}` : '';
+  });
+
+  /**
+   * Libellé français d'une heure : 07:30 devient « 07h30 ».
+   *
+   * <p>À l'école on dit « sept heures trente », pas « sept deux-points
+   * trente » : les écrans s'adressent à des humains, la colonne SQL attend
+   * HH:mm — on convertit à l'affichage, jamais au stockage.</p>
+   */
+  frTime(time: string): string {
+    return time.replace(':', 'h');
+  }
+
+  /** Résumé lisible du cours saisi : « Départ 07h30 · Fin 09h30 (120 min) ». */
+  readonly formSummary = computed<string>(() => {
+    const start = this.formStartTime();
+    const grid = this.grid();
+    if (!start || !grid) {
+      return '';
+    }
+    const endMin = this.toMinutes(start) + Number(this.formDuration());
+    const end = this.toLabel(Math.min(endMin, this.toMinutes(grid.dayEnd)));
+    return `Départ à ${this.frTime(start)} · Fin à ${this.frTime(end)}`;
+  });
+
+  /** Durées proposées, en minutes. */
+  readonly durationChoices = [30, 45, 60, 90, 120];
+
+  canSubmitForm(): boolean {
+    return !!this.grid()?.editable
+      && !!this.formSubjectKey()
+      && !!this.formDay()
+      && !!this.formStartTime()
+      && !this.saving();
+  }
+
+  /**
+   * Crée un cours à partir du formulaire : le serveur vérifie d'abord les
+   * règles (enseignant, classe, salle) et le cours n'est posé que si rien
+   * ne s'y oppose — le même verdict que le survol du glisser-déposer.
+   */
+  createSlotManually(): void {
+    const grid = this.grid();
+    if (!this.canSubmitForm() || !grid) {
+      return;
+    }
+    const [subjectId, teacherId] = this.formSubjectKey().split('|');
+    const entry = this.palette().find(
+      (item) => item.subjectId === subjectId && item.teacherId === teacherId);
+    const start = this.formStartTime();
+    // Le <select> renvoie une chaîne : sans conversion, 450 + "120" donnerait
+    // "450120" par concaténation et ferait échouer le contrôle de fin de journée.
+    const duration = Number(this.formDuration());
+    if (!Number.isFinite(duration) || duration <= 0) {
+      this.formError.set('Durée invalide.');
+      return;
+    }
+    const endMin = this.toMinutes(start) + duration;
+    if (endMin > this.toMinutes(grid.dayEnd)) {
+      this.formError.set('Le cours dépasse la fin de la journée.');
+      return;
+    }
+    const payload: SlotUpsertPayload = {
+      classroomId: this.scopeId(),
+      subjectId,
+      teacherId,
+      roomId: this.roomChoice() || undefined,
+      dayOfWeek: this.formDay(),
+      startTime: start,
+      endTime: this.toLabel(endMin),
+      slotType: 'COURSE'
+    };
+    this.formError.set('');
+    this.formConflicts.set([]);
+    this.saving.set(true);
+    this.timetables.check(payload).pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (conflicts) => {
+          if (conflicts.length > 0) {
+            this.saving.set(false);
+            this.formConflicts.set(conflicts);
+            return;
+          }
+          this.timetables.createSlot(payload)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: () => {
+                this.saving.set(false);
+                this.notifications.success(
+                  `${entry?.subjectName ?? 'Cours'} — ` +
+                  `${this.dayLabel(payload.dayOfWeek).toLowerCase()} ` +
+                  `${payload.startTime}–${payload.endTime}.`,
+                  'Cours ajouté');
+                this.load();
+              },
+              error: () => this.saving.set(false)
+            });
+        },
+        error: () => this.saving.set(false)
+      });
+  }
 
   // ---------------------------------------------------------- glisser-déposer
 

@@ -11,7 +11,8 @@ import {
   ClassroomBulkCreatePayload, ClassroomCreatePayload, ClassroomUpdatePayload, LevelCapacity
 } from '@core/models/classroom.models';
 import {
-  PaletteEntry, SlotUpsertPayload, TimetableConflict, TimetableGrid, TimetableSlot
+  PaletteEntry, SlotUpsertPayload, TimetableConflict, TimetableGrid, TimetableSlot,
+  TimetableSettings, TimetableSettingsPayload
 } from '@core/models/timetable.models';
 import {
   CurriculumApplyPayload, CurriculumSubjectItem, CurriculumSubjectPayload,
@@ -947,6 +948,25 @@ export class MockTimetableDataSource implements TimetableDataSource {
       this.slots.filter((s) => s.classroomId === classroom.id));
     grid.status = 'PUBLISHED';
     return of(grid).pipe(delay(LATENCY));
+  }
+
+  settings(): Observable<TimetableSettings> {
+    return of({
+      days: [...this.days],
+      dayStart: '07:00',
+      dayEnd: '18:00',
+      stepMinutes: 60
+    }).pipe(delay(LATENCY));
+  }
+
+  updateSettings(payload: TimetableSettingsPayload): Observable<TimetableSettings> {
+    if (payload.dayStart >= payload.dayEnd) {
+      return throwError(() => ({
+        error: { message: "L'heure de fin de journée doit être postérieure à l'heure de début." }
+      })).pipe(delay(LATENCY));
+    }
+    this.days.splice(0, this.days.length, ...payload.days);
+    return of({ ...payload }).pipe(delay(LATENCY));
   }
 
   // ------------------------------------------------------------- internals

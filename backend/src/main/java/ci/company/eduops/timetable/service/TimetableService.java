@@ -28,9 +28,11 @@ import ci.company.eduops.timetable.domain.Timetable;
 import ci.company.eduops.timetable.domain.TimetableSlot;
 import ci.company.eduops.timetable.domain.TimetableStatus;
 import ci.company.eduops.timetable.dto.request.SlotUpsertRequest;
+import ci.company.eduops.timetable.dto.request.TimetableSettingsRequest;
 import ci.company.eduops.timetable.dto.response.TimetableConflictResponse;
 import ci.company.eduops.timetable.dto.response.TimetableGridResponse;
 import ci.company.eduops.timetable.dto.response.TimetablePaletteEntryResponse;
+import ci.company.eduops.timetable.dto.response.TimetableSettingsResponse;
 import ci.company.eduops.timetable.dto.response.TimetableSlotResponse;
 import ci.company.eduops.timetable.repository.TimetableRepository;
 import ci.company.eduops.timetable.repository.TimetableSlotRepository;
@@ -44,6 +46,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -604,6 +607,89 @@ public class TimetableService {
         } catch (NumberFormatException e) {
             return fallback;
         }
+    }
+
+    // -------------------------------------------------------------- settings
+
+    /**
+     * Réglages de la grille horaire de l'établissement, avec les valeurs par
+     * défaut si rien n'a encore été configuré.
+     */
+    @Transactional(readOnly = true)
+    public TimetableSettingsResponse settings() {
+        Map<String, Object> settings = schoolSettings();
+        LocalTime start = readTime(settings, "timetable.dayStart", DEFAULT_DAY_START);
+        LocalTime end = readTime(settings, "timetable.dayEnd", DEFAULT_DAY_END);
+        return TimetableSettingsResponse.of(readDays(settings),
+                start.toString(), end.toString(),
+                readInt(settings, "timetable.stepMinutes", DEFAULT_STEP_MINUTES));
+    }
+
+    /**
+     * Écrit les réglages de la grille dans les paramètres de l'école.
+     *
+     * <p>Les heures de la journée et le pas d'affichage influencent toutes les
+     * grilles et les créneaux déjà posés ne sont pas déplacés : un cours reste
+     * affiché dans la tranche qui le contient, même si le pas change. Seuls
+     * les jours ouvrés, les bornes de journée et le pas sont écrits — jamais
+     * les cours eux-mêmes.</p>
+     */
+    @Transactional
+    public TimetableSettingsResponse updateSettings(TimetableSettingsRequest request) {
+        LocalTime start = LocalTime.parse(request.getDayStart());
+        LocalTime end = LocalTime.parse(request.getDayEnd());
+        if (!start.isBefore(end)) {
+            throw new BusinessException(ErrorCode.INVALID_TIME_RANGE,
+                    "L'heure de fin de journée doit être postérieure à l'heure de début.");
+        }
+        int step = request.getStepMinutes();
+        if (step < 5 || step > 240) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Le pas de la grille doit être compris entre 5 et 240 minutes.");
+        }
+        List<String> days = new ArrayList<>(request.getDays().size());
+        for (String raw : request.getDays()) {
+            days.add(parseDay(raw).name());
+        }
+        if (days.isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Au moins un jour ouvré est nécessaire.");
+        }
+
+        Map<String, Object> before = Map.of(
+                "timetable.dayStart", String.valueOf(schoolSettings().get("timetable.dayStart")),
+                "timetable.dayEnd", String.valueOf(schoolSettings().get("timetable.dayEnd")),
+                "timetable.stepMinutes", String.valueOf(schoolSettings().get("timetable.stepMinutes")),
+                "timetable.days", String.valueOf(schoolSettings().get("timetable.days")));
+
+        Map<String, Object> settings = new LinkedHashMap<>(schoolSettings());
+        settings.put("timetable.dayStart", start.toString());
+        settings.put("timetable.dayEnd", end.toString());
+        settings.put("timetable.stepMinutes", step);
+        settings.put("timetable.days", days);
+
+        School school = requireSchool();
+        school.setSettings(settings);
+        School saved = schoolRepository.save(school);
+
+        auditService.logUpdate("School", saved.getId(), saved.getName(), before,
+                Map.of("timetable.dayStart", start.toString(),
+                        "timetable.dayEnd", end.toString(),
+                        "timetable.stepMinutes", step,
+                        "timetable.days", days));
+        log.info("Réglages de la grille horaire mis à jour : {} – {} / {} min / {} jours",
+                start, end, step, days.size());
+        return settings();
+    }
+
+    private School requireSchool() {
+        UUID schoolId = TenantContext.getSchoolId();
+        if (schoolId == null) {
+            throw new BusinessException(ErrorCode.SCHOOL_NOT_FOUND,
+                    "Aucun établissement dans le contexte de la requête.");
+        }
+        return schoolRepository.findById(schoolId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHOOL_NOT_FOUND));
     }
 
     private DayOfWeekEnum parseDay(String value) {

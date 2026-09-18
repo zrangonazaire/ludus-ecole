@@ -3,9 +3,11 @@ package ci.company.eduops.timetable.controller;
 import ci.company.eduops.common.exception.ApiError;
 import ci.company.eduops.security.service.Permissions;
 import ci.company.eduops.timetable.dto.request.SlotUpsertRequest;
+import ci.company.eduops.timetable.dto.request.TimetableSettingsRequest;
 import ci.company.eduops.timetable.dto.response.TimetableConflictResponse;
 import ci.company.eduops.timetable.dto.response.TimetableGridResponse;
 import ci.company.eduops.timetable.dto.response.TimetablePaletteEntryResponse;
+import ci.company.eduops.timetable.dto.response.TimetableSettingsResponse;
 import ci.company.eduops.timetable.dto.response.TimetableSlotResponse;
 import ci.company.eduops.timetable.service.TimetableService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -85,6 +87,25 @@ public class TimetableController {
             @PathVariable UUID classroomId,
             @RequestParam(required = false) UUID academicYearId) {
         return ResponseEntity.ok(timetableService.palette(classroomId, academicYearId));
+    }
+
+    @GetMapping("/settings")
+    @PreAuthorize("hasAuthority('" + Permissions.TIMETABLE_VIEW + "')")
+    @Operation(summary = "Réglages de la grille horaire",
+            description = "Jours ouvrés, heures de début et de fin de journée, pas d'affichage "
+                    + "de la grille. Valeurs par défaut si rien n'a encore été configuré.")
+    public ResponseEntity<TimetableSettingsResponse> settings() {
+        return ResponseEntity.ok(timetableService.settings());
+    }
+
+    @PutMapping("/settings")
+    @PreAuthorize("hasAuthority('" + Permissions.TIMETABLE_MANAGE + "')")
+    @Operation(summary = "Modifier les réglages de la grille",
+            description = "Écrit les jours ouvrés, les bornes de journée et le pas de la grille "
+                    + "dans les réglages de l'établissement. Les cours déjà posés ne bougent pas.")
+    public ResponseEntity<TimetableSettingsResponse> updateSettings(
+            @Valid @RequestBody TimetableSettingsRequest request) {
+        return ResponseEntity.ok(timetableService.updateSettings(request));
     }
 
     @PostMapping("/slots/check")

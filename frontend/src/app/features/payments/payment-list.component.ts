@@ -34,7 +34,7 @@ interface PaymentCreatePayload {
   payerName?: string;
   notes?: string;
   operationId: string;
-  allocations: [];
+  allocations: Array<{ studentFeeId: string; amount: number }>;
 }
 
 interface PaymentMethodChoice {
@@ -124,6 +124,9 @@ export class PaymentListComponent implements OnInit {
     payerName: ['', [Validators.maxLength(200)]],
     notes: ['', [Validators.maxLength(1000)]]
   });
+
+  /** Fees selected for explicit allocation, with the amount to apply to each. */
+  readonly selectedFees = signal<Array<{ id: string; label: string; dueDate: string; amountRemaining: number; allocatedAmount: number }>>([]);
 
   readonly outstandingFees = computed(() =>
     (this.financialSummary()?.fees ?? [])
@@ -324,7 +327,8 @@ export class PaymentListComponent implements OnInit {
     return !!this.selectedStudent() && !!this.financialSummary() && !this.summaryLoading()
       && !this.saving() && !this.paymentResult() && this.paymentForm.valid
       && this.paymentForm.controls.paymentDate.value <= this.localToday()
-      && (!this.referenceRequired() || referencePresent);
+      && (!this.referenceRequired() || referencePresent)
+      && this.selectedFees().length > 0;
   }
 
   submitPayment(): void {
@@ -336,6 +340,14 @@ export class PaymentListComponent implements OnInit {
     }
 
     const value = this.paymentForm.getRawValue();
+    const selected = this.selectedFees();
+    // Build explicit allocations from selected fees. If nothing is selected,
+    // fall back to automatic allocation (empty array) — but canSubmit() requires
+    // at least one selection, so this path is only a safety net.
+    const allocations: Array<{ studentFeeId: string; amount: number }> =
+      selected.length > 0
+        ? selected.map((f) => ({ studentFeeId: f.id, amount: f.allocatedAmount || f.amountRemaining }))
+        : [];
     const payload: PaymentCreatePayload = {
       studentId: student.id,
       academicYearId: summary.academicYearId,
@@ -346,8 +358,7 @@ export class PaymentListComponent implements OnInit {
       payerName: this.optional(value.payerName),
       notes: this.optional(value.notes),
       operationId: this.operationId,
-      // The server allocates the payment to the oldest outstanding fees first.
-      allocations: []
+      allocations
     };
 
     this.saving.set(true);
@@ -498,6 +509,93 @@ export class PaymentListComponent implements OnInit {
       notes: ''
     });
     this.amountEntered.set(0);
+    this.selectedFees.set([]);
+  }
+
+  /** Toggle a fee in the explicit allocation selection. */
+  toggleFee(fee: StudentFee): void {
+    const current = this.selectedFees();
+    const existing = current.find((f) => f.id === fee.id);
+    if (existing) {
+      this.selectedFees.set(current.filter((f) => f.id !== fee.id));
+    } else {
+      this.selectedFees.set([
+        ...current,
+        {
+          id: fee.id,
+          label: fee.label,
+          dueDate: fee.dueDate,
+          amountRemaining: fee.amountRemaining,
+          allocatedAmount: 0,
+        },
+      ]);
+    }
+  }
+
+  /** Update the allocated amount for a selected fee. Amount is distributed, not per-fee editable. */
+  updateAllocation(feeId: string, amount: number): void {
+    this.selectedFees.update((fees) =>
+      fees.map((f) => (f.id === feeId ? { ...f, allocatedAmount: amount } : f))
+    );
+  }
+
+  /** Total montant alloué aux frais sélectionnés. */
+  readonly selectedAllocationTotal = computed(() =>
+    this.selectedFees().reduce((sum, f) => sum + f.allocatedAmount, 0)
+  );
+
+  /** Frais non encore affectés dans la sélection. */
+  readonly unallocatedSelectedFees = computed(() =>
+    this.selectedFees().filter((f) => f.allocatedAmount === 0)
+  );
+
+  /** Vérifier si un frais est sélectionné. */
+  isFeeSelected(feeId: string): boolean {
+    return this.selectedFees().some((f) => f.id === feeId);
+  }
+
+  /** Montant alloué pour un frais donné. */
+  getAllocatedAmount(feeId: string): number {
+    return this.selectedFees().find((f) => f.id === feeId)?.allocatedAmount ?? 0;
+  }
+
+  /** Gérer la saisie du montant alloué pour un frais. */
+  onAllocationInput(feeId: string, rawValue: string, currency: string): void {
+    const parsed = this.parseMoney(rawValue, currency);
+    if (parsed === null) return;
+    this.updateAllocation(feeId, Math.max(0, parsed));
+  }
+
+  /** Allouer le montant restant complet à un frais. */
+  fillAllocation(feeId: string, maxAmount: number): void {
+    this.updateAllocation(feeId, maxAmount);
+  }
+
+  /** Sélectionner ou désélectionner tous les frais disponibles. */
+  selectAllFees(): void {
+    const outstanding = this.outstandingFees();
+    if (this.selectedFees().length === outstanding.length) {
+      this.selectedFees.set([]);
+    } else {
+      this.selectedFees.set(
+        outstanding.map((fee) => ({
+          id: fee.id,
+          label: fee.label,
+          dueDate: fee.dueDate,
+          amountRemaining: fee.amountRemaining,
+          allocatedAmount: 0,
+        }))
+      );
+    }
+  }
+
+  /** Analyser une valeur monétaire saisie par l'utilisateur. */
+  private parseMoney(value: string, currency: string): number | null {
+    const cleaned = value.replace(/[^\d.,]/g, '').trim();
+    if (cleaned === '') return null;
+    const normalized = cleaned.replace(',', '.');
+    const num = Number(normalized);
+    return Number.isFinite(num) ? num : null;
   }
 
   private optional(value: string): string | undefined {

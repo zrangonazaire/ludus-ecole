@@ -12,7 +12,8 @@ import {
   ClassroomBulkCreatePayload, ClassroomCreatePayload, ClassroomUpdatePayload, LevelCapacity
 } from '@core/models/classroom.models';
 import {
-  PaletteEntry, SlotUpsertPayload, TimetableConflict, TimetableGrid, TimetableSlot
+  PaletteEntry, SlotUpsertPayload, TimetableConflict, TimetableGrid, TimetableSlot,
+  TimetableSettings, TimetableSettingsPayload
 } from '@core/models/timetable.models';
 import {
   CurriculumApplyPayload, CurriculumSubjectPayload, LevelCurriculum,
@@ -557,6 +558,14 @@ export class ApiTimetableDataSource implements TimetableDataSource {
   publish(classroomId: string): Observable<TimetableGrid> {
     return this.http.post<TimetableGrid>(
       `${API}/timetables/classroom/${classroomId}/publish`, {});
+  }
+
+  settings(): Observable<TimetableSettings> {
+    return this.http.get<TimetableSettings>(`${API}/timetables/settings`);
+  }
+
+  updateSettings(payload: TimetableSettingsPayload): Observable<TimetableSettings> {
+    return this.http.put<TimetableSettings>(`${API}/timetables/settings`, payload);
   }
 }
 

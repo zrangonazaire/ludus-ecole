@@ -1,0 +1,14 @@
+Outil : ImageGen intégré.
+L’écran de l’affiche est une illustration inspirée du tableau de bord de l’application.
+
+Create a finished French advertising poster for the school management application SOOCLOO. Use case ads-marketing. Portrait 4:5 social media campaign visual, high resolution, exceptionally polished editorial advertising design, strongly illustrative, readable on a phone. Reference image 1 is the actual logo: preserve its navy school/open book/sun symbol and SOOCLOO spelling faithfully. Reference image 2 is a supporting reference for the actual dashboard structure, not the poster design. Show its recognizable white dashboard cards and blue charts on a large beautifully rendered laptop screen, with SOOCLOO branding replacing legacy EduOps branding. Do not copy personal names or exact numerical performance metrics. Screen content is a simplified illustrative preview.
+Art direction: warm ivory background, deep navy typography, golden yellow accents matching logo, rich cobalt UI accents. Large confident French typography with ample whitespace. Main hero occupies central 55 percent: realistic premium laptop in a subtle three-quarter view with dashboard, surrounded by four elegant illustrated floating feature cards. Small tasteful illustrative school building and books tie digital product to school life; avoid clutter, no people necessary. Feature icons are meaningful: pupil registration card, attendance checklist, report card with grade chart, payment receipt. Clear visual hierarchy, refined soft shadows, clean professional trustworthy African francophone education software brand. All text sharp and exact with correct accents.
+Exact poster copy:
+Top actual SOOCLOO logo.
+Large main headline on two lines: "Votre école." "Une seule application."
+Small subheadline: "La gestion scolaire devient plus simple."
+Four visible feature captions integrated around the hero: "Inscriptions", "Présences", "Notes et bulletins", "Paiements et reçus".
+Bottom strong navy call-to-action block with gold accent: "Découvrez Soocloo"
+Below it readable URL: "www.soocloo.com"
+Small line near bottom: "De l’inscription au bulletin, gardez le fil."
+No invented statistics, no prices, no discounts, no testimonials, no claim of free trial, no QR code, no phone number, no parent portal, no decorative nonsense text, no watermark. This must look like a finished striking usable advertising poster, not a wireframe or moodboard.

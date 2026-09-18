@@ -55,6 +55,21 @@ export interface TimetableConflict {
   conflictingEnd?: string;
 }
 
+/** Réglages de la grille horaire de l'établissement (jours, bornes, pas). */
+export interface TimetableSettings {
+  days: string[];
+  dayStart: string;
+  dayEnd: string;
+  stepMinutes: number;
+}
+
+export interface TimetableSettingsPayload {
+  days: string[];
+  dayStart: string;
+  dayEnd: string;
+  stepMinutes: number;
+}
+
 export interface PaletteEntry {
   subjectId: string;
   subjectName: string;
