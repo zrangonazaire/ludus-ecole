@@ -48,6 +48,9 @@ import {
 } from '../models/family-request.models';
 import { OutstandingBoard, OutstandingQuery } from '../models/outstanding.models';
 import {
+  DiscountDecisionPayload, DiscountRequest, DiscountRequestPayload
+} from '../models/discount-request.models';
+import {
   Room, RoomOptions, RoomQuery, RoomUpsertPayload
 } from '../models/room.models';
 import {
@@ -175,6 +178,13 @@ export interface FinanceDataSource {
   cancelPayment(id: string, reason: string): Observable<Payment>;
   getStudentSummary(studentId: string): Observable<FinancialSummary>;
   outstanding(query: OutstandingQuery): Observable<OutstandingBoard>;
+
+  /** Demandes de réduction de scolarité et leur circuit de validation. */
+  discountRequests(query?: { status?: string; studentId?: string }): Observable<DiscountRequest[]>;
+  discountRequest(id: string): Observable<DiscountRequest>;
+  createDiscountRequest(payload: DiscountRequestPayload): Observable<DiscountRequest>;
+  decideDiscountRequest(id: string, payload: DiscountDecisionPayload): Observable<DiscountRequest>;
+  applyDiscountRequest(id: string): Observable<DiscountRequest>;
 }
 
 export interface DashboardDataSource {

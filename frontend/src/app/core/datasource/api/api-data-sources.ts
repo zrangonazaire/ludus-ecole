@@ -54,6 +54,10 @@ import {
   CouncilQuery, CouncilStudentDecision, CouncilSummary, CouncilUpdatePayload
 } from '@core/models/council.models';
 import { OutstandingBoard, OutstandingQuery } from '@core/models/outstanding.models';
+import {
+  DiscountDecisionPayload, DiscountLevel, DiscountRequest, DiscountRequestPayload,
+  DiscountRequestStatus
+} from '@core/models/discount-request.models';
 import { Level } from '@core/models/domain.models';
 import {
   AttendanceDataSource, ClassroomDataSource, TimetableDataSource, CurriculumDataSource, FeeDataSource, DashboardDataSource, EnrollmentDataSource,
@@ -329,6 +333,29 @@ export class ApiFinanceDataSource implements FinanceDataSource {
 
   outstanding(query: OutstandingQuery): Observable<OutstandingBoard> {
     return this.http.get<OutstandingBoard>(`${API}/outstanding`, { params: toParams(query) });
+  }
+
+  discountRequests(query: { status?: string; studentId?: string } = {}): Observable<DiscountRequest[]> {
+    return this.http.get<DiscountRequest[]>(`${API}/finance/discount-requests`,
+      { params: toParams(query) });
+  }
+
+  discountRequest(id: string): Observable<DiscountRequest> {
+    return this.http.get<DiscountRequest>(`${API}/finance/discount-requests/${id}`);
+  }
+
+  createDiscountRequest(payload: DiscountRequestPayload): Observable<DiscountRequest> {
+    return this.http.post<DiscountRequest>(`${API}/finance/discount-requests`, payload);
+  }
+
+  decideDiscountRequest(id: string, payload: DiscountDecisionPayload): Observable<DiscountRequest> {
+    return this.http.post<DiscountRequest>(
+      `${API}/finance/discount-requests/${id}/decision`, payload);
+  }
+
+  applyDiscountRequest(id: string): Observable<DiscountRequest> {
+    return this.http.post<DiscountRequest>(
+      `${API}/finance/discount-requests/${id}/apply`, {});
   }
 }
 

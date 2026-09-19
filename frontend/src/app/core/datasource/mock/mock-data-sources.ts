@@ -69,6 +69,9 @@ import {
   OutstandingBoard, OutstandingQuery, OutstandingStudent
 } from '@core/models/outstanding.models';
 import {
+  DiscountRequest, DiscountRequestPayload, DiscountDecisionPayload, DiscountLevel
+} from '@core/models/discount-request.models';
+import {
   ClassroomDataSource, DashboardDataSource, EnrollmentDataSource, FinanceDataSource,
   GradeDataSource, AttendanceDataSource, ReferenceDataSource, StudentDataSource, TeacherDataSource,
   TimetableDataSource, CurriculumDataSource, FeeDataSource, ReportCardDataSource,
@@ -641,6 +644,180 @@ export class MockFinanceDataSource implements FinanceDataSource {
       students: paginate(filtered, query)
     };
     return of(board).pipe(delay(LATENCY));
+  }
+
+  // ------------------------------------------- réductions de scolarité
+
+  /**
+   * Demandes de réduction de la démo, avec un circuit à deux niveaux : une
+   * demande au premier palier, une au second, et une déjà appliquée.
+   */
+  private discountStore: DiscountRequest[] = [
+    {
+      id: 'dr-1',
+      reference: 'RED-2026-0001',
+      studentId: MOCK_STUDENTS[0].id,
+      studentNumber: MOCK_STUDENTS[0].studentNumber,
+      studentName: MOCK_STUDENTS[0].fullName,
+      label: 'Réduction fratrie (3 enfants inscrits)',
+      reason: 'Politique familiale : trois enfants dans l’établissement.',
+      discountType: 'PERCENTAGE',
+      value: 15,
+      computedAmount: 90000,
+      status: 'SUBMITTED',
+      currentLevel: 1,
+      totalLevels: 2,
+      createdAt: new Date().toISOString(),
+      awaitingMyDecision: true,
+      levels: [
+        { levelNumber: 1, name: 'Intendance', roleCode: 'ACCOUNTANT', roleLabel: 'Comptable',
+          status: 'PENDING' },
+        { levelNumber: 2, name: 'Direction', roleCode: 'DIRECTOR', roleLabel: 'Directeur',
+          status: 'PENDING' }
+      ]
+    },
+    {
+      id: 'dr-2',
+      reference: 'RED-2026-0002',
+      studentId: MOCK_STUDENTS[1].id,
+      studentNumber: MOCK_STUDENTS[1].studentNumber,
+      studentName: MOCK_STUDENTS[1].fullName,
+      label: 'Bourse d’excellence 2026',
+      reason: 'Premier de sa classe au trimestre précédent.',
+      discountType: 'FIXED_AMOUNT',
+      value: 150000,
+      computedAmount: 150000,
+      status: 'SUBMITTED',
+      currentLevel: 2,
+      totalLevels: 2,
+      createdAt: new Date(Date.now() - 86400000).toISOString(),
+      awaitingMyDecision: true,
+      levels: [
+        { levelNumber: 1, name: 'Intendance', roleCode: 'ACCOUNTANT', roleLabel: 'Comptable',
+          status: 'APPROVED', approverName: 'Awa Traoré',
+          comment: 'Situation financière vérifiée.', decidedAt: new Date().toISOString() },
+        { levelNumber: 2, name: 'Direction', roleCode: 'DIRECTOR', roleLabel: 'Directeur',
+          status: 'PENDING' }
+      ]
+    },
+    {
+      id: 'dr-3',
+      reference: 'RED-2026-0003',
+      studentId: MOCK_STUDENTS[2].id,
+      studentNumber: MOCK_STUDENTS[2].studentNumber,
+      studentName: MOCK_STUDENTS[2].fullName,
+      label: 'Réduction sportive',
+      reason: 'Sélection régionale d’athlétisme.',
+      discountType: 'PERCENTAGE',
+      value: 25,
+      computedAmount: 150000,
+      status: 'EFFECTIVE',
+      currentLevel: 2,
+      totalLevels: 2,
+      createdAt: new Date(Date.now() - 9 * 86400000).toISOString(),
+      effectiveAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+      awaitingMyDecision: false,
+      levels: [
+        { levelNumber: 1, name: 'Intendance', roleCode: 'ACCOUNTANT', roleLabel: 'Comptable',
+          status: 'APPROVED', approverName: 'Awa Traoré', decidedAt: new Date().toISOString() },
+        { levelNumber: 2, name: 'Direction', roleCode: 'DIRECTOR', roleLabel: 'Directeur',
+          status: 'APPROVED', approverName: 'Dr Konan', decidedAt: new Date().toISOString() }
+      ]
+    }
+  ];
+
+  private discountSequence = 3;
+
+  discountRequests(query: { status?: string; studentId?: string } = {}): Observable<DiscountRequest[]> {
+    const rows = this.discountStore
+      .filter((row) => !query.status || row.status === query.status)
+      .filter((row) => !query.studentId || row.studentId === query.studentId);
+        return of(rows.map((row) => ({ ...row, levels: row.levels.map((l: DiscountLevel) => ({ ...l })) })))
+      .pipe(delay(LATENCY));
+  }
+
+  discountRequest(id: string): Observable<DiscountRequest> {
+    const found = this.discountStore.find((row) => row.id === id);
+        return found
+      ? of({ ...found, levels: found.levels.map((l: DiscountLevel) => ({ ...l })) }).pipe(delay(LATENCY))
+      : throwError(() => new Error('Demande de réduction introuvable.'));
+  }
+
+  createDiscountRequest(payload: DiscountRequestPayload): Observable<DiscountRequest> {
+    const student = MOCK_STUDENTS.find((item) => item.id === payload.studentId)
+      ?? MOCK_STUDENTS[0];
+    const due = 600000;
+    const computed = payload.discountType === 'PERCENTAGE'
+      ? Math.round(due * payload.value / 100)
+      : Math.min(payload.value, due);
+    const created: DiscountRequest = {
+      id: `dr-${++this.discountSequence}`,
+      reference: `RED-2026-${String(this.discountSequence).padStart(4, '0')}`,
+      studentId: student.id,
+      studentNumber: student.studentNumber,
+      studentName: student.fullName,
+      label: payload.label,
+      reason: payload.reason,
+      discountType: payload.discountType,
+      value: payload.value,
+      computedAmount: computed,
+      status: 'SUBMITTED',
+      currentLevel: 1,
+      totalLevels: payload.levels.length,
+      createdAt: new Date().toISOString(),
+      awaitingMyDecision: true,
+      levels: payload.levels.map((level, index) => ({
+        levelNumber: index + 1,
+        name: level.name,
+        roleCode: level.roleCode,
+        roleLabel: level.roleCode,
+        status: 'PENDING' as const
+      }))
+    };
+    this.discountStore = [created, ...this.discountStore];
+    return of(created).pipe(delay(LATENCY));
+  }
+
+  decideDiscountRequest(id: string,
+                        payload: DiscountDecisionPayload): Observable<DiscountRequest> {
+    return defer(() => {
+      const row = this.discountStore.find((item) => item.id === id);
+      if (!row || row.status !== 'SUBMITTED') {
+        return throwError(() => new Error('Cette demande n’est plus en attente de décision.'));
+      }
+      const level = row.levels.find((l) => l.levelNumber === row.currentLevel);
+      if (!level) {
+        return throwError(() => new Error('Palier introuvable.'));
+      }
+      const approved = payload.decision === 'APPROVE';
+      level.status = approved ? 'APPROVED' : 'REJECTED';
+      level.comment = payload.comment;
+      level.approverName = 'Vous';
+      level.decidedAt = new Date().toISOString();
+      if (!approved) {
+        row.status = 'REJECTED';
+        row.rejectionReason = payload.comment;
+      } else if (level.levelNumber < row.totalLevels) {
+        row.currentLevel = level.levelNumber + 1;
+      } else {
+        row.status = 'APPROVED';
+      }
+      row.awaitingMyDecision = row.status === 'SUBMITTED';
+            return of({ ...row, levels: row.levels.map((l: DiscountLevel) => ({ ...l })) });
+    }).pipe(delay(LATENCY));
+  }
+
+  applyDiscountRequest(id: string): Observable<DiscountRequest> {
+    return defer(() => {
+      const row = this.discountStore.find((item) => item.id === id);
+      if (!row || row.status !== 'APPROVED') {
+        return throwError(() => new Error('La réduction doit être approuvée avant application.'));
+      }
+      row.status = 'EFFECTIVE';
+      row.effectiveAt = new Date().toISOString();
+      row.awaitingMyDecision = false;
+      return of({ ...row, levels: row.levels.map((l: DiscountLevel) => ({ ...l })) });
+    }).pipe(delay(LATENCY));
   }
 }
 

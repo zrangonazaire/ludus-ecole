@@ -133,7 +133,7 @@ export class AdminLayoutComponent implements OnInit {
     { section: 'Finance', label: 'Caisse', route: '/cash', icon: '◨',
       permissions: [PERMISSIONS.CASH_SESSION_MANAGE], ready: true },
     { section: 'Finance', label: 'Remises et bourses', route: '/discounts', icon: '◪',
-      permissions: ['DISCOUNT_MANAGE', 'SCHOLARSHIP_MANAGE'] },
+      permissions: [PERMISSIONS.DISCOUNT_REQUEST_VIEW, PERMISSIONS.DISCOUNT_REQUEST_MANAGE] },
     { section: 'Finance', label: 'Impayés', route: '/outstanding', icon: '◰',
       permissions: [PERMISSIONS.FINANCE_VIEW], ready: true },
 

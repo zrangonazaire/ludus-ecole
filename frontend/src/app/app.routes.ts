@@ -295,9 +295,10 @@ export const routes: Routes = [
       },
       {
         path: 'discounts',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Remises et bourses' }
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.DISCOUNT_REQUEST_VIEW], title: 'Remises et bourses' },
+        loadComponent: () => import('./features/discounts/discounts.component')
+          .then((m) => m.DiscountsComponent)
       },
       {
         path: 'outstanding',

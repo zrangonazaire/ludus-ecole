@@ -246,6 +246,14 @@ public enum ErrorCode {
     CASH_SESSION_CLOSED(HttpStatus.CONFLICT, "The cash session is closed."),
     DISCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "Discount not found."),
     SCHOLARSHIP_NOT_FOUND(HttpStatus.NOT_FOUND, "Scholarship not found."),
+    DISCOUNT_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Discount request not found."),
+    DISCOUNT_REQUEST_ALREADY_DECIDED(HttpStatus.CONFLICT,
+            "This discount request has already been decided."),
+    DISCOUNT_REQUEST_NOT_APPROVED(HttpStatus.CONFLICT,
+            "The discount request is not fully approved."),
+    DISCOUNT_NO_OUTSTANDING(HttpStatus.CONFLICT,
+            "The student has no outstanding balance to reduce."),
+    DISCOUNT_VALUE_INVALID(HttpStatus.BAD_REQUEST, "The discount value is invalid."),
 
     // ---------- portals / relation-based access ----------
     UNAUTHORIZED_STUDENT_ACCESS(HttpStatus.FORBIDDEN, "You are not allowed to access this student's data."),

@@ -1,0 +1,288 @@
+<section class="discounts">
+  <h1>Remises et bourses</h1>
+  <div class="page-actions">
+    <span class="page-sub">Demandes validées dans un circuit à plusieurs niveaux.</span>
+    <button
+      type="button"
+      class="btn btn-primary"
+      [class.btn-loading]="submitting()"
+      [disabled]="!canRequest()"
+      (click)="openForm()">
+      @if (submitting()) { Enregistrement… } @else { Nouvelle demande }
+    </button>
+  </div>
+
+  @if (error()) {
+    <eduops-error-state title="Impossible de charger les demandes" (retry)="load()"></eduops-error-state>
+  } @else if (loading()) {
+    <eduops-loading-state></eduops-loading-state>
+  } @else if (requests().length === 0) {
+    <section class="empty">
+      <div class="empty-icon">◪</div>
+      <p>Aucune demande de réduction dans cette école pour le moment.</p>
+      @if (canRequest()) {
+        <button type="button" class="btn btn-ghost" (click)="openForm()">Créer la première demande</button>
+      }
+    </section>
+  } @else {
+    <div class="tabs">
+      @for (tabItem of tabs; track tabItem.key) {
+        <button
+          class="tab"
+          [class.tab-active]="tabItem.key === tab()"
+          (click)="tab.set(tabItem.key)">
+          {{ tabItem.label }}
+          @if ((tabItem.key === 'MINE' && countMine()) || (tabItem.key === 'PENDING' && countPending()) || (tabItem.key === 'ALL' && requests().length)) {
+            <span class="tab-badge">{{ (tabItem.key === 'MINE' ? countMine() : tabItem.key === 'PENDING' ? countPending() : requests().length) }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <ul class="request-list">
+      @for (request of visible(); track request.id) {
+        <li class="request-card" [class.request-card-closed]="request.status !== 'SUBMITTED'">
+          <div class="request-head">
+            <div class="request-title">
+              <span class="request-ref">{{ request.reference }}</span>
+              <span class="request-label">{{ request.label }}</span>
+            </div>
+            <span class="status-pill status-{{ request.status }}">{{ statusLabel(request) }}</span>
+          </div>
+
+          <div class="request-meta">
+            <div class="meta-item">
+              <span class="meta-label">Élève</span>
+              <span class="meta-value">{{ request.studentName }}</span>
+              @if (request.studentNumber) { <span class="meta-secondary">N° {{ request.studentNumber }}</span> }
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Réduction</span>
+              <span class="meta-value">{{ valueLabel(request) }}</span>
+              @if (request.computedAmount != null) { <span class="meta-secondary">Soit {{ computedAmountLabel(request) }}</span> }
+            </div>
+            @if (request.reason) {
+              <div class="meta-item meta-reason">
+                <span class="meta-label">Motif</span>
+                <span class="meta-value">{{ request.reason }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="circuit">
+            <div class="circuit-head">
+              <span class="circuit-label">Circuit de validation</span>
+              <span class="circuit-progress-text">{{ progressPercent(request) }}% validé</span>
+            </div>
+
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="progressPercent(request)" [class.progress-fill-done]="request.status === 'EFFECTIVE'"></div>
+            </div>
+
+            <ol class="level-list">
+              @for (level of request.levels; track level.levelNumber) {
+                <li class="level"
+                  [class.level-current]="level.levelNumber === request.currentLevel && request.status === 'SUBMITTED'"
+                  [class.level-done]="level.status === 'APPROVED'"
+                  [class.level-rejected]="level.status === 'REJECTED'">
+                  <div class="level-marker">
+                    @switch (level.status) {
+                      @case ('APPROVED') { ✓ }
+                      @case ('REJECTED') { ✕ }
+                      @default { {{ level.levelNumber }} }
+                    }
+                  </div>
+                  <div class="level-body">
+                    <div class="level-title">{{ level.levelNumber }}. {{ level.name }}</div>
+                    <div class="level-profils">{{ level.roleLabel || level.roleCode }}</div>
+                    @if (level.status === 'PENDING' && level.levelNumber === request.currentLevel && request.awaitingMyDecision) {
+                      <div class="level-now">Palier en attente de votre décision</div>
+                    }
+                    @if (level.approverName) {
+                      <div class="leveltrace">Validé par {{ level.approverName }}</div>
+                    }
+                    @if (level.comment) {
+                      <div class="level-comment">« {{ level.comment }} »</div>
+                    }
+                  </div>
+                  @if (level.levelNumber === request.currentLevel && request.awaitingMyDecision) {
+                    <div class="level-actions">
+                      <button class="btn btn-ghost btn-sm" [disabled]="savingDecision()" (click)="askDecision(request)">Valider</button>
+                      <button class="btn btn-ghost btn-sm btn-ghost-danger" [disabled]="savingDecision()" (click)="askDecision(request)">Refuser</button>
+                    </div>
+                  }
+                </li>
+              }
+            </ol>
+          </div>
+
+          <div class="request-foot">
+            @if (request.status === 'APPROVED' && !request.effectiveAt) {
+              <button class="btn btn-plain" [class.btn-loading]="applying() === request.id" [disabled]="applying() === request.id" (click)="apply(request)">
+                @if (applying() === request.id) { Application… } @else { Rendre la réduction effective }
+              </button>
+            }
+            @if (request.effectiveAt) {
+              <div class="effective-note">Réduction appliquée le {{ effectiveAtLabel(request) }}.</div>
+            }
+            @if (request.status === 'REJECTED') {
+              <div class="rejected-note">
+                @if (request.rejectionReason) { Refusé : {{ request.rejectionReason }} } @else { Demande refusée. }
+              </div>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (formOpen()) {
+    <div class="form-overlay" (click)="closeForm()">
+      <div class="form-card" (click)="$event.stopPropagation()">
+        <header class="form-header">
+          <h2>Nouvelle demande de réduction</h2>
+          <button type="button" class="btn-close" (click)="closeForm()">×</button>
+        </header>
+
+        @if (formError()) { <div class="form-error">{{ formError() }}</div> }
+
+        <div class="form-section">
+          <label class="section-label">Élève</label>
+          <div class="student-search">
+            <input type="text" class="input" placeholder="Rechercher un élève…" [ngModel]="studentSearch()" (ngModelChange)="searchStudents($event)">
+            @if (studentResults().length > 0) {
+              <ul class="student-results">
+                @for (student of studentResults(); track student.id) {
+                  <li>
+                    <button type="button" class="student-result" (click)="selectStudent(student)">
+                      <span class="student-result-name">{{ student.fullName }}</span>
+                      <span class="student-result-meta">
+                        {{ student.studentNumber }}
+                        @if (student.classroomName) { · {{ student.classroomName }} }
+                      </span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+          @if (formStudentId()) {
+            <div class="selected-student">
+              <span class="meta-value">{{ selectedStudentName() }}</span>
+              <button type="button" class="link-remove" (click)="clearStudent()">Retirer</button>
+            </div>
+          }
+        </div>
+
+        <div class="form-row">
+          <div class="form-section">
+            <label class="section-label">Type de réduction</label>
+            <div class="radio-group">
+              <label class="radio"><input type="radio" name="kind" value="PERCENTAGE" [ngModel]="formKind()" (ngModelChange)="formKind.set($event)"><span>Pourcentage</span></label>
+              <label class="radio"><input type="radio" name="kind" value="FIXED_AMOUNT" [ngModel]="formKind()" (ngModelChange)="formKind.set($event)"><span>Montant fixe</span></label>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <label class="section-label" [for]="'value-' + formKind()">
+              @if (formKind() === 'PERCENTAGE') { Pourcentage (≤ 100 %) } @else { Montant }
+            </label>
+            <input [id]="'value-' + formKind()" type="number" class="input input-amount" placeholder="Exemple : 15 ou 150000" [ngModel]="formValue()" (ngModelChange)="formValue.set($event)">
+          </div>
+        </div>
+
+        <div class="form-section">
+          <label class="section-label" for="discount-label">Intitulé</label>
+          <input type="text" id="discount-label" class="input" placeholder="Exemple : Réduction fratrie" [ngModel]="formLabel()" (ngModelChange)="formLabel.set($event)">
+        </div>
+
+        <div class="form-section">
+          <label class="section-label" for="discount-reason">Motif</label>
+          <textarea id="discount-reason" class="input input-textarea" rows="3" placeholder="Précisez le contexte de la réduction…" [ngModel]="formReason()" (ngModelChange)="formReason.set($event)"></textarea>
+        </div>
+
+        <div class="form-section">
+          <label class="section-label">Circuit de validation</label>
+          <p class="form-hint">Chaque niveau est validé dans l’ordre. La réduction n’est appliquée qu’après le dernier.</p>
+
+          <div class="levels-list">
+            @for (level of formLevels(); track $index; let i = $index) {
+              <div class="level-input">
+                <div class="level-input-head">
+                  <span class="level-index">Niveau {{ i + 1 }}</span>
+                  @if (formLevels().length > 1) {
+                    <button type="button" class="btn-link-remove" (click)="removeLevel(i)">Retirer</button>
+                  }
+                </div>
+                <div class="form-row form-row-2">
+                  <div class="form-section">
+                    <label class="section-label" [for]="'level-name-' + i">Nom du niveau</label>
+                    <input type="text" [id]="'level-name-' + i" class="input" placeholder="Exemple : Intendance" [ngModel]="level.name" (ngModelChange)="updateLevel(i, 'name', $event)">
+                  </div>
+                  <div class="form-section">
+                    <label class="section-label" [for]="'level-role-' + i">Profil habilité</label>
+                    <select [id]="'level-role-' + i" class="input input-select" [ngModel]="level.roleCode" (ngModelChange)="updateLevel(i, 'roleCode', $event)">
+                      <option value="">— Choisir un profil —</option>
+                      @for (profile of profiles(); track profile.code) {
+                        <option [value]="profile.code">{{ profile.label }} ({{ profile.code }})</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="levels-actions">
+            <button type="button" class="btn btn-ghost btn-sm" (click)="addLevel()">+ Ajouter un niveau</button>
+          </div>
+        </div>
+
+        <div class="form-preview">
+          <div class="preview-line"><span>Réduction</span><strong>{{ valueLabel(formPreviewRequest()) }}</strong></div>
+          <div class="preview-line"><span>Circuit</span><span>{{ formLevels().length }} niveau(s) : {{ formPreviewLevelNames() }}</span></div>
+        </div>
+
+        <footer class="form-footer">
+          <button type="button" class="btn btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="button" class="btn btn-primary" [disabled]="submitting()" [class.btn-loading]="submitting()" (click)="submitRequest()">
+            @if (submitting()) { Envoi… } @else { Envoyer dans le circuit }
+          </button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  @if (deciding()) {
+    <div class="modal-overlay" (click)="cancelDecision()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <header class="modal-header">
+          <h2>Décision : {{ deciding()!.reference }}</h2>
+          <button type="button" class="btn-close" (click)="cancelDecision()">×</button>
+        </header>
+
+        <div class="modal-body">
+          <p class="decision-context">Vous tranchez le niveau <strong>{{ currentLevelLabel(deciding()!) }}</strong>.</p>
+
+          <div class="decision-grid">
+            <button class="decision-option decision-approve" [disabled]="savingDecision()" (click)="confirmDecision('APPROVE')">
+              <span class="decision-icon">✓</span><span>Valider le palier</span>
+            </button>
+            <button class="decision-option decision-reject" [disabled]="savingDecision()" (click)="confirmDecision('REJECT')">
+              <span class="decision-icon">✕</span><span>Refuser le palier</span>
+            </button>
+          </div>
+
+          <label class="section-label" for="decision-comment">Motif (obligatoire en cas de refus)</label>
+          <textarea id="decision-comment" class="input input-textarea" rows="3" [ngModel]="decisionComment()" (ngModelChange)="decisionComment.set($event)"></textarea>
+        </div>
+
+        <footer class="modal-footer">
+          <button type="button" class="btn btn-ghost" (click)="cancelDecision()">Annuler</button>
+          <button type="button" class="btn btn-primary" [disabled]="savingDecision()" [class.btn-loading]="savingDecision()" (click)="confirmDecision('APPROVE')">Valider le palier</button>
+          <button type="button" class="btn btn-danger" [disabled]="savingDecision()" [class.btn-loading]="savingDecision()" (click)="confirmDecision('REJECT')">Refuser</button>
+        </footer>
+      </div>
+    </div>
+  }
+</section>

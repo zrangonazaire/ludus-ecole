@@ -83,6 +83,9 @@ public final class Permissions {
     public static final String CASH_SESSION_MANAGE = "CASH_SESSION_MANAGE";
     public static final String DISCOUNT_MANAGE = "DISCOUNT_MANAGE";
     public static final String SCHOLARSHIP_MANAGE = "SCHOLARSHIP_MANAGE";
+    public static final String DISCOUNT_REQUEST_VIEW = "DISCOUNT_REQUEST_VIEW";
+    public static final String DISCOUNT_REQUEST_MANAGE = "DISCOUNT_REQUEST_MANAGE";
+    public static final String DISCOUNT_REQUEST_DECIDE = "DISCOUNT_REQUEST_DECIDE";
     // cross-cutting
     public static final String DOCUMENT_VIEW = "DOCUMENT_VIEW";
     public static final String DOCUMENT_GENERATE = "DOCUMENT_GENERATE";
