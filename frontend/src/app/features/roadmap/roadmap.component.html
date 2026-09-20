@@ -3,8 +3,13 @@
     <div>
       <h1 class="page__title">Roadmap — Guide d’utilisation</h1>
       <p class="page__meta">Les étapes à suivre, de la préparation de l’année au suivi quotidien.</p>
+      <a class="btn btn--ghost" routerLink="/">← Retour à l’accueil</a>
     </div>
-    <a class="btn btn--ghost" routerLink="/setup">Vérifier ma configuration</a>
+    @if (auth.isAuthenticated()) {
+      <a class="btn btn--ghost" routerLink="/setup">Vérifier ma configuration</a>
+    } @else {
+      <a class="btn btn--ghost" routerLink="/login">Se connecter pour appliquer ce guide</a>
+    }
   </header>
 
   <p class="guide-note">Ce guide indique l’ordre conseillé, pas votre progression réelle.

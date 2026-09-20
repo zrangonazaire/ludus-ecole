@@ -57,8 +57,9 @@ describe('Roadmap navigation links', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.componentInstance.drawerOpen()).toBeFalse();
+    // Route publique hors du shell admin : la navigation aboutit à /roadmap
+    // (rendu en page publique), pas dans le router-outlet du layout.
     expect(TestBed.inject(Router).url).toBe('/roadmap');
     expect(link.getAttribute('aria-current')).toBe('page');
-    expect(fixture.nativeElement.querySelector('eduops-roadmap')).not.toBeNull();
   });
 });

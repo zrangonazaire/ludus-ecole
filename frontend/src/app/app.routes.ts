@@ -39,6 +39,16 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/forbidden/forbidden.component')
       .then((m) => m.ForbiddenComponent)
   },
+  {
+    // Guide d'utilisation public : consultable sans compte depuis la page
+    // d'accueil (« Roadmap — Guide »). Les liens vers les écrans restent
+    // filtrés par les droits via AuthService.has() : un visiteur anonyme
+    // voit les étapes et « accès selon votre profil ».
+    path: 'roadmap',
+    data: { title: 'Roadmap — Guide d’utilisation' },
+    loadComponent: () => import('./features/roadmap/roadmap.component')
+      .then((m) => m.RoadmapComponent)
+  },
 
   {
     path: 'onboarding',
@@ -54,12 +64,6 @@ export const routes: Routes = [
     loadComponent: () => import('./layouts/admin-layout/admin-layout.component')
       .then((m) => m.AdminLayoutComponent),
     children: [
-      {
-        path: 'roadmap',
-        data: { title: 'Roadmap — Guide d’utilisation' },
-        loadComponent: () => import('./features/roadmap/roadmap.component')
-          .then((m) => m.RoadmapComponent)
-      },
       {
         path: 'dashboard',
         canActivate: [permissionGuard],

@@ -5,10 +5,12 @@ import { routes } from '../../app.routes';
 import { RoadmapComponent } from './roadmap.component';
 
 describe('RoadmapComponent', () => {
-  let auth: { has: jasmine.Spy };
+  let hasAccess = true;
+  let auth: { has: (permission: string) => boolean; isAuthenticated: () => boolean };
 
   beforeEach(() => {
-    auth = { has: jasmine.createSpy('has').and.returnValue(true) };
+    hasAccess = true;
+    auth = { has: () => hasAccess, isAuthenticated: () => false };
     TestBed.configureTestingModule({
       imports: [RoadmapComponent],
       providers: [provideRouter([]), { provide: AuthService, useValue: auth }]
@@ -26,7 +28,7 @@ describe('RoadmapComponent', () => {
   });
 
   it('keeps instructions visible without offering unauthorized screen links', () => {
-    auth.has.and.returnValue(false);
+    hasAccess = false;
     const fixture = TestBed.createComponent(RoadmapComponent);
     fixture.detectChanges();
     const element: HTMLElement = fixture.nativeElement;
@@ -44,6 +46,12 @@ describe('RoadmapComponent', () => {
           .withContext(link.route).toBeTrue();
       }
     }
-    expect(children.some((route) => route.path === 'roadmap' && !!route.loadComponent)).toBeTrue();
+  });
+
+  it('is public: reachable without login', () => {
+    const roadmap = routes.find((route) => route.path === 'roadmap');
+    expect(roadmap).withContext('route /roadmap').toBeDefined();
+    expect(roadmap?.canActivate).withContext('/roadmap sans guard').toBeUndefined();
+    expect(!!roadmap?.loadComponent).withContext('/roadmap lazy').toBeTrue();
   });
 });
