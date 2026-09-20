@@ -84,20 +84,16 @@ public class StudentQueryService {
         // PostgreSQL cannot infer the SQL type of a null text parameter inside
         // lower(). An empty search has the same meaning and keeps the query
         // strongly typed.
-        Page<Student> found = studentRepository.search(schoolId,
-            wanted == null ? "" : wanted.name(),
-            search == null ? "" : search.trim(), request);
+        String wantedName = wanted == null ? "" : wanted.name();
+        String needle = search == null ? "" : search.trim();
+        Page<Student> found = classroomId == null
+                ? studentRepository.search(schoolId, wantedName, needle, request)
+                : studentRepository.searchByClassroom(schoolId, classroomId, wantedName, needle, request);
 
         Map<UUID, Enrollment> enrollments = activeEnrollments();
         List<StudentSummaryResponse> rows = new ArrayList<>();
         for (Student student : found.getContent()) {
-            Enrollment enrollment = enrollments.get(student.getId());
-            if (classroomId != null && (enrollment == null
-                    || enrollment.getClassroom() == null
-                    || !classroomId.equals(enrollment.getClassroom().getId()))) {
-                continue;
-            }
-            rows.add(toSummary(student, enrollment));
+            rows.add(toSummary(student, enrollments.get(student.getId())));
         }
 
         PageResponse<StudentSummaryResponse> response = new PageResponse<>();

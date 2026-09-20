@@ -278,6 +278,7 @@ export class EnrollmentWizardComponent implements OnInit {
       .subscribe({
         next: (preview) => {
           this.preview.set(preview);
+          this.previewPage.set(0);
           this.analysing.set(false);
           this.step.set(3);
         },
@@ -331,6 +332,41 @@ export class EnrollmentWizardComponent implements OnInit {
     rows.forEach((r) => Object.keys(r.values).forEach((k) => keys.add(k)));
     return Array.from(keys).slice(0, 5);
   });
+
+  // --- pagination de l'aperçu import : 300 lignes d'un coup rend le tableau illisible ---
+  readonly pageSizeOptions = [10, 20, 50, 100];
+  readonly previewPageSize = signal(10);
+  readonly previewPage = signal(0);
+  readonly previewTotalPages = computed(() => {
+    const total = this.preview()?.rows.length ?? 0;
+    return Math.max(1, Math.ceil(total / this.previewPageSize()));
+  });
+  readonly pagedPreviewRows = computed(() => {
+    const rows = this.preview()?.rows ?? [];
+    const start = this.previewPage() * this.previewPageSize();
+    return rows.slice(start, start + this.previewPageSize());
+  });
+  previewFirstRow(): number {
+    const total = this.preview()?.rows.length ?? 0;
+    return total === 0 ? 0 : this.previewPage() * this.previewPageSize() + 1;
+  }
+  previewLastRow(): number {
+    const total = this.preview()?.rows.length ?? 0;
+    return Math.min(total, (this.previewPage() + 1) * this.previewPageSize());
+  }
+  previewPrevPage(): void {
+    this.previewPage.update((p) => Math.max(0, p - 1));
+  }
+  previewNextPage(): void {
+    this.previewPage.update((p) => Math.min(this.previewTotalPages() - 1, p + 1));
+  }
+  changePreviewPageSize(event: Event): void {
+    const size = Number((event.target as HTMLSelectElement).value);
+    if (Number.isFinite(size) && size > 0) {
+      this.previewPageSize.set(size);
+      this.previewPage.set(0);
+    }
+  }
 
   /** Nom affiché dans le panneau latéral, au fur et à mesure de la saisie. */
   readonly draftName = computed(() => {

@@ -365,6 +365,47 @@
 
 .table-wrapper { overflow-x: auto; }
 
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-4);
+
+  &__count { font-size: .82rem; color: var(--text-muted); }
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+
+  &__state { font-size: .82rem; color: var(--text-muted); }
+
+  &__size {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: .82rem;
+    color: var(--text-muted);
+
+    select {
+      padding: .3rem .5rem;
+      font-size: .85rem;
+      color: var(--text-strong);
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-button);
+      cursor: pointer;
+    }
+  }
+}
+
 .row--invalid > td { background: var(--danger-bg); }
 .row--duplicate > td { background: var(--surface-sunken); }
 .row--warning > td { background: var(--warning-bg); }

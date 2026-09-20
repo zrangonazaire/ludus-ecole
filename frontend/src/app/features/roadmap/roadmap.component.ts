@@ -85,7 +85,7 @@ export class RoadmapComponent {
       instructions: ['Configurez les frais et vérifiez la situation des élèves inscrits.',
         'Enregistrez les paiements et suivez les impayés selon vos droits.'],
       links: [{ label: 'Frais', route: '/finance', permission: P.FINANCE_VIEW },
-        { label: 'Paiements', route: '/payments', permission: P.PAYMENT_VIEW }]
+        { label: 'Encaissements', route: '/payments', permission: P.PAYMENT_VIEW }]
     },
     {
       id: 'pilotage', title: 'Contrôler et préparer la suite',

@@ -112,6 +112,38 @@ export class ImportsComponent implements OnInit {
     return preview ? preview.validRows + preview.warningRows : 0;
   });
 
+  // --- pagination de l'aperçu : 300 lignes d'un coup rend le tableau illisible ---
+  readonly pageSizeOptions = [10, 20, 50, 100];
+  readonly previewPageSize = signal(10);
+  readonly previewPage = signal(0);
+  readonly previewTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.visibleRows().length / this.previewPageSize())));
+  readonly pagedVisibleRows = computed(() => {
+    const start = this.previewPage() * this.previewPageSize();
+    return this.visibleRows().slice(start, start + this.previewPageSize());
+  });
+  previewFirstRow(): number {
+    const total = this.visibleRows().length;
+    return total === 0 ? 0 : this.previewPage() * this.previewPageSize() + 1;
+  }
+  previewLastRow(): number {
+    const total = this.visibleRows().length;
+    return Math.min(total, (this.previewPage() + 1) * this.previewPageSize());
+  }
+  previewPrevPage(): void {
+    this.previewPage.update((p) => Math.max(0, p - 1));
+  }
+  previewNextPage(): void {
+    this.previewPage.update((p) => Math.min(this.previewTotalPages() - 1, p + 1));
+  }
+  changePreviewPageSize(event: Event): void {
+    const size = Number((event.target as HTMLSelectElement).value);
+    if (Number.isFinite(size) && size > 0) {
+      this.previewPageSize.set(size);
+      this.previewPage.set(0);
+    }
+  }
+
   readonly helpCopy = computed<HelpCopy>(() => {
     switch (this.step()) {
       case 'DEPOT':
@@ -237,6 +269,7 @@ export class ImportsComponent implements OnInit {
         next: (preview) => {
           this.analysing.set(false);
           this.preview.set(preview);
+          this.previewPage.set(0);
           this.rowFilter.set(this.toFixCount() > 0 ? 'A_CORRIGER' : 'TOUT');
           this.step.set('APERCU');
         },
@@ -297,6 +330,7 @@ export class ImportsComponent implements OnInit {
 
   filterRows(filter: RowFilter): void {
     this.rowFilter.set(filter);
+    this.previewPage.set(0);
   }
 
   statusLabel(status: ImportRowStatus): string {

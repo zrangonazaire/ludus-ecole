@@ -186,7 +186,7 @@
                 </tr>
               </thead>
               <tbody>
-                @for (row of visibleRows(); track row.rowNumber) {
+                @for (row of pagedVisibleRows(); track row.rowNumber) {
                   <tr [class]="'row row--' + statusTone(row.status)">
                     <td>{{ row.rowNumber }}</td>
                     <td>
@@ -210,6 +210,37 @@
               </tbody>
             </table>
           </div>
+          @if (visibleRows().length > pageSizeOptions[0]) {
+            <nav class="pager" aria-label="Pagination de l'aperçu">
+              <label class="pager__size">
+                Lignes par page
+                <select [value]="previewPageSize()" (change)="changePreviewPageSize($event)">
+                  @for (size of pageSizeOptions; track size) {
+                    <option [value]="size">{{ size }}</option>
+                  }
+                </select>
+              </label>
+              @if (previewTotalPages() > 1) {
+                <button type="button" class="btn btn--ghost btn--sm"
+                        [disabled]="previewPage() === 0" (click)="previewPrevPage()">
+                  Précédent
+                </button>
+                <span class="pager__state">
+                  Lignes {{ previewFirstRow() }}–{{ previewLastRow() }}
+                  sur {{ visibleRows().length }}
+                  — page {{ previewPage() + 1 }} / {{ previewTotalPages() }}
+                </span>
+                <button type="button" class="btn btn--ghost btn--sm"
+                        [disabled]="previewPage() >= previewTotalPages() - 1" (click)="previewNextPage()">
+                  Suivant
+                </button>
+              } @else {
+                <span class="pager__state">
+                  {{ visibleRows().length }} ligne(s) affichée(s)
+                </span>
+              }
+            </nav>
+          }
         }
 
         <div class="actions">

@@ -4,7 +4,7 @@
 
     <div>
 
-      <h1 class="page__title">Paiements</h1>
+      <h1 class="page__title">Encaissements</h1>
 
       @if (page(); as result) {
 
@@ -522,7 +522,7 @@
 
                   <h3 id="fees-section-title">Quels frais règler ?</h3>
 
-                  <p>Sélectionnez les échéances à affecter, puis ajustez le montant alloué à chacune.</p>
+                  <p>Sélectionnez les échéances à affecter (facultatif — sans sélection, le montant est affecté automatiquement), puis ajustez le montant alloué à chacune.</p>
 
                 </div>
 
@@ -819,7 +819,8 @@
 
                   (click)="closeCollection()">Annuler</button>
 
-          <button type="submit" class="btn btn--primary btn--collect" [disabled]="!canSubmit()">
+          <button type="submit" class="btn btn--primary btn--collect" [disabled]="!canSubmit()"
+                  [title]="canSubmit() ? 'Valider l’encaissement' : blockers().join(' ')">
 
             @if (saving()) {
 
@@ -832,6 +833,16 @@
             }
 
           </button>
+
+          @if (!canSubmit() && blockers().length && selectedStudent() && financialSummary()) {
+
+            <p class="inline-message inline-message--warning" role="status">
+
+              <span aria-hidden="true">!</span> {{ blockers().join(' ') }}
+
+            </p>
+
+          }
 
         </footer>
 

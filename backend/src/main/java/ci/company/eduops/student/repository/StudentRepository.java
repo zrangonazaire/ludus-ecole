@@ -36,6 +36,24 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
                          @Param("search") String search,
                          Pageable pageable);
 
+    /** Recherche restreinte a une classe, filtree cote requete : la page et le total portent exactement sur la classe. */
+    @Query("""
+            SELECT DISTINCT s FROM Student s
+            JOIN Enrollment e ON e.student.id = s.id
+            WHERE s.school.id = :schoolId
+              AND e.classroom.id = :classroomId
+              AND e.status IN ('VALIDATED','ACTIVE')
+              AND (:status = '' OR CAST(s.status AS String) = :status)
+              AND (lower(s.firstName)     LIKE lower(concat('%', coalesce(:search, ''), '%'))
+               OR lower(s.lastName)      LIKE lower(concat('%', coalesce(:search, ''), '%'))
+               OR lower(s.studentNumber) LIKE lower(concat('%', coalesce(:search, ''), '%')))
+            """)
+    Page<Student> searchByClassroom(@Param("schoolId") UUID schoolId,
+                                    @Param("classroomId") UUID classroomId,
+                                    @Param("status") String status,
+                                    @Param("search") String search,
+                                    Pageable pageable);
+
     /** Students of a class for a given year, resolved through their enrollment. */
     @Query("""
            SELECT e.student FROM Enrollment e

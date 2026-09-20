@@ -189,7 +189,7 @@ const PAGE_HELP_RULES: readonly PageHelpRule[] = [
         'Le montant reçu est réparti sur les échéances encore ouvertes.',
         'Le reçu reste disponible dans l’historique après validation.'
       ],
-      ctaLabel: 'Gérer les paiements'
+      ctaLabel: 'Gérer les encaissements'
     }
   },
   {

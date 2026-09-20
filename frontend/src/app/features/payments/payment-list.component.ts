@@ -322,13 +322,48 @@ export class PaymentListComponent implements OnInit {
     return labels[this.paymentForm.controls.paymentMethod.value] ?? 'Référence externe';
   }
 
+  /** Human-readable reasons why the submit button is still disabled. */
+  blockers(): string[] {
+    if (this.paymentResult()) return [];
+    const reasons: string[] = [];
+    if (!this.selectedStudent()) {
+      reasons.push('Sélectionnez un élève.');
+      return reasons;
+    }
+    if (this.summaryLoading()) {
+      reasons.push('Chargement de la situation financière…');
+      return reasons;
+    }
+    if (!this.financialSummary()) {
+      reasons.push('Situation financière introuvable. Re-sélectionnez l’élève.');
+      return reasons;
+    }
+    const rawAmount = Number(this.paymentForm.controls.amount.value) || 0;
+    if (rawAmount <= 0) reasons.push('Saisissez un montant supérieur à zéro.');
+    const dateValue = this.paymentForm.controls.paymentDate.value || '';
+    if (!dateValue) reasons.push('Renseignez la date d’encaissement.');
+    else if (dateValue > this.localToday()) reasons.push('La date d’encaissement ne peut pas être dans le futur.');
+    if (this.referenceRequired()
+      && this.paymentForm.controls.externalReference.value.trim().length === 0) {
+      reasons.push(`Ajoutez la référence : ${this.referenceLabel()}.`);
+    }
+    if (reasons.length === 0 && this.paymentForm.invalid) {
+      reasons.push('Vérifiez les champs : une valeur dépasse la longueur autorisée.');
+    }
+    return reasons;
+  }
+
   canSubmit(): boolean {
+    const rawAmount = Number(this.paymentForm.controls.amount.value) || 0;
+    const dateValue = this.paymentForm.controls.paymentDate.value || '';
     const referencePresent = this.paymentForm.controls.externalReference.value.trim().length > 0;
-    return !!this.selectedStudent() && !!this.financialSummary() && !this.summaryLoading()
-      && !this.saving() && !this.paymentResult() && this.paymentForm.valid
-      && this.paymentForm.controls.paymentDate.value <= this.localToday()
-      && (!this.referenceRequired() || referencePresent)
-      && this.selectedFees().length > 0;
+    if (!this.selectedStudent() || !this.financialSummary() || this.summaryLoading()) return false;
+    if (this.saving() || this.paymentResult()) return false;
+    if (!this.paymentForm.valid) return false;
+    if (rawAmount <= 0) return false;
+    if (!dateValue || dateValue > this.localToday()) return false;
+    if (this.referenceRequired() && !referencePresent) return false;
+    return true;
   }
 
   submitPayment(): void {
@@ -342,8 +377,8 @@ export class PaymentListComponent implements OnInit {
     const value = this.paymentForm.getRawValue();
     const selected = this.selectedFees();
     // Build explicit allocations from selected fees. If nothing is selected,
-    // fall back to automatic allocation (empty array) — but canSubmit() requires
-    // at least one selection, so this path is only a safety net.
+    // fall back to automatic allocation (empty array) — the backend
+    // distributes the amount over the oldest open fees.
     const allocations: Array<{ studentFeeId: string; amount: number }> =
       selected.length > 0
         ? selected.map((f) => ({ studentFeeId: f.id, amount: f.allocatedAmount || f.amountRemaining }))

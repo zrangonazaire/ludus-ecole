@@ -71,15 +71,29 @@ export interface TableColumn<T = object> {
         </table>
       </div>
 
-      @if (page.totalPages > 1) {
+      @if (page.totalPages > 1 || showPageSize) {
         <nav class="pager" aria-label="Pagination">
-          <button type="button" class="btn btn--secondary btn--sm"
-                  [disabled]="page.first" (click)="pageChange.emit(page.page - 1)">Precedent</button>
-          <span class="pager__info numeric">
-            Page {{ page.page + 1 }} / {{ page.totalPages }} — {{ page.totalElements }} resultat(s)
-          </span>
-          <button type="button" class="btn btn--secondary btn--sm"
-                  [disabled]="page.last" (click)="pageChange.emit(page.page + 1)">Suivant</button>
+          @if (showPageSize) {
+            <label class="pager__size">
+              Lignes par page
+              <select [value]="pageSize" (change)="pageSizeChange.emit(+$any($event.target).value)">
+                @for (size of pageSizeOptions; track size) {
+                  <option [value]="size">{{ size }}</option>
+                }
+              </select>
+            </label>
+          }
+          @if (page.totalPages > 1) {
+            <button type="button" class="btn btn--secondary btn--sm"
+                    [disabled]="page.first" (click)="pageChange.emit(page.page - 1)">Precedent</button>
+            <span class="pager__info numeric">
+              Page {{ page.page + 1 }} / {{ page.totalPages }} — {{ page.totalElements }} resultat(s)
+            </span>
+            <button type="button" class="btn btn--secondary btn--sm"
+                    [disabled]="page.last" (click)="pageChange.emit(page.page + 1)">Suivant</button>
+          } @else {
+            <span class="pager__info numeric">{{ page.totalElements }} resultat(s)</span>
+          }
         </nav>
       }
     }
@@ -97,6 +111,15 @@ export interface TableColumn<T = object> {
       flex-wrap: wrap;
     }
     .pager__info { font-size: var(--text-sm); color: var(--text-muted); }
+    .pager__size {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: var(--text-sm); color: var(--text-muted);
+    }
+    .pager__size select {
+      padding: 4px 8px; font-size: var(--text-sm);
+      border: 1px solid var(--border); border-radius: 6px;
+      background: var(--surface-card, #fff); cursor: pointer;
+    }
   `]
 })
 export class DataTableComponent<T extends object> {
@@ -110,8 +133,13 @@ export class DataTableComponent<T extends object> {
   @Input() trackBy: string = 'id';
   @Input() sortKey?: string;
   @Input() sortDirection: 'asc' | 'desc' = 'asc';
+  /** Proposé quand showPageSize est vrai : [10, 20, 50, 100] par défaut. */
+  @Input() pageSizeOptions: number[] = [10, 20, 50, 100];
+  @Input() pageSize = 20;
+  @Input() showPageSize = false;
 
   @Output() pageChange = new EventEmitter<number>();
+  @Output() pageSizeChange = new EventEmitter<number>();
   @Output() sortChange = new EventEmitter<{ key: string; direction: 'asc' | 'desc' }>();
   @Output() rowClick = new EventEmitter<T>();
 

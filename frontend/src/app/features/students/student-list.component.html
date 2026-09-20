@@ -5,7 +5,7 @@
         <h1 class="page__title">Élèves de {{ room.name }}</h1>
         <p class="page__meta numeric">
           {{ room.levelName }} —
-          <strong>{{ room.activeEnrollments }}</strong>/{{ room.capacityMaximum }} places
+          <strong>{{ page()?.totalElements ?? room.activeEnrollments }}</strong>/{{ room.capacityMaximum }} places
           @if (room.mainTeacherName) {
             · Professeur principal : {{ room.mainTeacherName }}
           }
@@ -70,10 +70,13 @@
       [page]="page()"
       [loading]="loading()"
       [rowClickable]="true"
+      [showPageSize]="true"
+      [pageSize]="pageSize()"
       caption="Liste des élèves"
       emptyTitle="Aucun élève trouve"
       emptyMessage="Ajustez la recherche ou le filtre de statut."
       (pageChange)="onPageChange($event)"
+      (pageSizeChange)="onPageSizeChange($event)"
       (rowClick)="openStudent($event)" />
   </section>
 </div>

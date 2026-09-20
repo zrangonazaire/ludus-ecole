@@ -128,7 +128,7 @@ export class AdminLayoutComponent implements OnInit {
     // ──────────────────────────────────────────────────────── Finance
     { section: 'Finance', label: 'Frais de scolarité', route: '/finance', icon: '◫',
       permissions: [PERMISSIONS.FINANCE_VIEW], ready: true },
-    { section: 'Finance', label: 'Paiements', route: '/payments', icon: '◧',
+    { section: 'Finance', label: 'Encaissements', route: '/payments', icon: '◧',
       permissions: [PERMISSIONS.PAYMENT_VIEW] },
     { section: 'Finance', label: 'Caisse', route: '/cash', icon: '◨',
       permissions: [PERMISSIONS.CASH_SESSION_MANAGE], ready: true },

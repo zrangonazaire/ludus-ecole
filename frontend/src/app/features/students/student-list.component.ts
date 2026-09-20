@@ -37,6 +37,8 @@ export class StudentListComponent implements OnInit {
   readonly search = signal('');
   readonly statusFilter = signal('');
   readonly currentPage = signal(0);
+  /** 10 lignes par défaut, modifiable via le combo du tableau. */
+  readonly pageSize = signal(10);
 
   /**
    * Classe sur laquelle la liste est restreinte, venue de l'adresse.
@@ -76,6 +78,7 @@ export class StudentListComponent implements OnInit {
   private requery(): void {
     this.query$.next(JSON.stringify({
       page: this.currentPage(),
+      size: this.pageSize(),
       search: this.search(),
       status: this.statusFilter(),
       classroomId: this.classroomFilter()
@@ -100,7 +103,7 @@ export class StudentListComponent implements OnInit {
           this.loading.set(true);
           return this.dataSource.search({
             page: this.currentPage(),
-            size: 20,
+            size: this.pageSize(),
             search: this.search() || undefined,
             status: this.statusFilter() || undefined,
             classroomId: this.classroomFilter() || undefined
@@ -168,6 +171,12 @@ export class StudentListComponent implements OnInit {
 
   onPageChange(page: number): void {
     this.currentPage.set(page);
+    this.requery();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize.set(size);
+    this.currentPage.set(0);
     this.requery();
   }
 

@@ -459,6 +459,23 @@
                 </div>
               </div>
 
+              <div class="table-toolbar">
+                <span class="table-toolbar__count numeric">
+                  {{ result.rows.length }} ligne(s)
+                  @if (previewTotalPages() > 1) {
+                    — page {{ previewPage() + 1 }} / {{ previewTotalPages() }}
+                  }
+                </span>
+                <label class="pager__size">
+                  Lignes par page
+                  <select [value]="previewPageSize()" (change)="changePreviewPageSize($event)">
+                    @for (size of pageSizeOptions; track size) {
+                      <option [value]="size">{{ size }}</option>
+                    }
+                  </select>
+                </label>
+              </div>
+
               <div class="table-wrapper">
                 <table class="table">
                   <caption class="visually-hidden">Lignes du fichier</caption>
@@ -471,7 +488,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    @for (row of result.rows; track row.rowNumber) {
+                    @for (row of pagedPreviewRows(); track row.rowNumber) {
                       <tr [class]="'row--' + row.status.toLowerCase()">
                         <td class="numeric">{{ row.rowNumber }}</td>
                         @for (col of previewColumns(); track col) {
@@ -494,6 +511,30 @@
                   </tbody>
                 </table>
               </div>
+
+              @if (result.rows.length > pageSizeOptions[0]) {
+                <nav class="pager" aria-label="Pagination de l'aperçu">
+                  @if (previewTotalPages() > 1) {
+                    <button type="button" class="btn btn--secondary btn--sm"
+                            [disabled]="previewPage() === 0" (click)="previewPrevPage()">
+                      Précédent
+                    </button>
+                    <span class="pager__state numeric">
+                      Lignes {{ previewFirstRow() }}–{{ previewLastRow() }}
+                      sur {{ result.rows.length }}
+                      — page {{ previewPage() + 1 }} / {{ previewTotalPages() }}
+                    </span>
+                    <button type="button" class="btn btn--secondary btn--sm"
+                            [disabled]="previewPage() >= previewTotalPages() - 1" (click)="previewNextPage()">
+                      Suivant
+                    </button>
+                  } @else {
+                    <span class="pager__state numeric">
+                      {{ result.rows.length }} ligne(s) affichée(s)
+                    </span>
+                  }
+                </nav>
+              }
 
               <footer class="card__footer row row--between">
                 <button type="button" class="btn btn--secondary" (click)="back()">

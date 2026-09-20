@@ -15,7 +15,7 @@ export class ParentShellComponent {
     { label: 'Accueil', route: '/parent/home', icon: '▤' },
     { label: 'Enfants', route: '/parent/children', icon: '◍' },
     { label: 'Scolarité', route: '/parent/academics', icon: '◉' },
-    { label: 'Paiements', route: '/parent/payments', icon: '◧' },
+    { label: 'Encaissements', route: '/parent/payments', icon: '◧' },
     { label: 'Profil', route: '/parent/profile', icon: '◌' }
   ];
 }
