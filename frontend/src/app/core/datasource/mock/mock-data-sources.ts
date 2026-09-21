@@ -152,9 +152,35 @@ export class MockStudentDataSource implements StudentDataSource {
       attendanceSummary: {
         totalRecords: 128, presentCount: 121, absenceCount: 5,
         unjustifiedAbsenceCount: 2, latenessCount: 2, attendanceRate: 96.1
-      }
+      },
+      ...this.detailPatches.get(summary.id)
     };
     return of(detail).pipe(delay(LATENCY));
+  }
+
+  /**
+   * Correction de l'identité en mode démonstration : le patch est conservé
+   * par élève et réappliqué à chaque lecture de la fiche.
+   */
+  private readonly detailPatches = new Map<string, Record<string, string>>();
+
+  update(id: string, payload: unknown): Observable<StudentDetail> {
+    const patch: Record<string, string> = {};
+    for (const [key, value] of Object.entries((payload ?? {}) as Record<string, unknown>)) {
+      if (typeof value === 'string' && value !== '') {
+        patch[key] = value;
+      }
+    }
+    this.detailPatches.set(id, { ...this.detailPatches.get(id), ...patch });
+    if (patch.firstName || patch.lastName) {
+      const summary = MOCK_STUDENTS.find((s) => s.id === id);
+      if (summary) {
+        summary.firstName = patch.firstName ?? summary.firstName;
+        summary.lastName = patch.lastName ?? summary.lastName;
+        summary.fullName = `${summary.firstName} ${summary.lastName}`.trim();
+      }
+    }
+    return this.getById(id);
   }
 
   getEnrollments(studentId: string): Observable<Enrollment[]> {
@@ -239,6 +265,26 @@ export class MockEnrollmentDataSource implements EnrollmentDataSource {
 
   validate(_id: string): Observable<Enrollment> {
     return of({ ...MOCK_RECENT_ENROLLMENTS[0], status: 'ACTIVE' as const }).pipe(delay(300));
+  }
+
+  update(id: string, payload: unknown): Observable<Enrollment> {
+    const patch = (payload ?? {}) as Partial<Enrollment>;
+    const index = MOCK_RECENT_ENROLLMENTS.findIndex((e) => e.id === id);
+    const current = index >= 0 ? MOCK_RECENT_ENROLLMENTS[index] : MOCK_RECENT_ENROLLMENTS[0];
+    const classroom = MOCK_CLASSROOMS.find((c) => c.id === patch.classroomId);
+    const updated: Enrollment = {
+      ...current,
+      ...patch,
+      classroomId: classroom?.id ?? current.classroomId,
+      classroomName: classroom?.name ?? current.classroomName,
+      levelId: classroom?.levelId ?? current.levelId,
+      levelName: classroom?.levelName ?? current.levelName,
+      repeating: patch.repeating ?? current.repeating
+    };
+    if (index >= 0) {
+      MOCK_RECENT_ENROLLMENTS[index] = updated;
+    }
+    return of(updated).pipe(delay(300));
   }
 }
 

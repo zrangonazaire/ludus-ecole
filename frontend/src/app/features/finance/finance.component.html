@@ -1,7 +1,7 @@
 <div class="page">
   <header class="page__header">
     <div>
-      <h1 class="page__title">Frais de scolarité</h1>
+      <h1 class="page__title">Plan de facturation</h1>
       <p class="page__meta numeric">
         {{ types().length }} type(s) de frais —
         {{ readyCount() }}/{{ levels().length }} niveau(x) tarifé(s)
@@ -141,7 +141,7 @@
                 <span class="pending__name">{{ level.levelName }}</span>
                 <span class="pending__cycle">{{ level.cycleName }}</span>
                 <button type="button" class="btn btn--primary btn--sm"
-                        (click)="openSchedule(level.levelId)">Définir les frais</button>
+                        (click)="openSchedule(level.levelId)">Définir le plan</button>
               </li>
             }
           </ul>

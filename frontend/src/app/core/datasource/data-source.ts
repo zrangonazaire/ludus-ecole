@@ -86,6 +86,7 @@ import {
 export interface StudentDataSource {
   search(query: PageQuery & { status?: string; classroomId?: string }): Observable<PageResponse<StudentSummary>>;
   getById(id: string): Observable<StudentDetail>;
+  update(id: string, payload: unknown): Observable<StudentDetail>;
   getEnrollments(studentId: string): Observable<Enrollment[]>;
   getFinancialSummary(studentId: string): Observable<FinancialSummary>;
   getReportCards(studentId: string): Observable<ReportCard[]>;
@@ -109,6 +110,7 @@ export interface EnrollmentDataSource {
   check(studentId: string, classroomId: string, academicYearId?: string): Observable<EnrollmentCheckResult>;
   create(payload: unknown): Observable<Enrollment>;
   validate(id: string): Observable<Enrollment>;
+  update(id: string, payload: unknown): Observable<Enrollment>;
 }
 
 export interface ClassroomDataSource {

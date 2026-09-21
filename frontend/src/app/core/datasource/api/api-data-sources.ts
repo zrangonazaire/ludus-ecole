@@ -99,6 +99,10 @@ export class ApiStudentDataSource implements StudentDataSource {
     return this.http.get<StudentDetail>(`${API}/students/${id}`);
   }
 
+  update(id: string, payload: unknown): Observable<StudentDetail> {
+    return this.http.put<StudentDetail>(`${API}/students/${id}`, payload);
+  }
+
   getEnrollments(studentId: string): Observable<Enrollment[]> {
     return this.http.get<Enrollment[]>(`${API}/students/${studentId}/history`);
   }
@@ -134,6 +138,10 @@ export class ApiEnrollmentDataSource implements EnrollmentDataSource {
 
   validate(id: string): Observable<Enrollment> {
     return this.http.post<Enrollment>(`${API}/enrollments/${id}/validate`, {});
+  }
+
+  update(id: string, payload: unknown): Observable<Enrollment> {
+    return this.http.put<Enrollment>(`${API}/enrollments/${id}`, payload);
   }
 }
 

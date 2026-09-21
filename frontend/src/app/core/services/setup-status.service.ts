@@ -38,9 +38,9 @@ const STEPS: readonly StepDefinition[] = [
     description: 'Rattachez les matières à chaque niveau avec leur coefficient : '
       + 'sans cela, aucune moyenne ne peut être calculée.',
     actionRoute: '/subjects', actionLabel: 'Définir le programme' },
-  { key: 'FEES', label: 'Frais de scolarité',
+  { key: 'FEES', label: 'Plan de facturation',
     description: 'Les frais par niveau et leur échéancier, appliqués à chaque inscription.',
-    actionRoute: '/finance', actionLabel: 'Définir les frais' },
+    actionRoute: '/finance', actionLabel: 'Définir le plan' },
   { key: 'TEACHERS', label: 'Ajouter les enseignants',
     description: "Le personnel enseignant de l'établissement.",
     actionRoute: '/teachers', actionLabel: 'Ajouter des enseignants' },

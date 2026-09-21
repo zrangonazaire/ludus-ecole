@@ -169,7 +169,7 @@ const PAGE_HELP_RULES: readonly PageHelpRule[] = [
     matches: exact('/finance'),
     copy: {
       stepKey: 'finance',
-      title: 'Configurer les frais de scolarité',
+      title: 'Configurer le plan de facturation',
       description: 'Définissez les montants et échéances qui serviront au suivi financier de chaque élève.',
       points: [
         'Les barèmes peuvent varier selon le niveau.',

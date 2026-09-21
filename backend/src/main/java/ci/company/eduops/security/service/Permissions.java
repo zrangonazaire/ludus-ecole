@@ -22,6 +22,7 @@ public final class Permissions {
     // enrollment
     public static final String ENROLLMENT_VIEW = "ENROLLMENT_VIEW";
     public static final String ENROLLMENT_CREATE = "ENROLLMENT_CREATE";
+    public static final String ENROLLMENT_UPDATE = "ENROLLMENT_UPDATE";
     public static final String ENROLLMENT_VALIDATE = "ENROLLMENT_VALIDATE";
     public static final String ENROLLMENT_CANCEL = "ENROLLMENT_CANCEL";
     public static final String ENROLLMENT_OVERRIDE_CAPACITY = "ENROLLMENT_OVERRIDE_CAPACITY";

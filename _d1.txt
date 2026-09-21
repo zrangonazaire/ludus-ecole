@@ -1,0 +1,78 @@
+diff --git a/frontend/src/app/core/datasource/api/api-data-sources.ts b/frontend/src/app/core/datasource/api/api-data-sources.ts
+index d8f2280..46692bc 100644
+--- a/frontend/src/app/core/datasource/api/api-data-sources.ts
++++ b/frontend/src/app/core/datasource/api/api-data-sources.ts
+@@ -99,6 +99,10 @@ export class ApiStudentDataSource implements StudentDataSource {
+     return this.http.get<StudentDetail>(`${API}/students/${id}`);
+   }
+ 
++  update(id: string, payload: unknown): Observable<StudentDetail> {
++    return this.http.put<StudentDetail>(`${API}/students/${id}`, payload);
++  }
++
+   getEnrollments(studentId: string): Observable<Enrollment[]> {
+     return this.http.get<Enrollment[]>(`${API}/students/${studentId}/history`);
+   }
+@@ -135,6 +139,10 @@ export class ApiEnrollmentDataSource implements EnrollmentDataSource {
+   validate(id: string): Observable<Enrollment> {
+     return this.http.post<Enrollment>(`${API}/enrollments/${id}/validate`, {});
+   }
++
++  update(id: string, payload: unknown): Observable<Enrollment> {
++    return this.http.put<Enrollment>(`${API}/enrollments/${id}`, payload);
++  }
+ }
+ 
+ @Injectable()
+diff --git a/frontend/src/app/core/datasource/data-source.ts b/frontend/src/app/core/datasource/data-source.ts
+index c921960..334b360 100644
+--- a/frontend/src/app/core/datasource/data-source.ts
++++ b/frontend/src/app/core/datasource/data-source.ts
+@@ -86,6 +86,7 @@ import {
+ export interface StudentDataSource {
+   search(query: PageQuery & { status?: string; classroomId?: string }): Observable<PageResponse<StudentSummary>>;
+   getById(id: string): Observable<StudentDetail>;
++  update(id: string, payload: unknown): Observable<StudentDetail>;
+   getEnrollments(studentId: string): Observable<Enrollment[]>;
+   getFinancialSummary(studentId: string): Observable<FinancialSummary>;
+   getReportCards(studentId: string): Observable<ReportCard[]>;
+@@ -109,6 +110,7 @@ export interface EnrollmentDataSource {
+   check(studentId: string, classroomId: string, academicYearId?: string): Observable<EnrollmentCheckResult>;
+   create(payload: unknown): Observable<Enrollment>;
+   validate(id: string): Observable<Enrollment>;
++  update(id: string, payload: unknown): Observable<Enrollment>;
+ }
+ 
+ export interface ClassroomDataSource {
+diff --git a/frontend/src/app/core/models/domain.models.ts b/frontend/src/app/core/models/domain.models.ts
+index 8dd9901..264eee2 100644
+--- a/frontend/src/app/core/models/domain.models.ts
++++ b/frontend/src/app/core/models/domain.models.ts
+@@ -127,6 +127,27 @@ export interface StudentDetail extends StudentSummary {
+   attendanceSummary?: AttendanceSummary;
+ }
+ 
++/** Édition de l'identité de l'élève : champs partiels, absent = inchangé. */
++export interface StudentUpdatePayload {
++  firstName?: string;
++  lastName?: string;
++  birthDate?: string;
++  birthPlace?: string;
++  nationality?: string;
++  email?: string;
++  phone?: string;
++  /** Colonne `address` côté backend ; la fiche affiche `addressLine1`. */
++  address?: string;
++  previousSchool?: string;
++}
++
++/** Correction d'une inscription : classe, date, redoublement. */
++export interface EnrollmentUpdatePayload {
++  classroomId: string;
++  enrollmentDate: string;
++  repeating: boolean;
++}
++
+ export interface GuardianLink {
+   id: string;
+   guardianId: string;

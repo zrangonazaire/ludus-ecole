@@ -94,6 +94,54 @@ public class StudentService {
     }
 
     /**
+     * Corrects the civil details of a pupil. Partial by contract: a null field
+     * means « leave unchanged ». The matricule and the status never travel
+     * through here — one is immutable, the other only moves through the
+     * guarded transitions.
+     */
+    @Transactional
+    public Student update(UUID studentId, ci.company.eduops.student.dto.request.StudentUpdateRequest request) {
+        Student student = require(studentId);
+
+        if (request.getFirstName() != null && !request.getFirstName().isBlank()) {
+            student.setFirstName(request.getFirstName().trim());
+        }
+        if (request.getLastName() != null && !request.getLastName().isBlank()) {
+            student.setLastName(request.getLastName().trim());
+        }
+        if (request.getBirthDate() != null) {
+            student.setBirthDate(request.getBirthDate());
+        }
+        if (request.getBirthPlace() != null) {
+            student.setBirthPlace(request.getBirthPlace().trim());
+        }
+        if (request.getNationality() != null) {
+            student.setNationality(request.getNationality().trim());
+        }
+        if (request.getEmail() != null) {
+            student.setEmail(request.getEmail().trim());
+        }
+        if (request.getPhone() != null) {
+            student.setPhone(request.getPhone().trim());
+        }
+        if (request.getAddress() != null) {
+            student.setAddressLine1(request.getAddress().trim());
+        }
+        if (request.getPreviousSchool() != null) {
+            student.setPreviousSchool(request.getPreviousSchool().trim());
+        }
+        studentRepository.save(student);
+
+        auditService.logUpdate("Student", student.getId(), student.getStudentNumber(),
+                Map.<String, Object>of("field", "identity"),
+                Map.<String, Object>of("firstName", student.getFirstName(),
+                        "lastName", student.getLastName()));
+
+        log.info("Student {} identity updated", student.getStudentNumber());
+        return student;
+    }
+
+    /**
      * Flags likely duplicates before creating a student: same first name, last
      * name and date of birth in the same school.
      */

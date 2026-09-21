@@ -70,7 +70,7 @@ export class AdminLayoutComponent implements OnInit {
     // Le travail réel d'un secrétariat : constituer un dossier, l'inscrire,
     // le suivre, le clore. Chaque entrée correspond à un acte qui laisse
     // une trace administrative.
-    { section: 'Scolarité', label: 'Élèves', route: '/students', icon: '◍',
+    { section: 'Scolarité', label: 'Historique des élèves', route: '/students', icon: '◍',
       permissions: [PERMISSIONS.STUDENT_VIEW], ready: true },
     // Les pièces officielles produites par l'établissement : édition,
     // traçabilité, réimpression et révocation au même endroit.
@@ -126,7 +126,7 @@ export class AdminLayoutComponent implements OnInit {
       permissions: ['DISCIPLINE_VIEW'], ready: true },
 
     // ──────────────────────────────────────────────────────── Finance
-    { section: 'Finance', label: 'Frais de scolarité', route: '/finance', icon: '◫',
+    { section: 'Finance', label: 'Plan de facturation', route: '/finance', icon: '◫',
       permissions: [PERMISSIONS.FINANCE_VIEW], ready: true },
     { section: 'Finance', label: 'Encaissements', route: '/payments', icon: '◧',
       permissions: [PERMISSIONS.PAYMENT_VIEW] },

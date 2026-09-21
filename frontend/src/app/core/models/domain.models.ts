@@ -127,6 +127,27 @@ export interface StudentDetail extends StudentSummary {
   attendanceSummary?: AttendanceSummary;
 }
 
+/** Édition de l'identité de l'élève : champs partiels, absent = inchangé. */
+export interface StudentUpdatePayload {
+  firstName?: string;
+  lastName?: string;
+  birthDate?: string;
+  birthPlace?: string;
+  nationality?: string;
+  email?: string;
+  phone?: string;
+  /** Colonne `address` côté backend ; la fiche affiche `addressLine1`. */
+  address?: string;
+  previousSchool?: string;
+}
+
+/** Correction d'une inscription : classe, date, redoublement. */
+export interface EnrollmentUpdatePayload {
+  classroomId: string;
+  enrollmentDate: string;
+  repeating: boolean;
+}
+
 export interface GuardianLink {
   id: string;
   guardianId: string;

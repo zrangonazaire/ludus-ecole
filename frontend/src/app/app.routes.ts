@@ -81,7 +81,7 @@ export const routes: Routes = [
       {
         path: 'students',
         canActivate: [permissionGuard],
-        data: { permissions: [PERMISSIONS.STUDENT_VIEW], title: 'Élèves' },
+        data: { permissions: [PERMISSIONS.STUDENT_VIEW], title: 'Historique des élèves' },
         loadChildren: () => import('./features/students/students.routes')
           .then((m) => m.STUDENT_ROUTES)
       },
@@ -198,7 +198,7 @@ export const routes: Routes = [
         path: 'finance',
         loadComponent: () => import('./features/finance/finance.component')
           .then((m) => m.FinanceComponent),
-        data: { title: 'Frais de scolarité' }
+        data: { title: 'Plan de facturation' }
       },
       {
         path: 'reports',

@@ -143,12 +143,12 @@ public class SetupStatusService {
                 "Définir le programme"));
 
         steps.add(new SetupStepResponse(
-                "FEES", "Frais de scolarité",
+                "FEES", "Plan de facturation",
                 "Les frais par niveau et leur échéancier, appliqués à chaque inscription.",
                 true,
                 yearId == null ? 0 : feeScheduleRepository.countPricedLevels(yearId),
                 "/finance",
-                "Définir les frais"));
+                "Définir le plan"));
 
         steps.add(new SetupStepResponse(
                 "TEACHERS", "Ajouter les enseignants",

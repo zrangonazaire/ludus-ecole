@@ -80,7 +80,7 @@ export class RoadmapComponent {
         { label: 'Bulletins', route: '/report-cards', permission: P.REPORT_CARD_VIEW }]
     },
     {
-      id: 'finance', title: 'Gérer les frais et les paiements',
+      id: 'finance', title: 'Gérer le plan de facturation et les paiements',
       prerequisite: 'Préparer les frais avant les encaissements, en parallèle de la pédagogie.',
       instructions: ['Configurez les frais et vérifiez la situation des élèves inscrits.',
         'Enregistrez les paiements et suivez les impayés selon vos droits.'],

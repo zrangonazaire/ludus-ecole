@@ -7,9 +7,11 @@ import ci.company.eduops.finance.dto.response.StudentFinancialSummaryResponse;
 import ci.company.eduops.reportcard.dto.response.ReportCardResponse;
 import ci.company.eduops.reportcard.service.ReportCardService;
 import ci.company.eduops.security.service.Permissions;
+import ci.company.eduops.student.dto.request.StudentUpdateRequest;
 import ci.company.eduops.student.dto.response.StudentDetailResponse;
 import ci.company.eduops.student.dto.response.StudentSummaryResponse;
 import ci.company.eduops.student.service.StudentQueryService;
+import ci.company.eduops.student.service.StudentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -19,6 +21,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,11 +37,14 @@ import java.util.UUID;
 public class StudentController {
 
     private final StudentQueryService studentQueryService;
+    private final StudentService studentService;
     private final ReportCardService reportCardService;
 
     public StudentController(StudentQueryService studentQueryService,
+                             StudentService studentService,
                              ReportCardService reportCardService) {
         this.studentQueryService = studentQueryService;
+        this.studentService = studentService;
         this.reportCardService = reportCardService;
     }
 
@@ -64,6 +72,17 @@ public class StudentController {
     @ApiResponses(@ApiResponse(responseCode = "404", description = "Élève inconnu",
             content = @Content(schema = @Schema(implementation = ApiError.class))))
     public StudentDetailResponse detail(@PathVariable UUID studentId) {
+        return studentQueryService.detail(studentId);
+    }
+
+    @PutMapping("/{studentId}")
+    @PreAuthorize("hasAuthority('" + Permissions.STUDENT_UPDATE + "')")
+    @Operation(summary = "Corriger l'état civil d'un élève",
+            description = "Mise à jour partielle : un champ absent reste inchangé. "
+                    + "Le matricule et le statut ne passent jamais par ici.")
+    public StudentDetailResponse update(@PathVariable UUID studentId,
+                                        @jakarta.validation.Valid @RequestBody StudentUpdateRequest request) {
+        studentService.update(studentId, request);
         return studentQueryService.detail(studentId);
     }
 
