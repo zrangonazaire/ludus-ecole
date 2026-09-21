@@ -522,7 +522,7 @@
 
                   <h3 id="fees-section-title">Quels frais règler ?</h3>
 
-                  <p>Sélectionnez les échéances à affecter (facultatif — sans sélection, le montant est affecté automatiquement), puis ajustez le montant alloué à chacune.</p>
+                  <p>Les lignes dues sont regroupées par rubrique (type de frais : scolarité, cantine, transport…). Sélectionnez les échéances à affecter (facultatif — sans sélection, le montant est affecté automatiquement), puis ajustez le montant alloué à chacune.</p>
 
                 </div>
 
@@ -539,12 +539,12 @@
               } @else {
 
                 <div class="fee-selection">
-
                   <div class="fee-selection__header">
 
                     <span class="fee-selection__summary">
 
                       <strong>{{ outstandingFees().length }}</strong> échéance(s) disponible(s)
+                      · <strong>{{ feesByRubrique().length }}</strong> rubrique(s)
 
                     </span>
 
@@ -566,9 +566,33 @@
 
                   </div>
 
-                  <ul class="fee-list">
+                  <label class="field fee-rubrique-filter">
+                    <span class="field__label">Rubrique</span>
+                    <select class="input" aria-label="Filtrer par rubrique"
+                            [value]="rubriqueFilter()"
+                            (change)="selectRubrique($any($event.target).value)">
+                      <option value="">Toutes les rubriques ({{ feesByRubrique().length }})</option>
+                      @for (group of feesByRubrique(); track group.key) {
+                        <option [value]="group.key">{{ group.name }} — {{ group.totalRemaining | money:summary.currency }} restant</option>
+                      }
+                    </select>
+                  </label>
 
-                    @for (fee of outstandingFees(); track fee.id) {
+                  <!-- Liste des rubriques filtrée par le combo ci-dessus -->
+                  @for (group of visibleRubriques(); track group.key) {
+                    <h4 class="fee-group__title">
+                      {{ group.name }}
+                      @if (group.categoryLabel !== group.name) {
+                        <small>· {{ group.categoryLabel }}</small>
+                      }
+                      @if (!group.mandatory) {
+                        <span class="pill pill--opt">Facultatif</span>
+                      }
+                      <span class="fee-group__total money">{{ group.totalRemaining | money:summary.currency }} restant</span>
+                    </h4>
+                    <ul class="fee-list">
+
+                    @for (fee of group.fees; track fee.id) {
 
                       <li class="fee-item" [class.fee-item--selected]="isFeeSelected(fee.id)">
 
@@ -594,7 +618,8 @@
 
                       <span class="fee-item__meta">
 
-                        Échéance du {{ fee.dueDate | date:'dd/MM/yyyy' }}
+                        {{ rubriqueOf(fee) }}
+                        · Échéance du {{ fee.dueDate | date:'dd/MM/yyyy' }}
 
                         · {{ fee.amountRemaining | money:summary.currency }} restant
 
@@ -665,6 +690,7 @@
                   }
 
                 </ul>
+                  } <!-- fin groupe rubrique -->
 
                 </div>
 

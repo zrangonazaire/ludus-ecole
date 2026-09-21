@@ -2,6 +2,8 @@ package ci.company.eduops.finance.dto.response;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -25,6 +27,13 @@ public class StudentFinancialSummaryResponse {
     /** PAID, PARTIALLY_PAID, DUE. */
     private String globalStatus = "PAID";
     private String currency = "XOF";
+
+    /**
+     * Lignes de frais de l'élève pour l'année, triées par échéance.
+     * Chaque ligne porte sa rubrique (type de frais + catégorie + montant),
+     * ce sur quoi pointe l'encaissement au moment de la répartition.
+     */
+    private List<StudentFeeLineResponse> fees = new ArrayList<>();
 
     public UUID getStudentId() {
         return studentId;
@@ -112,5 +121,13 @@ public class StudentFinancialSummaryResponse {
 
     public void setCurrency(String currency) {
         this.currency = currency;
+    }
+
+    public List<StudentFeeLineResponse> getFees() {
+        return fees;
+    }
+
+    public void setFees(List<StudentFeeLineResponse> fees) {
+        this.fees = fees != null ? fees : new ArrayList<>();
     }
 }

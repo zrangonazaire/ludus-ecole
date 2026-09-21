@@ -49,6 +49,16 @@ interface AllocationPreview {
   amount: number;
 }
 
+/** Lignes dues regroupées sous une même rubrique (type de frais). */
+interface FeeRubriqueGroup {
+  key: string;
+  name: string;
+  categoryLabel: string;
+  mandatory: boolean;
+  totalRemaining: number;
+  fees: StudentFee[];
+}
+
 const EMPTY_STUDENT_PAGE: PageResponse<StudentSummary> = {
   content: [], page: 0, size: 8, totalElements: 0, totalPages: 1, first: true, last: true
 };
@@ -133,6 +143,55 @@ export class PaymentListComponent implements OnInit {
       .filter((fee) => fee.amountRemaining > 0 && !['WAIVED', 'CANCELLED'].includes(fee.status))
       .sort((left, right) => left.dueDate.localeCompare(right.dueDate))
   );
+
+  /**
+   * Lignes dues regroupées par rubrique (type de frais) : chaque rubrique
+   * affiche son montant total restant et ses échéances. La scolarité (TUITION)
+   * n'est qu'une rubrique parmi les autres (cantine, transport…).
+   */
+  readonly feesByRubrique = computed(() => {
+    const groups = new Map<string, FeeRubriqueGroup>();
+    for (const fee of this.outstandingFees()) {
+      const key = fee.feeTypeId ?? fee.feeTypeName;
+      let group = groups.get(key);
+      if (!group) {
+        group = {
+          key,
+          name: fee.feeTypeName,
+          categoryLabel: fee.categoryLabel ?? fee.feeTypeName,
+          mandatory: fee.mandatory ?? true,
+          totalRemaining: 0,
+          fees: []
+        };
+        groups.set(key, group);
+      }
+      group.fees.push(fee);
+      group.totalRemaining += fee.amountRemaining;
+    }
+    return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  });
+
+  /** Libellé de rubrique d'une ligne : type de frais + catégorie. */
+  rubriqueOf(fee: StudentFee): string {
+    const category = fee.categoryLabel ?? fee.category;
+    if (category && category !== fee.feeTypeName) return `${fee.feeTypeName} · ${category}`;
+    return fee.feeTypeName;
+  }
+
+  /** Filtre du combo rubrique : '' = toutes les rubriques. */
+  readonly rubriqueFilter = signal<string>('');
+
+  /** Groupes de rubriques visibles selon le combo. */
+  readonly visibleRubriques = computed(() => {
+    const filter = this.rubriqueFilter();
+    const groups = this.feesByRubrique();
+    return filter ? groups.filter((g) => g.key === filter) : groups;
+  });
+
+  /** Choisir une rubrique dans le combo (filtre les échéances affichées). */
+  selectRubrique(value: string): void {
+    this.rubriqueFilter.set(value ?? '');
+  }
 
   readonly suggestedAmount = computed(() => this.outstandingFees()[0]?.amountRemaining ?? 0);
 
@@ -272,6 +331,7 @@ export class PaymentListComponent implements OnInit {
     this.studentResults.set([]);
     this.financialSummary.set(null);
     this.summaryLoading.set(true);
+    this.rubriqueFilter.set('');
     this.paymentForm.controls.payerName.setValue('');
 
     this.summaryRequest = this.dataSource.getStudentSummary(student.id)

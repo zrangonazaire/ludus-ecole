@@ -313,7 +313,16 @@ export type { ReportCard, ReportCardLine as SubjectAverageLine } from './report-
 export interface StudentFee {
   id: string;
   label: string;
+  feeTypeId?: string;
+  feeTypeCode?: string;
   feeTypeName: string;
+  /** Rubrique : INSCRIPTION, SCOLARITÉ, CANTINE… (catégorie du type de frais). */
+  category?: string;
+  categoryLabel?: string;
+  mandatory?: boolean;
+  feeScheduleId?: string;
+  instalmentId?: string;
+  instalmentLabel?: string;
   sequence: number;
   grossAmount: number;
   discountAmount: number;

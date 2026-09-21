@@ -11,6 +11,7 @@ import ci.company.eduops.enrollment.domain.Enrollment;
 import ci.company.eduops.enrollment.dto.response.EnrollmentResponse;
 import ci.company.eduops.enrollment.repository.EnrollmentRepository;
 import ci.company.eduops.finance.domain.StudentFee;
+import ci.company.eduops.finance.dto.response.StudentFeeLineResponse;
 import ci.company.eduops.finance.dto.response.StudentFinancialSummaryResponse;
 import ci.company.eduops.finance.repository.StudentFeeRepository;
 import ci.company.eduops.guardian.domain.StudentGuardian;
@@ -186,6 +187,8 @@ public class StudentQueryService {
         LocalDate today = LocalDate.now();
         LocalDate next = null;
         int overdue = 0;
+        List<StudentFeeLineResponse> lines = new ArrayList<>();
+        String currency = "XOF";
 
         for (StudentFee fee : studentFeeRepository
                 .findOutstandingOldestFirst(studentId, year.getId())) {
@@ -193,6 +196,10 @@ public class StudentQueryService {
             discount = discount.add(safe(fee.getDiscountAmount()));
             due = due.add(safe(fee.getAmountDue()));
             paid = paid.add(safe(fee.getAmountPaid()));
+            if (fee.getCurrency() != null) {
+                currency = fee.getCurrency();
+            }
+            lines.add(toFeeLine(fee));
 
             LocalDate dueDate = fee.getDueDate();
             if (dueDate != null) {
@@ -212,9 +219,64 @@ public class StudentQueryService {
         summary.setOutstandingAmount(outstanding);
         summary.setNextDueDate(next);
         summary.setOverdueCount(overdue);
+        summary.setCurrency(currency);
+        summary.setFees(lines);
         summary.setGlobalStatus(outstanding.signum() == 0 ? "PAID"
                 : paid.signum() > 0 ? "PARTIALLY_PAID" : "DUE");
         return summary;
+    }
+
+    /**
+     * Une ligne payable : la rubrique (type de frais + tarif) déclinée
+     * en échéance pour cet élève.
+     */
+    private StudentFeeLineResponse toFeeLine(StudentFee fee) {
+        StudentFeeLineResponse line = new StudentFeeLineResponse();
+        line.setId(fee.getId());
+        line.setLabel(fee.getLabel());
+        line.setSequence(fee.getSequence());
+        if (fee.getFeeType() != null) {
+            line.setFeeTypeId(fee.getFeeType().getId());
+            line.setFeeTypeCode(fee.getFeeType().getCode());
+            line.setFeeTypeName(fee.getFeeType().getName());
+            if (fee.getFeeType().getCategory() != null) {
+                line.setCategory(fee.getFeeType().getCategory().name());
+                line.setCategoryLabel(categoryLabel(fee.getFeeType().getCategory().name()));
+            }
+            line.setMandatory(fee.getFeeType().isMandatory());
+        }
+        if (fee.getFeeSchedule() != null) {
+            line.setFeeScheduleId(fee.getFeeSchedule().getId());
+        }
+        if (fee.getInstalment() != null) {
+            line.setInstalmentId(fee.getInstalment().getId());
+            line.setInstalmentLabel(fee.getInstalment().getLabel());
+        }
+        line.setGrossAmount(safe(fee.getGrossAmount()));
+        line.setDiscountAmount(safe(fee.getDiscountAmount()));
+        line.setAmountDue(safe(fee.getAmountDue()));
+        line.setAmountPaid(safe(fee.getAmountPaid()));
+        line.setAmountRemaining(fee.getAmountRemaining() != null
+                ? fee.getAmountRemaining() : fee.outstanding());
+        line.setCurrency(fee.getCurrency());
+        line.setDueDate(fee.getDueDate());
+        if (fee.getStatus() != null) {
+            line.setStatus(fee.getStatus().name());
+        }
+        return line;
+    }
+
+    private String categoryLabel(String category) {
+        return switch (category) {
+            case "REGISTRATION" -> "Inscription";
+            case "TUITION" -> "Scolarité";
+            case "EXAM" -> "Examens";
+            case "ACTIVITY" -> "Activités";
+            case "UNIFORM" -> "Tenue";
+            case "TRANSPORT" -> "Transport";
+            case "CANTEEN" -> "Cantine";
+            default -> "Autre";
+        };
     }
 
     // ----------------------------------------------------------- conversion

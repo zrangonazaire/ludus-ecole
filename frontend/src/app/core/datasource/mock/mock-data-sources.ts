@@ -184,13 +184,16 @@ export class MockStudentDataSource implements StudentDataSource {
       globalStatus: 'PARTIALLY_PAID',
       currency: 'XOF',
       fees: [
-        { id: 'f-1', label: 'Scolarité - Échéance 1', feeTypeName: 'Scolarité', sequence: 1,
+        { id: 'f-1', label: 'Scolarité - Échéance 1', feeTypeId: 'ft-tuition', feeTypeCode: 'SCOL', feeTypeName: 'Scolarité',
+          category: 'TUITION', categoryLabel: 'Scolarité', mandatory: true, feeScheduleId: 'fs-tuition', sequence: 1,
           grossAmount: 200000, discountAmount: 0, amountDue: 200000, amountPaid: 200000,
           amountRemaining: 0, currency: 'XOF', dueDate: '2026-10-15', status: 'PAID' },
-        { id: 'f-2', label: 'Scolarité - Échéance 2', feeTypeName: 'Scolarité', sequence: 2,
+        { id: 'f-2', label: 'Scolarité - Échéance 2', feeTypeId: 'ft-tuition', feeTypeCode: 'SCOL', feeTypeName: 'Scolarité',
+          category: 'TUITION', categoryLabel: 'Scolarité', mandatory: true, feeScheduleId: 'fs-tuition', sequence: 2,
           grossAmount: 200000, discountAmount: 0, amountDue: 200000, amountPaid: 200000,
           amountRemaining: 0, currency: 'XOF', dueDate: '2027-01-15', status: 'PAID' },
-        { id: 'f-3', label: 'Scolarité - Échéance 3', feeTypeName: 'Scolarité', sequence: 3,
+        { id: 'f-3', label: 'Scolarité - Échéance 3', feeTypeId: 'ft-tuition', feeTypeCode: 'SCOL', feeTypeName: 'Scolarité',
+          category: 'TUITION', categoryLabel: 'Scolarité', mandatory: true, feeScheduleId: 'fs-tuition', sequence: 3,
           grossAmount: 200000, discountAmount: 0, amountDue: 200000, amountPaid: 0,
           amountRemaining: 200000, currency: 'XOF', dueDate: '2027-04-15', status: 'DUE' }
       ]

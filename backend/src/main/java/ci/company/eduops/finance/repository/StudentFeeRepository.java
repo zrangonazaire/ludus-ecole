@@ -39,9 +39,16 @@ public interface StudentFeeRepository extends JpaRepository<StudentFee, UUID> {
     /**
      * Outstanding instalments, oldest first: the default allocation order when
      * a family pays without designating a specific line.
+     *
+     * <p>Fee type, schedule and instalment are fetched eagerly: the financial
+     * summary exposes each line with its rubrique (type, category, tariff,
+     * amount) without triggering lazy loads.</p>
      */
     @Query("""
            SELECT f FROM StudentFee f
+           LEFT JOIN FETCH f.feeType t
+           LEFT JOIN FETCH f.feeSchedule s
+           LEFT JOIN FETCH f.instalment i
            WHERE f.student.id = :studentId AND f.academicYear.id = :academicYearId
              AND f.status IN ('DUE','PARTIALLY_PAID','OVERDUE')
            ORDER BY f.dueDate ASC, f.sequence ASC
