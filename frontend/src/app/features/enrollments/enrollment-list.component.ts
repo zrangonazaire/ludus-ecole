@@ -44,8 +44,15 @@ import { PERMISSIONS } from '@core/models/auth.models';
         </div>
         <eduops-data-table
           [columns]="columns" [page]="page()" [loading]="loading()"
+          [showPageSize]="true"
+          [pageSize]="pageSize()"
+           [pageSizeOptions]="[5, 10, 20, 50, 100]"
+
           caption="Liste des inscriptions"
-          (pageChange)="onPageChange($event)" />
+          emptyTitle="Aucune inscription trouve"
+          emptyMessage="Ajustez la recherche ou les filtres."
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)" />
       </section>
     </div>
 
@@ -76,6 +83,9 @@ export class EnrollmentListComponent implements OnInit {
   readonly loading = signal(true);
   readonly createPermission = PERMISSIONS.ENROLLMENT_CREATE;
 
+  /** 5 lignes par défaut, modifiable via le combo du tableau. */
+  readonly pageSize = signal(5);
+
   private search = '';
   private currentPage = 0;
 
@@ -102,7 +112,7 @@ export class EnrollmentListComponent implements OnInit {
   load(): void {
     this.loading.set(true);
     this.dataSource
-      .search({ page: this.currentPage, size: 20, search: this.search || undefined })
+      .search({ page: this.currentPage, size: this.pageSize(), search: this.search || undefined })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (page) => {
@@ -121,6 +131,12 @@ export class EnrollmentListComponent implements OnInit {
 
   onPageChange(page: number): void {
     this.currentPage = page;
+    this.load();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize.set(size);
+    this.currentPage = 0;
     this.load();
   }
 }

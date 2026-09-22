@@ -37,8 +37,8 @@ export class StudentListComponent implements OnInit {
   readonly search = signal('');
   readonly statusFilter = signal('');
   readonly currentPage = signal(0);
-  /** 10 lignes par défaut, modifiable via le combo du tableau. */
-  readonly pageSize = signal(10);
+  /** 5 lignes par défaut, modifiable via le combo du tableau. */
+  readonly pageSize = signal(5);
 
   /**
    * Classe sur laquelle la liste est restreinte, venue de l'adresse.
