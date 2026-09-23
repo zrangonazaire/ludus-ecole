@@ -296,7 +296,7 @@
   width: 100%;
   /* Colonnes de jours larges : matière, enseignant, salle et horaires
      doivent rester lisibles dans chaque cellule. */
-  min-width: 1300px;
+  min-width: calc(56px + var(--day-count, 5) * 240px);
   border-collapse: collapse;
   table-layout: fixed;
 
@@ -329,8 +329,9 @@
 
 .cell {
   position: relative;
-  height: 72px;
-  padding: 3px;
+  height: var(--row-height, 80px);
+  box-sizing: border-box;
+  padding: 0;
   vertical-align: top;
   transition: background var(--transition-fast), box-shadow var(--transition-fast);
 
@@ -352,14 +353,15 @@
   flex-direction: column;
   gap: 1px;
   position: absolute;
-  top: calc(3px + (72px - 6px) * var(--off, 0));
+  top: calc(3px + var(--row-height, 80px) * var(--off, 0));
   left: 3px;
   right: 3px;
-  height: calc((72px - 6px) * var(--span, 1));
+  height: calc(var(--row-height, 80px) * var(--span, 1) - 6px);
   z-index: 5;
   padding: var(--space-2);
-  overflow: hidden;
-  /* Let short courses grow: room and actions must not be clipped. */
+  box-sizing: border-box;
+  overflow: auto;
+  > * { flex-shrink: 0; }
   color: var(--text-strong);
   background: color-mix(in srgb, var(--course-color, var(--brand)) 14%, transparent);
   border-left: 3px solid var(--course-color, var(--brand));
@@ -375,6 +377,7 @@
     font-size: var(--text-sm);
     font-weight: 600;
     line-height: 1.2;
+    overflow-wrap: anywhere;
   }
 
   &__select {
@@ -481,204 +484,42 @@
   }
 }
 
-/* ═══════════════ Impression ═══════════════
-   Hors impression, la feuille est masquée : seul le tableau de planning
-   part à l'imprimante, jamais la palette ni la grille interactive. */
-
+/* Feuille sobre, conforme au modèle administratif. */
 .print-only { display: none; }
-
 @media print {
-  .page > *:not(.print-only) { display: none !important; }
-  .screen-only { display: none !important; }
+  @page { size: A4 portrait; margin: 12mm; }
+  :host, .page { display: block; margin: 0; padding: 0; }
+  .page > *:not(.print-only), .screen-only { display: none !important; }
   .print-only { display: block !important; }
-
-  body {
-    margin: 0;
-    background: #fff;
-    /* Les couleurs des cours doivent sortir à l'imprimante aussi. */
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
 }
-
 .timetable-sheet {
-  padding: 12mm 10mm;
-  font-family: var(--font-body, 'Calibri', 'Segoe UI', sans-serif);
-  font-size: 10pt;
-  color: #101828;
-  page-break-after: always;
-
-  &:last-child { page-break-after: auto; }
-
-  .sheet__header {
-    display: flex;
-    align-items: stretch;
-    justify-content: space-between;
-    gap: 8mm;
-    border: 1.2pt solid #101828;
-    border-radius: 3pt;
-    margin-bottom: 6mm;
-  }
-
-  .sheet__identity {
-    flex: 1;
-    padding: 4mm 5mm;
-    background: #f2f4f7;
-    border-radius: 2pt 0 0 2pt;
-  }
-
-  .sheet__school {
-    margin: 0;
-    font-size: 14pt;
-    font-weight: 700;
-    letter-spacing: 0.3pt;
-    text-transform: uppercase;
-  }
-
-  .sheet__meta {
-    margin: 1.5mm 0 0;
-    font-size: 9.5pt;
-    color: #475467;
-  }
-
-  .sheet__title {
-    padding: 4mm 5mm;
-    text-align: right;
-    border-left: 1.2pt solid #101828;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-
-    h1 {
-      margin: 0;
-      font-size: 15pt;
-      letter-spacing: 0.5pt;
-      text-transform: uppercase;
-    }
-
-    p {
-      margin: 1mm 0 0;
-      font-size: 10.5pt;
-      font-weight: 600;
-      color: #101828;
-    }
-  }
-
-  .sheet__grid {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    margin: 0 auto;
-    /* Cadre extérieur épais autour du tableau entier. */
-    border: 1.5pt solid #101828;
-
-    th, td {
-      border: 0.75pt solid #101828;
-    }
-
-    thead th {
-      border-bottom: 1.2pt solid #101828;
-    }
-
-    .sheet__day {
-      padding: 2.5mm 2mm;
-      font-size: 10pt;
-      font-weight: 700;
-      letter-spacing: 0.4pt;
-      text-transform: uppercase;
-      background: #101828;
-      color: #fff;
-      text-align: center;
-    }
-  }
-
-  tbody tr {
-    td {
-      padding: 1mm;
-      vertical-align: top;
-      height: 13mm;
-    }
-  }
-
-  .sheet__cell {
-    padding: 1mm;
-    position: relative;
-  }
-
-  .sheet__course {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5mm;
-    position: absolute;
-    top: calc(1mm + (13mm - 2mm) * var(--off, 0));
-    left: 1mm;
-    right: 1mm;
-    height: calc((13mm - 2mm) * var(--span, 1));
-    z-index: 5;
-    padding: 1.2mm 1.5mm 1.2mm 2.2mm;
-    font-size: 8.5pt;
-    background: color-mix(in srgb, var(--course-color, var(--brand)) 14%, #fff);
-    border: 0.5pt solid color-mix(in srgb, var(--course-color, var(--brand)) 55%, #fff);
-    border-left: 2.5pt solid var(--course-color, var(--brand));
-    border-radius: 2pt;
-    box-sizing: border-box;
-    overflow: hidden;
-
-    .sheet__subject {
-      font-weight: 700;
-      font-size: 9pt;
-      color: #101828;
-      line-height: 1.2;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .sheet__teacher,
-    .sheet__where {
-      color: #344054;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1.25;
-    }
-
-    .sheet__time {
-      color: #475467;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-variant-numeric: tabular-nums;
-      line-height: 1.2;
-      font-size: 8pt;
-      margin-top: 0.5mm;
-    }
-  }
-
-  .sheet__footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 5mm;
-    padding-top: 2.5mm;
-    border-top: 1.2pt solid #101828;
-    font-size: 9pt;
-    color: #475467;
-  }
-
-  .sheet__total {
-    margin: 0;
-
-    strong {
-      font-size: 11.5pt;
-      color: #101828;
-      font-weight: 700;
-    }
-  }
-
-  .sheet__generated {
-    margin: 0;
-    font-size: 8pt;
-    color: #98a2b3;
-  }
+  color: #000;
+  background: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 9pt;
+  padding: 5mm 0;
+  break-after: page;
+  &:last-child { break-after: auto; }
+  p { margin: 0; }
+  .sheet__header { display: flex; align-items: center; justify-content: space-between; gap: 8mm; margin-bottom: 8mm; }
+  .sheet__identity { flex: 1; text-align: center; text-transform: uppercase; font-weight: 700; }
+  .sheet__ministry { font-size: 7pt; line-height: 1.5; }
+  .sheet__school { margin-top: 3mm; font-size: 9pt; }
+  h1 { border: 1.2pt solid #000; padding: 4mm; font-size: 14pt; text-transform: uppercase; margin: 0; }
+  .sheet__meta { display: flex; justify-content: flex-end; gap: 18mm; margin-bottom: 3mm; font-size: 12pt; }
+  .sheet__principal { margin-bottom: 2mm; font-weight: 700; text-transform: uppercase; }
+  .sheet__principal span { font-size: 8pt; text-decoration: underline; margin-right: 3mm; }
+  .sheet__grid { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1.2pt solid #000; }
+  .sheet__hours-col { width: 29mm; }
+  th, td { border: .75pt solid #000; padding: 2mm 1mm; text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
+  thead th { text-transform: uppercase; font-size: 9pt; height: 9mm; }
+  tbody td { height: 8mm; }
+  .sheet__hours { font-size: 8pt; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .sheet__separator th { font-weight: 400; text-transform: uppercase; padding: 2mm; }
+  .sheet__course { font-size: 8pt; line-height: 1.4; text-transform: uppercase; }
+  .sheet__course + .sheet__course { margin-top: 2mm; }
+  .sheet__course span { display: block; font-size: 7pt; }
+  tr { break-inside: avoid; }
+  .sheet__footer { margin-top: 8mm; text-align: right; font-size: 9pt; break-inside: avoid; }
+  .sheet__signature { height: 15mm; }
 }

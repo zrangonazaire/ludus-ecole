@@ -132,8 +132,11 @@ export class PaymentListComponent implements OnInit {
     paymentDate: [this.today, [Validators.required]],
     externalReference: ['', [Validators.maxLength(120)]],
     payerName: ['', [Validators.maxLength(200)]],
-    notes: ['', [Validators.maxLength(1000)]]
+    notes: ['', [Validators.maxLength(1000)]],
+    rubrique: ['']
   });
+
+  readonly rubriqueControl = this.paymentForm.controls.rubrique;
 
   /** Fees selected for explicit allocation, with the amount to apply to each. */
   readonly selectedFees = signal<Array<{ id: string; label: string; dueDate: string; amountRemaining: number; allocatedAmount: number }>>([]);
@@ -176,6 +179,12 @@ export class PaymentListComponent implements OnInit {
     const category = fee.categoryLabel ?? fee.category;
     if (category && category !== fee.feeTypeName) return `${fee.feeTypeName} · ${category}`;
     return fee.feeTypeName;
+  }
+
+  /** Nom d'une rubrique selon sa clé. */
+  rubriqueName(key: string): string {
+    const group = this.feesByRubrique().find(g => g.key === key);
+    return group?.name ?? key;
   }
 
   /** Filtre du combo rubrique : '' = toutes les rubriques. */

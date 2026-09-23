@@ -305,7 +305,8 @@
       <!-- ═══ La grille ═══ -->
       <div class="board">
         <div class="board__scroll">
-          <table class="grid" [style.--day-count]="days().length">
+          <table class="grid" [style.--day-count]="days().length"
+                 [style.--row-height]="screenRowHeight() + 'px'">
             <caption class="visually-hidden">
               Emploi du temps de {{ g.scopeLabel }}
             </caption>
@@ -441,60 +442,48 @@
     }
   }
 
-  <!-- ═══════════════ Feuille imprimable ═══════════════
-       Hors impression, ce bloc est vide : il n'est peuplé que le temps d'ouvrir
-       le dialogue d'impression. Une page A4 par vue. -->
+  <!-- Feuille A4 dédiée à l’impression. -->
   <div class="print-only">
     @for (page of printPages(); track page.label) {
       <article class="timetable-sheet">
         <header class="sheet__header">
           <div class="sheet__identity">
+            <p class="sheet__ministry">Ministère de l’Éducation nationale,<br>de l’Alphabétisation et de l’Enseignement technique</p>
             <p class="sheet__school">{{ schoolName() }}</p>
-            <p class="sheet__meta">
-              @if (page.scope === 'CLASSROOM') { Classe : {{ page.label }} }
-              @else if (page.scope === 'TEACHER') { Professeur : {{ page.label }} }
-              @else if (page.scope === 'ROOM') { Salle : {{ page.label }} }
-              @else { Vue : {{ page.label }} }
-            </p>
           </div>
-          <div class="sheet__title">
-            <h1>Emploi du temps</h1>
-            <p>{{ page.label }}</p>
-          </div>
+          <h1>Emploi du temps</h1>
         </header>
-
+        <div class="sheet__meta">
+          <strong>
+            @if (page.scope === 'CLASSROOM') { Classe : {{ page.label }} }
+            @else if (page.scope === 'TEACHER') { Professeur : {{ page.label }} }
+            @else { Salle : {{ page.label }} }
+          </strong>
+          @if (page.scope === 'CLASSROOM') { <strong>Salle : {{ page.roomName || '—' }}</strong> }
+        </div>
+        @if (page.scope === 'CLASSROOM') {
+          <p class="sheet__principal"><span>Professeur principal de la classe :</span> {{ page.mainTeacherName || '—' }}</p>
+        }
         <table class="sheet__grid">
-          <thead>
-            <tr>
-              @for (day of page.days; track day) {
-                <th class="sheet__day">{{ dayLabel(day) }}</th>
-              }
-            </tr>
-          </thead>
+          <colgroup><col class="sheet__hours-col">@for (day of page.days; track day) { <col> }</colgroup>
+          <thead><tr>
+            <th scope="col">Horaires</th>
+            @for (day of page.days; track day) { <th scope="col">{{ dayLabel(day) }}</th> }
+          </tr></thead>
           <tbody>
-            @for (hour of page.hours; track hour) {
+            @for (row of page.rows; track row.start) {
+              @if (row.afternoon) {
+                <tr class="sheet__separator"><th [attr.colspan]="page.days.length + 1">Après-midi</th></tr>
+              }
               <tr>
-                @for (day of page.days; track day) {
-                  <td class="sheet__cell">
-                    @for (slot of slotsAtPrint(day, hour, page.slots); track slot.id) {
-                      <article class="sheet__course"
-                               [style.--course-color]="slot.subjectColor || 'var(--brand)'"
-                               [style.--span]="spanOf(slot, page.stepMinutes)"
-                               [style.--off]="offsetOf(slot, hour, page.stepMinutes)">
-                        <span class="sheet__subject">
-                          {{ slot.subjectShortName || slot.subjectName }}
-                        </span>
-                        <span class="sheet__teacher">{{ slot.teacherName }}</span>
-                        @if (page.scope !== 'CLASSROOM') {
-                          <span class="sheet__where">{{ slot.classroomName }}</span>
-                        }
-                        <span class="sheet__time numeric">
-                          {{ hhmm(slot.startTime) }} – {{ hhmm(slot.endTime) }}
-                        </span>
-                        @if (slot.roomName) {
-                          <span class="sheet__where">{{ slot.roomName }}</span>
-                        }
-                      </article>
+                <th scope="row" class="sheet__hours">{{ row.start.replace(':', 'H') }}–{{ row.end.replace(':', 'H') }}</th>
+                @for (cell of row.cells; track cell.day) {
+                  <td [attr.rowspan]="cell.rowspan">
+                    @for (slot of cell.slots; track slot.id) {
+                      <div class="sheet__course">
+                        <strong>{{ slot.subjectShortName || slot.subjectName }}@if (slot.roomName) { ({{ slot.roomName }}) }</strong>
+                        @if (page.scope !== 'CLASSROOM') { <span>{{ slot.classroomName }}</span> }
+                      </div>
                     }
                   </td>
                 }
@@ -502,15 +491,7 @@
             }
           </tbody>
         </table>
-
-        <footer class="sheet__footer">
-          <p class="sheet__total">
-            <strong>{{ page.totalHours }}</strong> heures par semaine
-          </p>
-          <p class="sheet__generated">
-            Généré le {{ generatedDate() }}
-          </p>
-        </footer>
+        <footer class="sheet__footer"><p>Le responsable de l’établissement</p><div class="sheet__signature"></div></footer>
       </article>
     }
   </div>

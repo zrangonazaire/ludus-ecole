@@ -201,6 +201,13 @@ export const routes: Routes = [
         data: { title: 'Plan de facturation' }
       },
       {
+        path: 'finance-config',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.FINANCE_MANAGE], title: 'Paramètres financiers' },
+        loadComponent: () => import('./features/finance/finance-config.component')
+          .then((m) => m.FinanceConfigComponent)
+      },
+      {
         path: 'reports',
         canActivate: [permissionGuard],
         data: { permissions: [PERMISSIONS.REPORT_VIEW], title: 'Rapports' },

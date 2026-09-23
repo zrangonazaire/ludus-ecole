@@ -143,6 +143,8 @@ export class AdminLayoutComponent implements OnInit {
       permissions: [PERMISSIONS.DISCOUNT_REQUEST_VIEW, PERMISSIONS.DISCOUNT_REQUEST_MANAGE], ready: true },
     { section: 'Finance', label: 'Impayés', route: '/outstanding', icon: '◰',
       permissions: [PERMISSIONS.FINANCE_VIEW], ready: true },
+    { section: 'Finance', label: 'Paramètres', route: '/finance-config', icon: '⚙',
+      permissions: [PERMISSIONS.FINANCE_MANAGE] },
 
     // ───────────────────────────────────────────── Personnel et accès
     { section: 'Personnel et accès', label: 'Enseignants', route: '/teachers', icon: '◍',

@@ -67,6 +67,43 @@ describe('Timetable scope selection', () => {
     component = TestBed.runInInjectionContext(() => new TimetableComponent());
   });
 
+  it('prints exact lesson boundaries and merges multi-period cells', () => {
+    component.grid.set({ ...grid('CLASSROOM', 'class-1'), days: ['MONDAY', 'TUESDAY'],
+      slots: [{ ...slotFixture(), startTime: '08:15:00', endTime: '09:45:00' }] });
+    const page = component.printPages()[0];
+    const start = page.rows.find(row => row.start === '08:15')!;
+    expect(start.cells.find(cell => cell.day === 'MONDAY')?.rowspan).toBe(2);
+    expect(page.rows.find(row => row.start === '09:00')!.cells.map(cell => cell.day)).toEqual(['TUESDAY']);
+    expect(page.rows.find(row => row.start === '09:45')!.cells.length).toBe(2);
+  });
+
+  it('starts the printed afternoon at 13:00 and splits lessons crossing the heading', () => {
+    component.grid.set({ ...grid('CLASSROOM', 'class-1'),
+      dayStart: '07:30',
+      slots: [{ ...slotFixture(), startTime: '12:00', endTime: '14:00' }] });
+    const rows = component.printPages()[0].rows;
+    expect(rows.find(row => row.afternoon)?.start).toBe('13:00');
+    const noon = rows.findIndex(row => row.start === '12:00');
+    const afternoon = rows.findIndex(row => row.start === '13:00');
+    expect(rows[noon].cells[0].rowspan).toBe(afternoon - noon);
+    expect(rows[afternoon].cells[0].slots[0].id).toBe('slot-1');
+  });
+
+  it('shows existing lessons outside configured hours and days so they can be removed', () => {
+    const fixture = TestBed.createComponent(TimetableComponent);
+    fixture.detectChanges();
+    const early = { ...slotFixture(), startTime: '07:00', endTime: '08:00', durationMinutes: 60 };
+    const late = { ...slotFixture(), id: 'late', dayOfWeek: 'SATURDAY', startTime: '18:00', endTime: '19:00' };
+    fixture.componentInstance.grid.set({ ...grid('CLASSROOM', 'class-1'), dayStart: '07:30', slots: [early, late] });
+    fixture.detectChanges();
+    expect(fixture.componentInstance.hours()[0]).toBe('07:00');
+    expect(fixture.componentInstance.hours()).toContain('18:00');
+    expect(fixture.componentInstance.days()).toContain('SATURDAY');
+    expect(fixture.nativeElement.querySelectorAll('.course').length).toBe(2);
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="card-cancel-course"]').length).toBe(2);
+    expect(fixture.componentInstance.printPages()[0].days).toContain('SATURDAY');
+  });
+
   it('loads real room IDs and remembers the selected room across tabs', () => {
     component.ngOnInit();
     component.changeScope('ROOM');
@@ -271,7 +308,7 @@ describe('Timetable scope selection', () => {
   });
 
   for (const scope of ['CLASSROOM', 'TEACHER', 'ROOM'] as const) {
-    it(`renders room and cancellation inside a one-hour card without selecting it in ${scope}`, () => {
+    it(`keeps room and cancellation accessible by scrolling a compact one-hour card in ${scope}`, () => {
       const fixture = TestBed.createComponent(TimetableComponent);
       fixture.detectChanges();
       const slot = { ...slotFixture(), endTime: '09:00:00', durationMinutes: 60 };
@@ -284,7 +321,9 @@ describe('Timetable scope selection', () => {
       expect(fixture.componentInstance.selectedSlot()).toBeNull();
       const bounds = card.getBoundingClientRect();
       expect(bounds.height).toBeGreaterThan(0);
+      expect(bounds.height).toBeLessThanOrEqual(80);
       for (const element of [room, button]) {
+        card.scrollTop += element.getBoundingClientRect().bottom - bounds.bottom;
         const rect = element.getBoundingClientRect();
         expect(rect.height).toBeGreaterThan(0);
         expect(rect.top).toBeGreaterThanOrEqual(bounds.top);
@@ -298,7 +337,54 @@ describe('Timetable scope selection', () => {
     });
   }
 
+  it('keeps short consecutive lessons compact, scrollable and aligned with a half-hour offset', () => {
+    const fixture = TestBed.createComponent(TimetableComponent);
+    fixture.detectChanges();
+    const first = { ...slotFixture(), startTime: '08:30', endTime: '09:00', durationMinutes: 30,
+      teacherName: 'GONQUET ASTAIRE NAZAIRE ZRANGO' };
+    const second = { ...first, id: 'slot-2', startTime: '09:00', endTime: '09:30' };
+    fixture.componentInstance.grid.set({ ...grid('TEACHER', 'teacher-1'), slots: [first, second] });
+    fixture.detectChanges();
+    const cards: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('.course'));
+    expect(fixture.componentInstance.spanOf(first)).toBe(0.5);
+    expect(cards.length).toBe(2);
+    expect(cards[0].getBoundingClientRect().bottom).toBeLessThanOrEqual(cards[1].getBoundingClientRect().top);
+    for (const card of cards) {
+      expect(getComputedStyle(card).overflowY).toBe('auto');
+      expect(card.querySelector('[data-testid="card-room"]')).not.toBeNull();
+      card.scrollTop = card.scrollHeight;
+      expect(card.scrollTop).toBeGreaterThan(0);
+    }
+  });
+
   // ------------------------------------------------------- affectation des salles
+
+  it('shows a manually saved lesson immediately without reloading the grid', () => {
+    component.ngOnInit();
+    const saved = slotFixture();
+    timetables.createSlot.and.returnValue(of(saved));
+    component.formSubjectKey.set('s-mat|teacher-1');
+    component.formDay.set('MONDAY');
+    component.formHour.set('08');
+    component.formMinute.set('00');
+    component.createSlotManually();
+    expect(component.grid()?.slots).toContain(saved);
+    expect(component.slotsAt('MONDAY', '08:00')).toContain(saved);
+    expect(timetables.classroomGrid).toHaveBeenCalledTimes(1);
+    expect(component.loading()).toBeFalse();
+  });
+
+  it('ignores conflicts from a different hover cell and shows a dropped lesson immediately', () => {
+    component.ngOnInit();
+    const saved = slotFixture();
+    timetables.createSlot.and.returnValue(of(saved));
+    component.startPaletteDrag(paletteEntry(), dragEvent());
+    component.hoverCell.set(component.cellKey('TUESDAY', '08:00'));
+    component.hoverConflicts.set([{ kind: 'TEACHER_BUSY', message: 'Occupé' }]);
+    component.onDrop('MONDAY', '08:00', dragEvent());
+    expect(component.grid()?.slots).toContain(saved);
+    expect(timetables.classroomGrid).toHaveBeenCalledTimes(1);
+  });
 
   it('places a dropped course in the room chosen in the palette', () => {
     timetables.createSlot.and.callFake((payload: any) => of({ id: 'slot-new', ...payload }));

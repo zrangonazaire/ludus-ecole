@@ -25,6 +25,13 @@ import { ErrorStateComponent } from '@shared/ui/error-state/error-state.componen
 
 type TabKey = 'MINE' | 'PENDING' | 'ALL';
 
+interface FormLevel {
+  name: string;
+  roleCode: string;
+  mode: 'ALL' | 'ONE';
+  members: import('@core/models/approval-circuit.models').ApprovalCircuitMember[];
+}
+
 /**
  * Réductions de scolarité : demander, suivre le circuit, décider.
  *
@@ -325,7 +332,7 @@ export class DiscountsComponent implements OnInit {
       ?.name ?? '…';
   }
 
-  valueLabel(request: DiscountRequest): string {
+  valueLabel(request: Pick<DiscountRequest, 'discountType' | 'value'>): string {
     return request.discountType === 'PERCENTAGE'
       ? `${request.value} %`
       : this.moneyPipe.transform(request.value);
@@ -351,7 +358,14 @@ export class DiscountsComponent implements OnInit {
     return Math.round((done / request.totalLevels) * 100);
   }
 
-  formPreviewRequest(): DiscountRequest {
+  formPreviewRequest(): {
+    discountType: DiscountKind;
+    value: number;
+    levels: FormLevel[];
+    status: 'SUBMITTED';
+    currentLevel: number;
+    totalLevels: number;
+  } {
     return {
       discountType: this.formKind(),
       value: this.formValue() ?? 0,
@@ -359,7 +373,7 @@ export class DiscountsComponent implements OnInit {
       status: 'SUBMITTED',
       currentLevel: 1,
       totalLevels: this.formLevels().length
-    } as DiscountRequest;
+    };
   }
 
   formPreviewLevelNames(): string {

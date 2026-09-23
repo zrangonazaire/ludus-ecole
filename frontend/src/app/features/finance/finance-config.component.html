@@ -1,0 +1,570 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Paramètres financiers</h1>
+      <p class="page__meta">Gestion complète des frais, tarifs et circuits de validation</p>
+    </div>
+    <div class="page__actions">
+      @if (tab() === 'FEES') {
+        <button type="button" class="btn btn--primary" (click)="openType()">
+          <span aria-hidden="true">+</span> Nouveau type de frais
+        </button>
+      } @else if (tab() === 'PRICING') {
+        <button type="button" class="btn btn--primary" (click)="openSchedule()">
+          <span aria-hidden="true">+</span> Nouveau tarif
+        </button>
+      }
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'DASHBOARD'"
+            [attr.aria-selected]="tab() === 'DASHBOARD'"
+            (click)="tab.set('DASHBOARD')">
+      Tableau de bord
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'FEES'"
+            [attr.aria-selected]="tab() === 'FEES'"
+            (click)="tab.set('FEES')">
+      Types de frais
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'PRICING'"
+            [attr.aria-selected]="tab() === 'PRICING'"
+            (click)="tab.set('PRICING')">
+      Tarifs par niveau
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'INSTALMENTS'"
+            [attr.aria-selected]="tab() === 'INSTALMENTS'"
+            (click)="tab.set('INSTALMENTS')">
+      Échéances
+    </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'DISCOUNTS'"
+            [attr.aria-selected]="tab() === 'DISCOUNTS'"
+            (click)="tab.set('DISCOUNTS')">
+      Réductions
+    </button>
+  </nav>
+
+  <section class="approval-choice card">
+    <label for="cfg-fee-circuit">Circuit de validation « Frais et tarifs »</label>
+    <select id="cfg-fee-circuit" class="input" [ngModel]="circuitId()" (ngModelChange)="circuitId.set($event)">
+      <option value="">— Choisir un circuit —</option>
+      @for (c of feeCircuits(); track c.id) {
+        <option [value]="c.id">{{ c.code }} — {{ c.name }}</option>
+      }
+    </select>
+    <p>
+      Toute création, modification ou suppression de frais part dans ce circuit :
+      le changement ne s'applique qu'après la dernière validation.
+    </p>
+    @if (!circuits().length) {
+      <p class="approval-choice__hint">
+        Aucun circuit disponible — créez-en un dans
+        <a routerLink="/system-config">Configuration système</a>.
+      </p>
+    }
+  </section>
+
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement des paramètres financiers..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    @switch (tab()) {
+      @case ('DASHBOARD') {
+        <section class="config-dashboard card">
+          <div class="config-dashboard__header">
+            <h2 class="config-dashboard__title">Aperçu</h2>
+            <p class="config-dashboard__subtitle">Vue d'ensemble de la configuration financière</p>
+          </div>
+          <div class="config-dashboard__grid">
+            <div class="stat-card">
+              <div class="stat-card__icon">📋</div>
+              <div class="stat-card__content">
+                <span class="stat-card__value numeric">{{ totalFeeTypes() }}</span>
+                <span class="stat-card__label">Types de frais</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__icon">📌</div>
+              <div class="stat-card__content">
+                <span class="stat-card__value numeric">{{ mandatoryTypes() }}</span>
+                <span class="stat-card__label">Frais obligatoires</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__icon">📚</div>
+              <div class="stat-card__content">
+                <span class="stat-card__value numeric">{{ pricedLevels() }}</span>
+                <span class="stat-card__label">Niveaux tarifés</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__icon">✔</div>
+              <div class="stat-card__content">
+                <span class="stat-card__value">{{ circuits().length }}</span>
+                <span class="stat-card__label">Circuits créés</span>
+              </div>
+            </div>
+          </div>
+          <div class="config-dashboard__tips">
+            <h3>Conseils</h3>
+            <ul>
+              <li>Créez d'abord les types de frais avant de définir les tarifs</li>
+              <li>Chaque type de frais peut avoir plusieurs tarifs selon les niveaux</li>
+              <li>Les échéances permettent de diviser les paiements sur plusieurs dates</li>
+              <li>Un circuit de validation est requis pour les réductions de scolarité</li>
+            </ul>
+          </div>
+        </section>
+      }
+      @case ('FEES') {
+        <p class="lead">
+          Un type de frais décrit ce que l'établissement facture (code, catégorie,
+          périodicité). Son montant se règle ensuite niveau par niveau, dans
+          l'onglet « Tarifs par niveau ».
+        </p>
+
+        <section class="grid grid--3">
+          @for (type of types(); track type.id) {
+            <article class="type card">
+              <header class="type__head">
+                <div>
+                  <h2 class="type__name">{{ type.name }}</h2>
+                  <p class="type__meta numeric">
+                    {{ type.code }} · {{ categoryLabel(type.category) }} · {{ recurrenceLabel(type.recurrence) }}
+                  </p>
+                </div>
+                @if (type.mandatory) {
+                  <span class="pill pill--ok">Obligatoire</span>
+                } @else {
+                  <span class="pill pill--muted">Facultatif</span>
+                }
+              </header>
+
+              <div class="type__body">
+                @if (type.pricedLevels > 0) {
+                  <p class="type__usage numeric">Tarifé sur <strong>{{ type.pricedLevels }}</strong> niveau(x)</p>
+                } @else {
+                  <p class="type__usage type__usage--none">Aucun tarif défini</p>
+                }
+                @if (type.refundable) {
+                  <p class="type__note">Frais remboursable selon le règlement de l'établissement.</p>
+                }
+                @if (type.description) {
+                  <p class="type__note">{{ type.description }}</p>
+                }
+              </div>
+
+              <footer class="type__footer">
+                <button type="button" class="btn btn--ghost btn--sm" (click)="openType(type)">
+                  Modifier
+                </button>
+                <button type="button" class="btn btn--ghost btn--sm"
+                        [disabled]="type.pricedLevels > 0"
+                        [attr.title]="type.pricedLevels > 0 ? 'Supprimez d\'abord ses tarifs' : null"
+                        (click)="archiveType(type)">
+                  Archiver
+                </button>
+              </footer>
+            </article>
+          } @empty {
+            <div class="empty-state">
+              <p class="empty-state__title">Aucun type de frais déclaré.</p>
+              <p class="empty-state__text">
+                Commencez par ce que votre établissement facture : inscription,
+                scolarité, cantine, transport…
+              </p>
+              <button type="button" class="btn btn--primary" (click)="openType()">
+                Déclarer un type de frais
+              </button>
+            </div>
+          }
+        </section>
+      }
+      @case ('PRICING') {
+        @if (types().length === 0) {
+          <div class="empty-state">
+            <p class="empty-state__title">Aucun type de frais déclaré.</p>
+            <p class="empty-state__text">
+              Un tarif rattache un type de frais à un niveau : déclarez d'abord
+              ce que votre établissement facture.
+            </p>
+            <button type="button" class="btn btn--primary" (click)="tab.set('FEES')">
+              Aller aux types de frais
+            </button>
+          </div>
+        } @else if (levels().length === 0) {
+          <div class="empty-state">
+            <p class="empty-state__title">Aucun niveau défini.</p>
+            <p class="empty-state__text">
+              Les tarifs se rattachent aux niveaux : créez-les d'abord dans la
+              configuration de l'établissement.
+            </p>
+            <a class="btn btn--primary" routerLink="/setup">Ouvrir la configuration</a>
+          </div>
+        } @else {
+          <section class="levels">
+            @for (level of levels(); track level.levelId) {
+              <article class="level card">
+                <div class="level__head">
+                  <div class="level__identity">
+                    <span class="level__name">{{ level.levelName }}</span>
+                    <span class="level__cycle">{{ level.cycleName }}</span>
+                  </div>
+                  <span class="level__stats numeric">
+                    {{ level.scheduleCount }} tarif(s) · Obligatoires
+                    {{ format(level.mandatoryTotal) }} · Facultatifs
+                    {{ format(level.optionalTotal) }}
+                  </span>
+                  @if (level.ready) {
+                    <span class="pill pill--ok">Prêt</span>
+                  } @else {
+                    <span class="pill pill--warn">Incomplet</span>
+                  }
+                </div>
+
+                <div class="level__body">
+                  @if (level.schedules.length > 0) {
+                    <div class="table-wrapper">
+                      <table class="table">
+                        <thead>
+                          <tr>
+                            <th>Frais</th>
+                            <th>Libellé</th>
+                            <th class="numeric">Montant</th>
+                            <th class="numeric">Échéances</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (schedule of level.schedules; track schedule.id) {
+                            <tr>
+                              <td>
+                                {{ schedule.feeTypeName }}
+                                <span class="muted">{{ schedule.feeTypeCode }}</span>
+                              </td>
+                              <td>{{ schedule.label || '—' }}</td>
+                              <td class="numeric">
+                                {{ format(schedule.totalAmount) }} {{ schedule.currency }}
+                              </td>
+                              <td class="numeric">{{ schedule.instalments.length }}</td>
+                              <td class="cell-actions">
+                                <button type="button" class="btn btn--ghost btn--sm"
+                                        (click)="openSchedule(level.levelId, schedule.feeTypeId)">
+                                  Modifier
+                                </button>
+                                <button type="button" class="btn btn--ghost btn--sm"
+                                        [disabled]="schedule.locked"
+                                        [attr.title]="schedule.locked ? 'Ce tarif est déjà facturé' : null"
+                                        (click)="deleteSchedule(schedule)">
+                                  Supprimer
+                                </button>
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else {
+                    <p class="level__empty">Aucun frais défini pour ce niveau.</p>
+                  }
+
+                  <footer class="level__foot">
+                    <button type="button" class="btn btn--secondary btn--sm"
+                            [disabled]="availableFor(level).length === 0"
+                            (click)="openSchedule(level.levelId)">
+                      Ajouter un tarif
+                    </button>
+                  </footer>
+                </div>
+              </article>
+            }
+          </section>
+        }
+      }
+      @case ('INSTALMENTS') {
+        <p class="lead">
+          Toutes les échéances planifiées, tous frais confondus, triées par date.
+        </p>
+
+        @if (instalmentRows().length === 0) {
+          <div class="empty-state">
+            <p class="empty-state__title">Aucune échéance planifiée.</p>
+            <p class="empty-state__text">
+              Définissez d'abord des tarifs par niveau : chaque tarif génère son
+              propre échéancier.
+            </p>
+            <button type="button" class="btn btn--primary" (click)="tab.set('PRICING')">
+              Aller aux tarifs
+            </button>
+          </div>
+        } @else {
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Niveau</th>
+                  <th>Frais</th>
+                  <th>Échéance</th>
+                  <th class="numeric">Date</th>
+                  <th class="numeric">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of instalmentRows(); track $index) {
+                  <tr>
+                    <td>{{ row.levelName }}</td>
+                    <td>{{ row.feeTypeName }}</td>
+                    <td>{{ row.label }}</td>
+                    <td class="numeric">{{ row.dueDate | date:'dd/MM/yyyy' }}</td>
+                    <td class="numeric">{{ format(row.amount) }} {{ row.currency }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="4"><strong>Total planifié</strong></td>
+                  <td class="numeric">
+                    <strong>{{ format(instalmentTotal()) }} {{ currency() }}</strong>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        }
+      }
+      @case ('DISCOUNTS') {
+        <section class="card config-discounts">
+          <h2 class="config-discounts__title">Remises, bourses et réductions</h2>
+          <p>
+            Les réductions de scolarité suivent leur propre circuit de validation,
+            sur un écran dédié. Vérifiez ici qu'un circuit « Remises » est en place.
+          </p>
+          @if (discountCircuits().length > 0) {
+            <ul class="config-discounts__list">
+              @for (c of discountCircuits(); track c.id) {
+                <li>{{ c.code }} — {{ c.name }}</li>
+              }
+            </ul>
+          } @else {
+            <p class="config-discounts__warn">
+              Aucun circuit « Remises » configuré — créez-en un dans Configuration système.
+            </p>
+          }
+          <a class="btn btn--primary" routerLink="/discounts">
+            Ouvrir l'espace Remises et bourses
+          </a>
+        </section>
+      }
+    }
+  }
+
+  @if (panel(); as openPanel) {
+    <div class="drawer-backdrop" (click)="closePanel()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true">
+      @if (openPanel === 'TYPE') {
+        <header class="drawer__head">
+          <h2 class="drawer__title">
+            {{ editingType() ? 'Modifier le type de frais' : 'Nouveau type de frais' }}
+          </h2>
+          <button type="button" class="drawer__close" (click)="closePanel()" aria-label="Fermer">&times;</button>
+        </header>
+        <form class="drawer__body" [formGroup]="typeForm">
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label field__label--required" for="cfg-name">Nom</label>
+              <input id="cfg-name" class="input" formControlName="name"
+                     placeholder="Scolarité annuelle" />
+            </div>
+            <div class="field">
+              <label class="field__label field__label--required" for="cfg-code">Code</label>
+              <input id="cfg-code" class="input" formControlName="code" placeholder="SCOL" />
+              <span class="field__hint">
+                Majuscules, chiffres et tirets bas, sans espace : ce code figure sur les reçus.
+              </span>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label field__label--required" for="cfg-category">Catégorie</label>
+              <select id="cfg-category" class="select" formControlName="category">
+                @for (item of categories; track item.code) {
+                  <option [value]="item.code">{{ item.label }}</option>
+                }
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label field__label--required" for="cfg-recurrence">Périodicité</label>
+              <select id="cfg-recurrence" class="select" formControlName="recurrence">
+                @for (item of recurrences; track item.code) {
+                  <option [value]="item.code">{{ item.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <label class="check">
+            <input type="checkbox" formControlName="mandatory" />
+            Frais obligatoire (généré à chaque inscription)
+          </label>
+          <label class="check">
+            <input type="checkbox" formControlName="refundable" />
+            Remboursable en cas de départ
+          </label>
+
+          <div class="field">
+            <label class="field__label" for="cfg-description">Description</label>
+            <textarea id="cfg-description" class="textarea" rows="3"
+                      formControlName="description"
+                      placeholder="Facultatif : rappel interne"></textarea>
+          </div>
+
+          <p class="hint-block">
+            L'écriture part dans le circuit choisi en haut de page : rien ne
+            s'applique avant la dernière validation.
+          </p>
+        </form>
+        <footer class="drawer__foot">
+          <button type="button" class="btn btn--ghost" (click)="closePanel()">Annuler</button>
+          <button type="button" class="btn btn--primary" [disabled]="saving()" (click)="saveType()">
+            {{ editingType() ? 'Envoyer la modification' : 'Envoyer la création' }}
+          </button>
+        </footer>
+      }
+      @if (openPanel === 'SCHEDULE') {
+        <header class="drawer__head">
+          <h2 class="drawer__title">
+            {{ editingSchedule() ? 'Modifier le tarif' : 'Nouveau tarif' }}
+          </h2>
+          <button type="button" class="drawer__close" (click)="closePanel()" aria-label="Fermer">&times;</button>
+        </header>
+        <form class="drawer__body" [formGroup]="scheduleForm">
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label field__label--required" for="sch-type">Type de frais</label>
+              <select id="sch-type" class="select" formControlName="feeTypeId">
+                <option value="">Choisir…</option>
+                @for (type of types(); track type.id) {
+                  <option [value]="type.id">{{ type.name }} ({{ type.code }})</option>
+                }
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label field__label--required" for="sch-level">Niveau</label>
+              <select id="sch-level" class="select" formControlName="levelId">
+                <option value="">Choisir…</option>
+                @for (level of levels(); track level.levelId) {
+                  <option [value]="level.levelId">{{ level.levelName }} ({{ level.cycleName }})</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field__label" for="sch-label">Libellé affiché</label>
+              <input id="sch-label" class="input" formControlName="label"
+                     placeholder="Nom par défaut si vide" />
+            </div>
+            <div class="field">
+              <label class="field__label field__label--required" for="sch-amount">
+                Montant total ({{ currency() }})
+              </label>
+              <input id="sch-amount" class="input" type="number" min="1" formControlName="totalAmount" />
+            </div>
+          </div>
+
+          <label class="check">
+            <input type="checkbox" formControlName="appliesToNewStudents" />
+            Appliqué aux nouveaux élèves
+          </label>
+          <label class="check">
+            <input type="checkbox" formControlName="appliesToReturningStudents" />
+            Appliqué aux réinscriptions
+          </label>
+
+          <p class="drawer__section">Échéancier</p>
+          <div class="mode-row">
+            <label class="check">
+              <input type="radio" name="sch-mode" [checked]="scheduleMode() === 'AUTO'"
+                     (change)="setScheduleMode('AUTO')" />
+              Répartition automatique
+            </label>
+            <label class="check">
+              <input type="radio" name="sch-mode" [checked]="scheduleMode() === 'MANUAL'"
+                     (change)="setScheduleMode('MANUAL')" />
+              Échéances personnalisées
+            </label>
+          </div>
+
+          @if (scheduleMode() === 'AUTO') {
+            <div class="spread-bar">
+              <div class="field">
+                <label class="field__label field__label--required" for="sch-count">Nombre d'échéances</label>
+                <input id="sch-count" class="input" type="number" min="1" max="24"
+                       formControlName="instalmentCount" />
+              </div>
+              <div class="field">
+                <label class="field__label field__label--required" for="sch-first">Première échéance</label>
+                <input id="sch-first" class="input" type="date" formControlName="firstDueDate" />
+              </div>
+              <div class="field">
+                <label class="field__label" for="sch-months">Mois entre échéances</label>
+                <input id="sch-months" class="input" type="number" min="1" max="12"
+                       formControlName="monthsBetweenInstalments" />
+              </div>
+            </div>
+            <p class="hint-block">
+              Le serveur répartit le montant en parts égales à partir de la première date.
+            </p>
+          } @else {
+            <div class="inst-rows" formArrayName="instalments">
+              @for (row of instalments.controls; track $index) {
+                <div class="inst-row" [formGroupName]="$index">
+                  <input class="input" formControlName="label" placeholder="Libellé (ex. 1ère échéance)" />
+                  <input class="input" type="number" min="1" formControlName="amount" placeholder="Montant" />
+                  <input class="input" type="date" formControlName="dueDate" />
+                  <button type="button" class="btn btn--ghost btn--sm"
+                          [disabled]="instalments.length <= 1"
+                          (click)="removeInstalmentRow($index)" aria-label="Retirer l'échéance">
+                    &times;
+                  </button>
+                </div>
+              }
+            </div>
+            <div class="mode-row">
+              <button type="button" class="btn btn--ghost btn--sm" (click)="addInstalmentRow()">
+                + Ajouter une échéance
+              </button>
+              <p class="balance-note" [class.balance-note--bad]="!balanced()">
+                Saisi : {{ format(plannedSum()) }} / {{ format(scheduleForm.controls.totalAmount.value) }}
+              </p>
+            </div>
+          }
+
+          <p class="hint-block">
+            L'échéancier part dans le circuit choisi en haut de page : rien ne
+            s'applique avant la dernière validation.
+          </p>
+        </form>
+        <footer class="drawer__foot">
+          <button type="button" class="btn btn--ghost" (click)="closePanel()">Annuler</button>
+          <button type="button" class="btn btn--primary" [disabled]="saving()" (click)="saveSchedule()">
+            {{ editingSchedule() ? 'Envoyer la modification' : 'Envoyer le tarif' }}
+          </button>
+        </footer>
+      }
+
+    </aside>
+  }
+
+</div>
+

@@ -18,7 +18,17 @@ import { NotificationService } from '@core/services/notification.service';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
 import { ErrorStateComponent } from '@shared/ui/error-state/error-state.component';
 
+interface PrintRow {
+  start: string;
+  end: string;
+  afternoon: boolean;
+  cells: { day: string; slots: TimetableSlot[]; rowspan: number }[];
+}
+
 interface PrintPage {
+  rows: PrintRow[];
+  roomName?: string;
+  mainTeacherName?: string;
   label: string;
   scopeId: string;
   scope: TimetableScope;
@@ -356,8 +366,8 @@ export class TimetableComponent implements OnInit {
       return [];
     }
     const step = grid.stepMinutes > 0 ? grid.stepMinutes : 60;
-    const start = this.toMinutes(grid.dayStart);
-    const end = this.toMinutes(grid.dayEnd);
+    const start = Math.min(this.toMinutes(grid.dayStart), ...grid.slots.map(slot => this.toMinutes(slot.startTime)));
+    const end = Math.max(this.toMinutes(grid.dayEnd), ...grid.slots.map(slot => this.toMinutes(slot.endTime)));
     const slots: string[] = [];
     for (let m = start; m < end; m += step) {
       slots.push(this.toLabel(m));
@@ -365,7 +375,12 @@ export class TimetableComponent implements OnInit {
     return slots;
   });
 
-  readonly days = computed<string[]>(() => this.grid()?.days ?? []);
+  readonly days = computed<string[]>(() => {
+    const grid = this.grid();
+    if (!grid) return [];
+    const present = new Set([...grid.days, ...grid.slots.map(slot => slot.dayOfWeek)]);
+    return Object.keys(DAY_LABELS).filter(day => present.has(day));
+  });
 
   /** Salles proposables : une salle archivée n'accueille plus de cours. */
   readonly activeRooms = computed<Room[]>(
@@ -420,7 +435,23 @@ export class TimetableComponent implements OnInit {
    */
   spanOf(slot: TimetableSlot, stepMinutes = this.grid()?.stepMinutes ?? 60): number {
     const step = stepMinutes > 0 ? stepMinutes : 60;
-    return Math.max(1, Math.round(slot.durationMinutes / step));
+    return Math.max(1 / step, (this.toMinutes(slot.endTime) - this.toMinutes(slot.startTime)) / step);
+  }
+
+  /** Keep the day compact; short cards can scroll and open their full details. */
+  readonly screenRowHeight = computed(() => 80);
+
+  private showSavedSlot(slot: TimetableSlot, source: TimetableGrid): void {
+    const current = this.grid();
+    if (!current || current.scope !== source.scope || current.scopeId !== source.scopeId) return;
+    const slots = [...current.slots.filter(item => item.id !== slot.id), slot];
+    this.grid.set({ ...current, slots,
+      totalMinutes: slots.reduce((sum, item) => sum + (this.toMinutes(item.endTime) - this.toMinutes(item.startTime)), 0) });
+    this.palette.update(entries => entries.map(entry => {
+      const placedMinutes = slots.filter(item => item.subjectId === entry.subjectId && item.teacherId === entry.teacherId)
+        .reduce((sum, item) => sum + this.toMinutes(item.endTime) - this.toMinutes(item.startTime), 0);
+      return { ...entry, placedMinutes, complete: !!entry.weeklyHours && placedMinutes >= entry.weeklyHours * 60 };
+    }));
   }
 
   /**
@@ -579,16 +610,20 @@ export class TimetableComponent implements OnInit {
           this.timetables.createSlot(payload)
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
-              next: () => {
+              next: (slot) => {
+                this.showSavedSlot(slot, grid);
                 this.saving.set(false);
                 this.notifications.success(
                   `${entry?.subjectName ?? 'Cours'} — ` +
                   `${this.dayLabel(payload.dayOfWeek).toLowerCase()} ` +
                   `${payload.startTime}–${payload.endTime}.`,
                   'Cours ajouté');
-                this.load();
+
               },
-              error: () => this.saving.set(false)
+              error: (err) => {
+                this.saving.set(false);
+                this.formError.set(err?.error?.message ?? "Impossible d’ajouter le cours. Réessayez.");
+              }
             });
         },
         error: () => this.saving.set(false)
@@ -672,10 +707,11 @@ export class TimetableComponent implements OnInit {
   onDrop(day: string, hour: string, event: DragEvent): void {
     event.preventDefault();
     const dragged = this.dragged;
-    if (!dragged || !this.grid()?.editable || this.saving() || this.cancelling()) {
+    const grid = this.grid();
+    if (!dragged || !grid?.editable || this.saving() || this.cancelling()) {
       return;
     }
-    if (this.hoverConflicts().length > 0) {
+    if (this.hoverCell() === this.cellKey(day, hour) && this.hoverConflicts().length > 0) {
       this.notifications.error(this.hoverConflicts()[0].message, 'Placement refusé');
       this.endDrag();
       return;
@@ -688,10 +724,11 @@ export class TimetableComponent implements OnInit {
       : this.timetables.createSlot(payload);
 
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
+      next: (slot) => {
+        this.showSavedSlot(slot, grid);
         this.saving.set(false);
         this.endDrag();
-        this.load();
+        this.notifications.success("Le cours est affiché dans le planning.", "Cours enregistré");
       },
       error: () => {
         this.saving.set(false);
@@ -830,16 +867,55 @@ export class TimetableComponent implements OnInit {
   private buildPrintPage(grid: TimetableGrid): PrintPage {
     const dayStartMin = this.toMinutes(grid.dayStart);
     const dayEndMin = this.toMinutes(grid.dayEnd);
-    const hours: string[] = [];
-    for (let m = dayStartMin; m < dayEndMin; m += grid.stepMinutes) {
-      hours.push(this.toLabel(m));
+    // Include exact course boundaries so short and multi-period lessons print faithfully.
+    const boundaries = new Set<number>([dayStartMin, dayEndMin]);
+    for (let m = dayStartMin; m < dayEndMin; m += grid.stepMinutes) boundaries.add(m);
+    for (const slot of grid.slots) {
+      boundaries.add(this.toMinutes(slot.startTime));
+      boundaries.add(this.toMinutes(slot.endTime));
     }
+    const afternoonStart = 13 * 60;
+    if (Math.min(...boundaries) <= afternoonStart && Math.max(...boundaries) > afternoonStart) {
+      boundaries.add(afternoonStart);
+    }
+    const times = [...boundaries].sort((a, b) => a - b);
+    const rows: PrintRow[] = times.slice(0, -1).map((start, index) => ({
+      start: this.toLabel(start),
+      end: this.toLabel(times[index + 1]),
+      afternoon: start === afternoonStart,
+      cells: this.days().flatMap(day => {
+        const active = grid.slots.filter(slot => slot.dayOfWeek === day
+          && this.toMinutes(slot.startTime) <= start && this.toMinutes(slot.endTime) > start);
+        // Conflicting lessons stay visible together instead of covering one another.
+        if (active.length === 1) {
+          const slot = active[0];
+          const overlaps = grid.slots.some(other => other.id !== slot.id && other.dayOfWeek === day
+            && this.toMinutes(other.startTime) < this.toMinutes(slot.endTime)
+            && this.toMinutes(other.endTime) > this.toMinutes(slot.startTime));
+          if (!overlaps) {
+            // Split merged lessons at 13:00 so no cell crosses the section heading.
+            if (this.toMinutes(slot.startTime) < start && start !== afternoonStart) return [];
+            const end = start < afternoonStart
+              ? Math.min(this.toMinutes(slot.endTime), afternoonStart)
+              : this.toMinutes(slot.endTime);
+            return [{ day, slots: active, rowspan: times.indexOf(end) - index }];
+          }
+        }
+        return [{ day, slots: active, rowspan: 1 }];
+      })
+    }));
+    const classroom = grid.scope === 'CLASSROOM'
+      ? this.classList().find(item => item.id === grid.scopeId) : undefined;
+    const hours = rows.map(row => row.start);
 
     return {
+      rows,
+      roomName: classroom?.defaultRoomName,
+      mainTeacherName: classroom?.mainTeacherName,
       label: grid.scopeLabel,
       scopeId: grid.scopeId,
       scope: grid.scope,
-      days: grid.days,
+      days: this.days(),
       hours,
       stepMinutes: grid.stepMinutes,
       slots: grid.slots,
