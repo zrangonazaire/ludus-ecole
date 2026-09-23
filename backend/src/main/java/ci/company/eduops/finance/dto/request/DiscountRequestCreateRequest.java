@@ -42,22 +42,9 @@ public class DiscountRequestCreateRequest {
     @DecimalMin(value = "0.01")
     private BigDecimal value;
 
-    @Valid
     @NotNull
-    @Size(min = 1, max = 5)
-    private List<LevelInput> levels;
+    private UUID circuitId;
 
-    @Getter
-    @Setter
-    public static class LevelInput {
-
-        @NotBlank
-        @Size(max = 100)
-        private String name;
-
-        /** Code du profil (rôle) habilité à valider ce palier. */
-        @NotBlank
-        @Size(max = 60)
-        private String roleCode;
-    }
+    /** Optional fee type, e.g. tuition. Null targets all outstanding fees. */
+    private UUID feeTypeId;
 }

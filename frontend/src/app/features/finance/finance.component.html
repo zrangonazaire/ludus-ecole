@@ -19,13 +19,23 @@
         <button type="button" class="btn btn--primary" (click)="openType()">
           <span aria-hidden="true">+</span> Nouveau type de frais
         </button>
-      } @else {
+      } @else if (tab() === 'TARIFS') {
         <button type="button" class="btn btn--primary" (click)="openApply()">
           Appliquer à plusieurs niveaux
         </button>
       }
     </div>
   </header>
+
+  <section class="approval-choice card">
+    <label for="fee-circuit">Circuit des demandes de frais et tarifs</label>
+    <select id="fee-circuit" class="input" [ngModel]="circuitId()" (ngModelChange)="circuitId.set($event)">
+      <option value="">— Choisir un circuit —</option>
+      @for (c of circuits(); track c.id) { <option [value]="c.id">{{ c.code }} — {{ c.name }}</option> }
+    </select>
+    <p>Création, modification, suppression et application des frais nécessitent une validation. Le dernier niveau applique le changement.</p>
+    @if (!circuits().length) { <p>Créez un circuit « Types de frais et tarifs » dans Configuration système.</p> }
+  </section>
 
   <nav class="tabs" role="tablist">
     <button type="button" class="tabs__item" role="tab"
@@ -43,6 +53,8 @@
             (click)="changeTab('TYPES')">
       Types de frais
     </button>
+    <button type="button" class="tabs__item" role="tab" [class.tabs__item--on]="tab() === 'REQUESTS'"
+      [attr.aria-selected]="tab() === 'REQUESTS'" (click)="changeTab('REQUESTS')">Demandes de validation ({{ pendingCount() }})</button>
   </nav>
 
   @if (loading()) {
@@ -50,6 +62,44 @@
   } @else if (error()) {
     <eduops-error-state (retry)="load()" />
   } @else {
+
+    @if (tab() === 'REQUESTS') {
+      <section class="approval-requests">
+        <button type="button" class="btn btn--ghost" (click)="loadRequests()">Actualiser les demandes</button>
+        @if (requestsError()) { <eduops-error-state (retry)="loadRequests()" /> }
+        @for (request of requests(); track request.id) {
+          <article class="card approval-request">
+            <h2>{{ request.label }}</h2>
+            <p>{{ statusLabels[request.status] }} · {{ request.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+            @for (detail of requestDetails(request); track $index) { <p>{{ detail }}</p> }
+            <h3>{{ request.circuitName }}</h3>
+            <ol>
+              @for (stage of request.stages; track $index) {
+                <li [class.current-stage]="$index + 1 === request.currentLevel && request.status === 'SUBMITTED'">
+                  <strong>{{ stage.code }}</strong> — {{ stage.mode === 'ALL' ? 'Tous les membres requis' : 'Un membre suffit' }}
+                  @if (stage.status === 'APPROVED') { · Validé }
+                  @if (stage.status === 'REJECTED') { · Refusé }
+                  @for (member of stage.members; track member.userId) {
+                    <p>{{ member.name }} : {{ member.decision === 'APPROVED' ? 'Validé' : member.decision === 'REJECTED' ? 'Refusé' : 'En attente' }}
+                      @if (member.decidedAt) { · {{ member.decidedAt | date:'dd/MM/yyyy HH:mm' }} }
+                      @if (member.comment) { — {{ member.comment }} }
+                    </p>
+                  }
+                </li>
+              }
+            </ol>
+            @if (request.awaitingMyDecision) {
+              <label [for]="'comment-' + request.id">Commentaire (obligatoire pour refuser)</label>
+              <textarea class="input" [id]="'comment-' + request.id" [(ngModel)]="comments[request.id]" maxlength="2000"></textarea>
+              <div class="page__actions">
+                <button type="button" class="btn btn--primary" [disabled]="!!decidingId()" (click)="decide(request, 'APPROVE')">Valider ce niveau</button>
+                <button type="button" class="btn btn--ghost" [disabled]="!!decidingId()" (click)="decide(request, 'REJECT')">Refuser</button>
+              </div>
+            }
+          </article>
+        } @empty { @if (!requestsError()) { <p>Aucune demande de frais.</p> } }
+      </section>
+    }
 
     <!-- ═══════════════ Types de frais ═══════════════ -->
     @if (tab() === 'TYPES') {

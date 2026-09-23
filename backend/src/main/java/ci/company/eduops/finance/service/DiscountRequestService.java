@@ -55,26 +55,30 @@ public class DiscountRequestService {
     private final StudentRepository students;
     private final AcademicYearRepository years;
     private final StudentFeeRepository feeLines;
-    private final AppRoleRepository roles;
     private final CurrentUser currentUser;
     private final AuditService auditService;
+    private final ci.company.eduops.approval.service.ApprovalExecutionService approvals;
+    private final com.fasterxml.jackson.databind.ObjectMapper mapper;
+    private final ci.company.eduops.finance.repository.FeeTypeRepository feeTypes;
 
     public DiscountRequestService(DiscountRequestRepository requests,
                                   DiscountRequestLevelRepository levels,
                                   StudentRepository students,
                                   AcademicYearRepository years,
                                   StudentFeeRepository feeLines,
-                                  AppRoleRepository roles,
                                   CurrentUser currentUser,
-                                  AuditService auditService) {
+                                  AuditService auditService,
+                                  ci.company.eduops.approval.service.ApprovalExecutionService approvals,
+                                  com.fasterxml.jackson.databind.ObjectMapper mapper,
+                                  ci.company.eduops.finance.repository.FeeTypeRepository feeTypes) {
         this.requests = requests;
         this.levels = levels;
         this.students = students;
         this.years = years;
         this.feeLines = feeLines;
-        this.roles = roles;
         this.currentUser = currentUser;
         this.auditService = auditService;
+        this.approvals = approvals; this.mapper = mapper; this.feeTypes = feeTypes;
     }
 
     // ------------------------------------------------------------------ lecture
@@ -122,6 +126,9 @@ public class DiscountRequestService {
                         "Aucune année scolaire active : impossible de demander une réduction."));
 
         validateValue(input.getDiscountType(), input.getValue());
+        if (input.getFeeTypeId() != null) feeTypes.findById(input.getFeeTypeId())
+                .filter(t -> t.getSchool().getId().equals(schoolId))
+                .orElseThrow(() -> BusinessException.of(ErrorCode.FEE_TYPE_NOT_FOUND));
 
         DiscountRequest request = new DiscountRequest();
         request.setSchoolId(schoolId);
@@ -132,25 +139,22 @@ public class DiscountRequestService {
         request.setReason(input.getReason());
         request.setDiscountType(input.getDiscountType());
         request.setValue(input.getValue());
-        request.setComputedAmount(computeDiscount(schoolId, student.getId(),
-                year.getId(), input.getDiscountType(), input.getValue()));
-        request.setTotalLevels(input.getLevels().size());
+        request.setFeeTypeId(input.getFeeTypeId());
+        BigDecimal due = eligibleLines(request).stream().map(StudentFee::outstanding)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (due.signum() <= 0) throw BusinessException.of(ErrorCode.DISCOUNT_NO_OUTSTANDING);
+        request.setComputedAmount(input.getDiscountType() == DiscountType.PERCENTAGE
+                ? MoneyUtils.normalize(due.multiply(input.getValue()).divide(new BigDecimal("100")))
+                : MoneyUtils.normalize(input.getValue().min(due)));
+        if (request.getComputedAmount().signum() <= 0) throw BusinessException.of(ErrorCode.DISCOUNT_VALUE_INVALID);
+        request.setTotalLevels(1);
         request.setCurrentLevel(1);
         request.setCreatedBy(userId);
         requests.save(request);
 
-        int number = 1;
-        for (DiscountRequestCreateRequest.LevelInput levelInput : input.getLevels()) {
-            AppRole role = findRole(schoolId, levelInput.getRoleCode());
-            DiscountRequestLevel level = new DiscountRequestLevel();
-            level.setRequest(request);
-            level.setSchoolId(schoolId);
-            level.setLevelNumber(number++);
-            level.setName(levelInput.getName().trim());
-            level.setRoleCode(role.getCode());
-            level.setRoleLabel(role.getLabel());
-            levels.save(level);
-        }
+        var execution = approvals.submit(input.getCircuitId(), "DISCOUNT", "DISCOUNT",
+                request.getId(), request.getLabel(), mapper.valueToTree(input));
+        request.setTotalLevels(execution.getStages().size());
         auditService.logCreate("DiscountRequest", request.getId(), request.getReference(),
                 Map.of("student", student.getFirstName() + " " + student.getLastName(),
                         "levels", request.getTotalLevels()));
@@ -166,57 +170,24 @@ public class DiscountRequestService {
      */
     @Transactional
     public DiscountRequestResponse decide(UUID requestId, DiscountRequestDecisionRequest input) {
-        UUID schoolId = requireSchool();
-        DiscountRequest request = requests.findByIdAndSchoolId(requestId, schoolId)
+        DiscountRequest request = requests.lockByIdAndSchoolId(requestId, requireSchool())
                 .orElseThrow(() -> BusinessException.of(ErrorCode.DISCOUNT_REQUEST_NOT_FOUND));
-        if (request.getStatus() != DiscountRequestStatus.SUBMITTED) {
-            throw BusinessException.of(ErrorCode.DISCOUNT_REQUEST_ALREADY_DECIDED,
-                    "Seule une demande soumise peut être validée.");
-        }
-        List<DiscountRequestLevel> chain =
-                levels.findByRequestIdOrderByLevelNumberAsc(requestId);
-        DiscountRequestLevel level = chain.stream()
-                .filter(l -> l.getLevelNumber() == request.getCurrentLevel())
-                .findFirst()
-                .orElseThrow(() -> BusinessException.of(ErrorCode.DISCOUNT_REQUEST_NOT_FOUND));
-
-        boolean administrator =
-                currentUser.hasRole("SUPER_ADMIN") || currentUser.hasRole("SCHOOL_ADMIN");
-        if (!administrator && !currentUser.hasRole(level.getRoleCode())
-                && !currentUser.hasPermission("DISCOUNT_REQUEST_DECIDE_ALL")) {
-            throw BusinessException.of(ErrorCode.ACCESS_DENIED,
-                    "Ce palier est réservé au profil « " + level.getRoleLabel() + " ».");
-        }
-
-        boolean approved = input.getDecision()
-                == DiscountRequestDecisionRequest.Decision.APPROVE;
-        level.setStatus(approved
-                ? DiscountRequestLevelStatus.APPROVED
-                : DiscountRequestLevelStatus.REJECTED);
-        level.setApproverId(currentUser.requireId());
-        level.setApproverName(displayName());
-        level.setComment(input.getComment());
-        level.setDecidedAt(OffsetDateTime.now());
-
-        if (!approved) {
+        if (request.getStatus() != DiscountRequestStatus.SUBMITTED)
+            throw BusinessException.of(ErrorCode.DISCOUNT_REQUEST_ALREADY_DECIDED);
+        var execution = approvals.decide(requestId,
+                input.getDecision() == DiscountRequestDecisionRequest.Decision.APPROVE, input.getComment());
+        request.setCurrentLevel(execution.getCurrentLevel());
+        if ("REJECTED".equals(execution.getStatus())) {
             request.setStatus(DiscountRequestStatus.REJECTED);
-            request.setCurrentLevel(level.getLevelNumber());
-            request.setDecidedAt(OffsetDateTime.now());
-            request.setDecidedBy(currentUser.requireId());
             request.setRejectionReason(input.getComment());
-            auditService.logCancel("DiscountRequest", request.getId(), request.getReference(),
-                    "Refus au niveau " + level.getName()
-                            + (input.getComment() == null ? "" : " : " + input.getComment()));
-        } else if (level.getLevelNumber() < request.getTotalLevels()) {
-            request.setCurrentLevel(level.getLevelNumber() + 1);
-            auditService.logValidate("DiscountRequest", request.getId(), request.getReference(),
-                    "Approuvé au niveau " + level.getName() + " — en attente du suivant.");
-        } else {
+        } else if ("APPROVED".equals(execution.getStatus())) {
             request.setStatus(DiscountRequestStatus.APPROVED);
+            // Final approval and financial effect commit atomically.
+            apply(requestId);
+        }
+        if (request.getStatus() != DiscountRequestStatus.SUBMITTED) {
             request.setDecidedAt(OffsetDateTime.now());
             request.setDecidedBy(currentUser.requireId());
-            auditService.logValidate("DiscountRequest", request.getId(), request.getReference(),
-                    "Circuit complet — réduction approuvée.");
         }
         return get(requestId);
     }
@@ -230,47 +201,49 @@ public class DiscountRequestService {
      */
     @Transactional
     public DiscountRequestResponse apply(UUID requestId) {
-        UUID schoolId = requireSchool();
-        DiscountRequest request = requests.findByIdAndSchoolId(requestId, schoolId)
+        DiscountRequest request = requests.lockByIdAndSchoolId(requestId, requireSchool())
                 .orElseThrow(() -> BusinessException.of(ErrorCode.DISCOUNT_REQUEST_NOT_FOUND));
-        if (request.getStatus() != DiscountRequestStatus.APPROVED) {
+        if (request.getStatus() != DiscountRequestStatus.APPROVED)
             throw BusinessException.of(ErrorCode.DISCOUNT_REQUEST_NOT_APPROVED,
-                    "La réduction doit être approuvée par tous les niveaux avant application.");
-        }
-        BigDecimal due = feeLines.outstandingForStudent(request.getStudentId(), request.getAcademicYearId());
-        if (due.compareTo(BigDecimal.ZERO) <= 0) {
-            throw BusinessException.of(ErrorCode.DISCOUNT_NO_OUTSTANDING,
-                    "Aucun montant dû : la réduction n'a rien à réduire.");
-        }
-        BigDecimal remaining = MoneyUtils.normalize(request.getValue());
+                    "La réduction doit être approuvée et ne peut être appliquée qu'une seule fois.");
+        var execution = approvals.lock(requestId);
+        if (!"APPROVED".equals(execution.getStatus()))
+            throw BusinessException.of(ErrorCode.DISCOUNT_REQUEST_NOT_APPROVED);
+        var ids = eligibleLines(request).stream().map(StudentFee::getId).sorted().toList();
+        List<StudentFee> lines = ids.isEmpty() ? List.of() : feeLines.lockAllByIds(ids);
+        lines = lines.stream().filter(f -> f.getStatus() != ci.company.eduops.finance.domain.StudentFeeStatus.CANCELLED
+                && f.getStatus() != ci.company.eduops.finance.domain.StudentFeeStatus.WAIVED)
+                .sorted(java.util.Comparator.comparing(StudentFee::getDueDate).thenComparing(StudentFee::getId)).toList();
+        BigDecimal remaining = request.getComputedAmount();
         BigDecimal total = BigDecimal.ZERO;
-        List<StudentFee> lines = feeLines.findOutstandingOldestFirst(
-                request.getStudentId(), request.getAcademicYearId());
         for (StudentFee fee : lines) {
-            BigDecimal lineDiscount;
-            if (request.getDiscountType() == DiscountType.FIXED_AMOUNT) {
-                lineDiscount = remaining.min(fee.getAmountDue());
-            } else {
-                lineDiscount = MoneyUtils.normalize(
-                        fee.getGrossAmount().multiply(request.getValue())
-                                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP));
-            }
-            if (lineDiscount.compareTo(BigDecimal.ZERO) <= 0) {
-                continue;
-            }
-            if (request.getDiscountType() == DiscountType.FIXED_AMOUNT) {
-                remaining = remaining.subtract(lineDiscount);
-            }
-            fee.setDiscountAmount(MoneyUtils.normalize(lineDiscount));
+            BigDecimal outstanding = fee.outstanding().max(BigDecimal.ZERO);
+            BigDecimal lineDiscount = request.getDiscountType() == DiscountType.PERCENTAGE
+                    ? MoneyUtils.normalize(outstanding.multiply(request.getValue()).divide(new BigDecimal("100")))
+                    : remaining;
+            lineDiscount = lineDiscount.min(outstanding).min(remaining);
+            if (lineDiscount.signum() <= 0) continue;
+            remaining = remaining.subtract(lineDiscount);
+            fee.setDiscountAmount(MoneyUtils.add(fee.getDiscountAmount(), lineDiscount));
             fee.recomputeAmountDue();
             fee.refreshStatus();
             total = total.add(lineDiscount);
         }
+        // No outstanding balance can remain after a payment during approval.
+        // Record the actual effect (possibly zero), without creating a credit.
+        request.setComputedAmount(total);
         request.setStatus(DiscountRequestStatus.EFFECTIVE);
         request.setEffectiveAt(OffsetDateTime.now());
+        approvals.effective(execution);
         auditService.logUpdate("DiscountRequest", request.getId(), request.getReference(),
                 Map.of("status", "APPROVED"), Map.of("status", "EFFECTIVE", "appliedAmount", total));
         return get(requestId);
+    }
+
+    private List<StudentFee> eligibleLines(DiscountRequest request) {
+        return feeLines.findOutstandingOldestFirst(request.getStudentId(), request.getAcademicYearId()).stream()
+                .filter(f -> request.getFeeTypeId() == null || request.getFeeTypeId().equals(f.getFeeType().getId()))
+                .toList();
     }
 
     // ------------------------------------------------------------------ helpers
@@ -286,38 +259,10 @@ public class DiscountRequestService {
         }
     }
 
-    /** Montant estimé de la réduction sur le dû actuel, figé dans la demande. */
-    private BigDecimal computeDiscount(UUID schoolId, UUID studentId, UUID yearId,
-                                       DiscountType type, BigDecimal value) {
-        BigDecimal due = feeLines.outstandingForStudent(studentId, yearId);
-        if (due.compareTo(BigDecimal.ZERO) <= 0) {
-            return BigDecimal.ZERO;
-        }
-        if (type == DiscountType.PERCENTAGE) {
-            return due.multiply(value).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
-                    .min(due);
-        }
-        return value.min(due);
-    }
-
     /** Référence lisible : RED-2026-0007, séquence par école et par année. */
     private String nextReference(UUID schoolId, UUID yearId) {
-        long n = requests.countBySchoolIdAndAcademicYearId(schoolId, yearId) + 1;
         String year = String.valueOf(java.time.Year.now().getValue());
-        return "RED-" + year + "-" + String.format("%04d", n);
-    }
-
-    private AppRole findRole(UUID schoolId, String code) {
-        return roles.findVisibleByCode(code, schoolId).stream().findFirst()
-                .orElseThrow(() -> BusinessException.of(ErrorCode.VALIDATION_ERROR,
-                        "Profil inconnu : " + code));
-    }
-
-    private String displayName() {
-        var details = currentUser.details();
-        return details.map(d -> d.getFullName() == null
-                        ? d.getUsername() : d.getFullName())
-                .orElse("Système");
+        return "RED-" + year + "-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase(Locale.ROOT);
     }
 
     /**
@@ -325,17 +270,7 @@ public class DiscountRequestService {
      * les boutons Valider / Refuser que là où ils ont un effet.
      */
     private boolean canDecide(DiscountRequest request, List<DiscountRequestLevel> chain) {
-        if (request.getStatus() != DiscountRequestStatus.SUBMITTED) {
-            return false;
-        }
-        if (currentUser.hasRole("SUPER_ADMIN") || currentUser.hasRole("SCHOOL_ADMIN")) {
-            return true;
-        }
-        return chain.stream()
-                .filter(l -> l.getLevelNumber() == request.getCurrentLevel())
-                .findFirst()
-                .map(l -> currentUser.hasRole(l.getRoleCode()))
-                .orElse(false);
+        return approvals.find(request.getId()).map(approvals::canDecide).orElse(false);
     }
 
     private UUID requireSchool() {
@@ -353,6 +288,7 @@ public class DiscountRequestService {
         out.setId(request.getId());
         out.setReference(request.getReference());
         out.setStudentId(request.getStudentId());
+        out.setFeeTypeId(request.getFeeTypeId());
         students.findById(request.getStudentId()).ifPresent(s -> {
             out.setStudentName(s.getFirstName() + " " + s.getLastName());
             out.setStudentNumber(s.getStudentNumber());
@@ -381,6 +317,19 @@ public class DiscountRequestService {
             lr.setDecidedAt(level.getDecidedAt());
             out.getLevels().add(lr);
         }
+        approvals.find(request.getId()).ifPresent(execution -> {
+            out.setCircuitName(execution.getCircuitName());
+            out.getLevels().clear();
+            for (int i = 0; i < execution.getStages().size(); i++) {
+                var stage = execution.getStages().get(i);
+                var lr = new DiscountRequestResponse.LevelResponse();
+                lr.setLevelNumber(i + 1); lr.setName(stage.getCode());
+                lr.setRoleCode(""); lr.setRoleLabel(stage.getMode() == ci.company.eduops.approval.domain.ApprovalMode.ALL ? "Tous les membres" : "Un seul membre");
+                lr.setMode(stage.getMode()); lr.setMembers(stage.getMembers());
+                lr.setStatus(DiscountRequestLevelStatus.valueOf(stage.getStatus()));
+                out.getLevels().add(lr);
+            }
+        });
         return out;
     }
 }

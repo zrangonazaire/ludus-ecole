@@ -1,6 +1,8 @@
 package ci.company.eduops.school.controller;
 
+import ci.company.eduops.school.dto.request.AppearanceUpdateRequest;
 import ci.company.eduops.school.dto.request.SchoolSettingsUpdateRequest;
+import ci.company.eduops.school.dto.response.AppearanceResponse;
 import ci.company.eduops.school.dto.response.SchoolSettingsResponse;
 import ci.company.eduops.school.service.SchoolSettingsService;
 import ci.company.eduops.security.service.Permissions;
@@ -50,5 +52,24 @@ public class SchoolSettingsController {
     public ResponseEntity<SchoolSettingsResponse> update(
             @Valid @RequestBody SchoolSettingsUpdateRequest request) {
         return ResponseEntity.ok(service.update(request));
+    }
+
+    @GetMapping("/appearance")
+    @PreAuthorize("hasAuthority('" + Permissions.SCHOOL_VIEW + "')")
+    @Operation(summary = "Apparence et région",
+            description = "Couleur du portail, taille de police, devise, langue et fuseau "
+                    + "enregistrés pour l'établissement — partagés par tous les postes.")
+    public ResponseEntity<AppearanceResponse> appearance() {
+        return ResponseEntity.ok(service.appearance());
+    }
+
+    @PutMapping("/appearance")
+    @PreAuthorize("hasAuthority('" + Permissions.SCHOOL_MANAGE + "')")
+    @Operation(summary = "Modifier l'apparence et la région",
+            description = "Couleur et taille de police vont dans les réglages de l'établissement ; "
+                    + "devise, langue et fuseau sont les valeurs officielles qui suivent les documents.")
+    public ResponseEntity<AppearanceResponse> updateAppearance(
+            @Valid @RequestBody AppearanceUpdateRequest request) {
+        return ResponseEntity.ok(service.updateAppearance(request));
     }
 }

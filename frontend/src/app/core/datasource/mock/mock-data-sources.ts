@@ -812,10 +812,10 @@ export class MockFinanceDataSource implements FinanceDataSource {
       computedAmount: computed,
       status: 'SUBMITTED',
       currentLevel: 1,
-      totalLevels: payload.levels.length,
+      totalLevels: (payload.levels ?? []).length,
       createdAt: new Date().toISOString(),
       awaitingMyDecision: true,
-      levels: payload.levels.map((level, index) => ({
+      levels: (payload.levels ?? []).map((level, index) => ({
         levelNumber: index + 1,
         name: level.name,
         roleCode: level.roleCode,

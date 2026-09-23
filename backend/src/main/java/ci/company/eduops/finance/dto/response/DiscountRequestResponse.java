@@ -20,6 +20,8 @@ public class DiscountRequestResponse {
     private UUID id;
     private String reference;
     private UUID studentId;
+    private UUID feeTypeId;
+    private String circuitName;
     private String studentName;
     private String studentNumber;
     private String label;
@@ -40,6 +42,8 @@ public class DiscountRequestResponse {
     @Getter
     @Setter
     public static class LevelResponse {
+        private ci.company.eduops.approval.domain.ApprovalMode mode;
+        private java.util.List<ci.company.eduops.approval.domain.ApprovalExecution.Vote> members;
         private int levelNumber;
         private String name;
         private String roleCode;

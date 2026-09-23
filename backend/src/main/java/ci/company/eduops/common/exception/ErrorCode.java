@@ -254,6 +254,10 @@ public enum ErrorCode {
     DISCOUNT_NO_OUTSTANDING(HttpStatus.CONFLICT,
             "The student has no outstanding balance to reduce."),
     DISCOUNT_VALUE_INVALID(HttpStatus.BAD_REQUEST, "The discount value is invalid."),
+    APPROVAL_CIRCUIT_NOT_FOUND(HttpStatus.NOT_FOUND, "Approval circuit not found."),
+    APPROVAL_CIRCUIT_CODE_ALREADY_USED(HttpStatus.CONFLICT,
+            "Another approval circuit already uses this code in the school."),
+    APPEARANCE_INVALID(HttpStatus.BAD_REQUEST, "The appearance preferences are invalid."),
 
     // ---------- portals / relation-based access ----------
     UNAUTHORIZED_STUDENT_ACCESS(HttpStatus.FORBIDDEN, "You are not allowed to access this student's data."),

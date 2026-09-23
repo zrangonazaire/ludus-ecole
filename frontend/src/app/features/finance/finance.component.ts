@@ -11,13 +11,17 @@ import {
   FEE_CATEGORIES, FEE_RECURRENCES, FeeCategoryCode, FeeRecurrenceCode,
   FeeSchedulePayload, FeeType, InstalmentPayload, LevelFees
 } from '@core/models/fee.models';
+import { ApprovalCircuitService } from '@core/services/approval-circuit.service';
+import { FeeApprovalService } from '@core/services/fee-approval.service';
+import { ApprovalCircuit } from '@core/models/approval-circuit.models';
+import { ApprovalExecution } from '@core/models/approval-execution.models';
 import { NotificationService } from '@core/services/notification.service';
 import { SetupStatusService } from '@core/services/setup-status.service';
 import { translateErrorCode } from '@core/services/error-messages';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
 import { ErrorStateComponent } from '@shared/ui/error-state/error-state.component';
 
-export type FinanceTab = 'TYPES' | 'TARIFS';
+export type FinanceTab = 'TYPES' | 'TARIFS' | 'REQUESTS';
 export type FinancePanel = 'TYPE' | 'SCHEDULE' | 'APPLY' | null;
 
 /**
@@ -40,6 +44,17 @@ export type FinancePanel = 'TYPE' | 'SCHEDULE' | 'APPLY' | null;
 })
 export class FinanceComponent implements OnInit {
   private readonly dataSource = inject(FEE_DATA_SOURCE);
+  private readonly approvals = inject(FeeApprovalService);
+  private readonly circuitService = inject(ApprovalCircuitService);
+  readonly circuits = signal<ApprovalCircuit[]>([]);
+  readonly circuitId = signal('');
+  readonly requests = signal<ApprovalExecution[]>([]);
+  readonly requestsError = signal(false);
+  readonly decidingId = signal<string | null>(null);
+  readonly comments: Record<string, string> = {};
+  readonly pendingCount = computed(() => this.requests().filter(r => r.status === 'SUBMITTED').length);
+  readonly statusLabels = { SUBMITTED: 'En validation', APPROVED: 'Approuvée', REJECTED: 'Refusée', EFFECTIVE: 'Appliquée' };
+
   private readonly notifications = inject(NotificationService);
   private readonly setupStatus = inject(SetupStatusService);
   private readonly fb = inject(FormBuilder);
@@ -110,10 +125,15 @@ export class FinanceComponent implements OnInit {
 
   ngOnInit(): void {
     this.newType.disable();
+    this.circuitService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: rows => { this.circuits.set(rows.filter(c => c.usage === 'FEE')); this.circuitId.set(this.circuits()[0]?.id ?? ''); },
+      error: () => this.notifications.error('Chargement des circuits impossible.')
+    });
     this.load();
   }
 
   load(): void {
+    this.loadRequests();
     this.loading.set(true);
     this.error.set(false);
 
@@ -224,24 +244,20 @@ export class FinanceComponent implements OnInit {
     }
     this.saving.set(true);
     const value = this.newType.getRawValue();
-    this.dataSource.createType({
+    if (!this.requireCircuit()) return;
+    this.approvals.createType({
       code: value.code.trim(),
       name: value.name.trim(),
       category: value.category,
       recurrence: value.recurrence,
       mandatory: value.mandatory,
       refundable: false
-    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (type) => {
-        this.types.update((list) => [...list, type]
-          .sort((a, b) => a.name.localeCompare(b.name)));
-        this.scheduleForm.controls.feeTypeId.setValue(type.id);
-        this.newType.disable();
-        this.creatingType.set(false);
+    }, this.circuitId()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.cancelInlineType();
         this.saving.set(false);
-        this.notifications.success(
-          `${type.name} est ajouté au catalogue. Donnez-lui son montant.`,
-          'Type de frais créé');
+        this.notifications.success('Demande envoyée. Le nouveau type sera disponible après validation.');
+        this.loadRequests();
       },
       error: (err) => {
         this.saving.set(false);
@@ -290,17 +306,13 @@ export class FinanceComponent implements OnInit {
       refundable: value.refundable
     };
     const editing = this.editingType();
+    if (!this.requireCircuit()) return;
     const request = editing
-      ? this.dataSource.updateType(editing.id, payload)
-      : this.dataSource.createType(payload);
+      ? this.approvals.updateType(editing.id, payload, this.circuitId())
+      : this.approvals.createType(payload, this.circuitId());
 
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (type) => {
-        this.notifications.success(
-          editing ? `${type.name} est à jour.` : `${type.name} a été ajouté.`,
-          editing ? 'Type modifié' : 'Type de frais créé');
-        this.afterWrite();
-      },
+      next: () => { this.submitted(); },
       error: (err) => {
         this.saving.set(false);
         this.explain(err);
@@ -309,11 +321,11 @@ export class FinanceComponent implements OnInit {
   }
 
   archiveType(type: FeeType): void {
-    this.dataSource.archiveType(type.id).pipe(takeUntilDestroyed(this.destroyRef))
+    if (!this.requireCircuit()) return;
+    this.approvals.archiveType(type.id, this.circuitId()).pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.notifications.success(`${type.name} est archivé.`);
-          this.load();
+          this.submitted();
         },
         error: (err) => this.explain(err)
       });
@@ -461,14 +473,11 @@ export class FinanceComponent implements OnInit {
       return;
     }
     this.saving.set(true);
-    this.dataSource.saveSchedule(this.payload(levelId))
+    if (!this.requireCircuit()) return;
+    this.approvals.saveSchedule(this.payload(levelId), this.circuitId())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (levels) => {
-          this.levels.set(levels);
-          this.notifications.success('Le tarif est enregistré.', 'Frais définis');
-          this.afterWrite();
-        },
+        next: () => { this.submitted(); },
         error: (err) => {
           this.saving.set(false);
           this.explain(err);
@@ -477,12 +486,11 @@ export class FinanceComponent implements OnInit {
   }
 
   removeSchedule(scheduleId: string, label: string): void {
-    this.dataSource.deleteSchedule(scheduleId).pipe(takeUntilDestroyed(this.destroyRef))
+    if (!this.requireCircuit()) return;
+    this.approvals.deleteSchedule(scheduleId, this.circuitId()).pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.notifications.success(`${label} retiré.`);
-          this.load();
-          this.setupStatus.refresh();
+          this.submitted();
         },
         error: (err) => this.explain(err)
       });
@@ -553,17 +561,13 @@ export class FinanceComponent implements OnInit {
       return;
     }
     this.saving.set(true);
-    this.dataSource.apply({
+    if (!this.requireCircuit()) return;
+    this.approvals.apply({
       levelIds: this.applyTargets(),
       schedule: this.payload(undefined),
       replaceExisting: this.applyReplace
-    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (levels) => {
-        this.levels.set(levels);
-        this.notifications.success(
-          `Tarif appliqué à ${this.applyTargets().length} niveau(x).`, 'Frais définis');
-        this.afterWrite();
-      },
+    }, this.circuitId()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => { this.submitted(); },
       error: (err) => {
         this.saving.set(false);
         this.explain(err);
@@ -587,12 +591,72 @@ export class FinanceComponent implements OnInit {
     this.setupStatus.refresh();
   }
 
-  private explain(err: unknown): void {
-    const code = (err as { error?: { code?: string } })?.error?.code;
-    if (code) {
-      this.notifications.error(translateErrorCode(code), 'Action refusée');
-    }
+  private requireCircuit(): boolean {
+    if (this.circuits().some(c => c.id === this.circuitId())) return true;
+    this.saving.set(false);
+    this.notifications.error('Choisissez un circuit « Frais et tarifs » configuré avant de soumettre.');
+    return false;
   }
+
+  private submitted(): void {
+    this.notifications.success('Demande envoyée dans le circuit. Aucun changement ne sera appliqué avant la dernière validation.');
+    this.afterWrite();
+    this.tab.set('REQUESTS');
+  }
+
+  loadRequests(): void {
+    this.requestsError.set(false);
+    this.approvals.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: rows => this.requests.set(rows),
+      error: () => this.requestsError.set(true)
+    });
+  }
+
+  decide(request: ApprovalExecution, decision: 'APPROVE' | 'REJECT'): void {
+    if (this.decidingId()) return;
+    const comment = this.comments[request.id]?.trim() ?? '';
+    if (decision === 'REJECT' && !comment) {
+      this.notifications.error('Indiquez le motif du refus.'); return;
+    }
+    this.decidingId.set(request.id);
+    this.approvals.decide(request.id, decision, comment).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: updated => {
+        this.decidingId.set(null); delete this.comments[request.id];
+        this.notifications.success(updated.status === 'EFFECTIVE' ? 'Validation complète : modification appliquée.' : 'Décision enregistrée.');
+        this.load(); this.setupStatus.refresh();
+      },
+      error: err => { this.decidingId.set(null); this.explain(err); }
+    });
+  }
+
+  requestDetails(request: ApprovalExecution): string[] {
+    const input = request.payload.input ?? {};
+    const schedule = (input['schedule'] as Record<string, unknown> | undefined) ?? input;
+    const details: string[] = [];
+    if (input['name']) details.push(`Nom : ${input['name']} · Code : ${input['code']}`);
+    if (input['category']) details.push(`Catégorie : ${this.categories.find(c => c.code === input['category'])?.label ?? input['category']}`);
+    if (input['recurrence']) details.push(`Périodicité : ${this.recurrences.find(c => c.code === input['recurrence'])?.label ?? input['recurrence']}`);
+    if (typeof input['mandatory'] === 'boolean') details.push(input['mandatory'] ? 'Frais obligatoire' : 'Frais facultatif');
+    if (typeof input['refundable'] === 'boolean') details.push(input['refundable'] ? 'Remboursable' : 'Non remboursable');
+    if (input['description']) details.push(`Description : ${input['description']}`);
+    if (schedule['totalAmount'] != null) {
+      details.push(`Montant : ${this.format(Number(schedule['totalAmount']))} ${this.currency()}`);
+      const ids = (input['levelIds'] as string[] | undefined) ?? (schedule['levelId'] ? [String(schedule['levelId'])] : []);
+      details.push(`Niveaux : ${ids.length ? ids.map(id => this.levelById(id)?.levelName ?? id).join(', ') : 'Tous les niveaux'}`);
+      if (input['replaceExisting'] != null) details.push(input['replaceExisting'] ? 'Remplace les tarifs existants' : 'Complète uniquement les niveaux sans tarif');
+      details.push(`Nouveaux élèves : ${schedule['appliesToNewStudents'] === false ? 'non' : 'oui'} · Réinscriptions : ${schedule['appliesToReturningStudents'] === false ? 'non' : 'oui'}`);
+      const instalments = schedule['instalments'] as { label?: string; amount: number; dueDate: string }[] | undefined;
+      for (const row of instalments ?? []) details.push(`${row.label || 'Échéance'} : ${this.format(row.amount)} · ${row.dueDate}`);
+      if (!instalments?.length) details.push(schedule['instalmentCount'] ? `${schedule['instalmentCount']} échéances régulières` : 'Montant dû en une fois');
+    }
+    return details;
+  }
+
+  private explain(err: unknown): void {
+    const response = (err as { error?: { code?: string; message?: string } })?.error;
+    this.notifications.error(response?.message ?? (response?.code ? translateErrorCode(response.code) : 'Action impossible. Réessayez.'), 'Action refusée');
+  }
+
 }
 
 /** Contrôles d'une ligne d'échéance. */

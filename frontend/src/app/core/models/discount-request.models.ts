@@ -8,6 +8,8 @@ export type DiscountLevelStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SKIPPED
 export type DiscountKind = 'PERCENTAGE' | 'FIXED_AMOUNT';
 
 export interface DiscountLevel {
+  mode?: 'ALL' | 'ONE';
+  members?: import('./approval-execution.models').ApprovalVote[];
   levelNumber: number;
   name: string;
   roleCode: string;
@@ -51,7 +53,9 @@ export interface DiscountRequestPayload {
   reason?: string;
   discountType: DiscountKind;
   value: number;
-  levels: DiscountLevelInput[];
+  circuitId: string;
+  feeTypeId?: string;
+  levels?: DiscountLevelInput[];
 }
 
 export interface DiscountDecisionPayload {

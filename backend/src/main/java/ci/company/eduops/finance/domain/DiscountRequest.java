@@ -33,6 +33,9 @@ public class DiscountRequest extends BaseEntity {
     @Column(name = "academic_year_id", nullable = false, updatable = false)
     private UUID academicYearId;
 
+    @Column(name = "fee_type_id")
+    private UUID feeTypeId;
+
     @Column(name = "reference", nullable = false, length = 40, updatable = false)
     private String reference;
 

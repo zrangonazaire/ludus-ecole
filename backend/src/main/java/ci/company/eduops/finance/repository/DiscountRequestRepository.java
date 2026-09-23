@@ -21,5 +21,9 @@ public interface DiscountRequestRepository extends JpaRepository<DiscountRequest
     /** Compteur annuel servant à bâtir la référence RED-2026-0007. */
     long countBySchoolIdAndAcademicYearId(UUID schoolId, UUID academicYearId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select r from DiscountRequest r where r.id = :id and r.schoolId = :schoolId")
+    Optional<DiscountRequest> lockByIdAndSchoolId(@org.springframework.data.repository.query.Param("id") UUID id, @org.springframework.data.repository.query.Param("schoolId") UUID schoolId);
+
     Optional<DiscountRequest> findByIdAndSchoolId(UUID id, UUID schoolId);
 }

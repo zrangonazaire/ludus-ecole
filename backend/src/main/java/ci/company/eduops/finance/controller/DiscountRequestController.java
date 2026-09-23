@@ -71,7 +71,7 @@ public class DiscountRequestController {
     }
 
     @PostMapping("/{id}/decision")
-    @PreAuthorize("hasAuthority('" + Permissions.DISCOUNT_REQUEST_DECIDE + "')")
+    @PreAuthorize("hasAuthority('" + Permissions.DISCOUNT_REQUEST_VIEW + "')")
     @Operation(summary = "Trancher le palier courant",
             description = "Approuve ou refuse. Seul le porteur du profil du palier courant "
                     + "(ou un administrateur) peut trancher. Refuser clôt la demande.")

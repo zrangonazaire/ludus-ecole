@@ -5,7 +5,9 @@ import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.exception.ErrorCode;
 import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.school.domain.School;
+import ci.company.eduops.school.dto.request.AppearanceUpdateRequest;
 import ci.company.eduops.school.dto.request.SchoolSettingsUpdateRequest;
+import ci.company.eduops.school.dto.response.AppearanceResponse;
 import ci.company.eduops.school.dto.response.SchoolSettingsResponse;
 import ci.company.eduops.school.repository.SchoolRepository;
 import ci.company.eduops.security.service.CurrentUser;
@@ -35,6 +37,11 @@ import java.util.function.Consumer;
  */
 @Service
 public class SchoolSettingsService {
+
+    /** Bleu de la charte, utilisé tant qu'aucune couleur n'a été choisie. */
+    private static final String DEFAULT_BRAND = "#1f5fd6";
+
+    private static final String DEFAULT_FONT_SIZE = "normal";
 
     private final SchoolRepository schoolRepository;
     private final CurrentUser currentUser;
@@ -70,6 +77,92 @@ public class SchoolSettingsService {
             auditService.logUpdate("School", saved.getId(), saved.getName(), before, after);
         }
         return toResponse(saved);
+    }
+
+    /**
+     * Apparence et région telles qu'enregistrées pour l'établissement.
+     *
+     * <p>Couleur et taille de police vivent dans {@code settings.appearance} :
+     * des réglages de présentation qui n'ont pas de colonne dédiée, mais qui
+     * n'ont plus à rester dans le navigateur d'un seul poste. Devise, langue
+     * et fuseau sont les colonnes officielles — les changer ici change les
+     * documents, pas seulement l'affichage.</p>
+     */
+    @Transactional(readOnly = true)
+    public AppearanceResponse appearance() {
+        currentUser.requirePermission(Permissions.SCHOOL_VIEW);
+        return toAppearance(requireSchool());
+    }
+
+    @Transactional
+    public AppearanceResponse updateAppearance(AppearanceUpdateRequest request) {
+        currentUser.requirePermission(Permissions.SCHOOL_MANAGE);
+        School school = requireSchool();
+
+        Map<String, Object> before = new LinkedHashMap<>();
+        Map<String, Object> after = new LinkedHashMap<>();
+
+        Map<String, Object> settings = new LinkedHashMap<>(
+                school.getSettings() == null ? Map.of() : school.getSettings());
+        Map<String, Object> appearance = appearanceValues(settings);
+        change(school, request.getBrand(), textOf(appearance.get("brand")),
+                "appearance.brand", before, after,
+                value -> appearance.put("brand", value));
+        change(school, request.getFontSize(), textOf(appearance.get("fontSize")),
+                "appearance.fontSize", before, after,
+                value -> appearance.put("fontSize", value));
+        change(school, request.getCurrency(), school.getCurrency(), "currency",
+                before, after, value -> school.setCurrency(value));
+        change(school, request.getLocale(), school.getLocale(), "locale",
+                before, after, value -> school.setLocale(value));
+        change(school, request.getTimezone(), school.getTimezone(), "timezone",
+                before, after, value -> school.setTimezone(value));
+
+        if (after.isEmpty()) {
+            return toAppearance(school);
+        }
+        settings.put("appearance", appearance);
+        school.setSettings(settings);
+        School saved = schoolRepository.save(school);
+        auditService.logUpdate("School", saved.getId(), saved.getName(), before, after);
+        return toAppearance(saved);
+    }
+
+    /**
+     * Copie des réglages d'apparence — jamais le map vivant de l'entité.
+     *
+     * <p>Une colonne {@code jsonb} n'est réécrite que si la référence du champ
+     * change : modifier en place le map de l'entité est un changement que le
+     * contrôle de saleté de Hibernate ne voit pas. On travaille donc sur une
+     * copie, et on la repose dans l'entité seulement s'il y a quelque chose à
+     * enregistrer.</p>
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> appearanceValues(Map<String, Object> settings) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        Object existing = settings.get("appearance");
+        if (existing instanceof Map<?, ?> map) {
+            map.forEach((key, value) -> out.put(String.valueOf(key), value));
+        }
+        return out;
+    }
+
+    private String textOf(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private AppearanceResponse toAppearance(School school) {
+        Map<String, Object> stored = appearanceValues(
+                school.getSettings() == null ? Map.of() : school.getSettings());
+        AppearanceResponse response = new AppearanceResponse();
+        response.setBrand(textOf(stored.get("brand")) == null
+                ? DEFAULT_BRAND : textOf(stored.get("brand")));
+        response.setFontSize(textOf(stored.get("fontSize")) == null
+                ? DEFAULT_FONT_SIZE : textOf(stored.get("fontSize")));
+        response.setCurrency(school.getCurrency());
+        response.setLocale(school.getLocale());
+        response.setTimezone(school.getTimezone());
+        return response;
     }
 
     private School requireSchool() {

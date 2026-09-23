@@ -384,6 +384,16 @@ export const routes: Routes = [
         data: { permissions: [PERMISSIONS.SCHOOL_VIEW], title: 'Paramètres' },
         loadComponent: () => import('./features/administration/administration.component')
           .then((m) => m.AdministrationComponent)
+      },
+      {
+        // Carrefour « Configuration système » en fin de menu : regroupe les
+        // réglages sans dupliquer leurs écrans. Garde SCHOOL_VIEW pour que
+        // l'entrée reste réservée à l'administration.
+        path: 'system-config',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.SCHOOL_VIEW], title: 'Configuration système' },
+        loadComponent: () => import('./features/system-config/system-config.component')
+          .then((m) => m.SystemConfigComponent)
       }
     ]
   },

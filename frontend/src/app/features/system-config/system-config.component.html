@@ -1,0 +1,37 @@
+<div class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">Configuration système</h1>
+      <p class="page__meta">Identité, apparence et circuit de validation de l’établissement.</p>
+    </div>
+    <a class="btn btn--ghost" routerLink="/setup">Vérifier ma configuration</a>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Configuration système">
+    @for (t of tabs; track t.key) {
+      <button type="button" class="tab" role="tab"
+              [class.tab-active]="t.key === tab()"
+              [attr.aria-selected]="t.key === tab()"
+              (click)="tab.set(t.key)">
+        {{ t.label }}
+        <small>{{ t.hint }}</small>
+      </button>
+    }
+  </div>
+
+  @switch (tab()) {
+    @case ('IDENTITY') {
+      <eduops-system-config-identity />
+    }
+    @case ('APPEARANCE') {
+      <eduops-system-config-appearance />
+    }
+    @case ('CIRCUIT') {
+      @if (canSeeCircuit()) {
+        <eduops-system-config-circuit />
+      } @else {
+        <p class="restricted">Le circuit de validation demande un droit de consultation des réductions.</p>
+      }
+    }
+  }
+</div>

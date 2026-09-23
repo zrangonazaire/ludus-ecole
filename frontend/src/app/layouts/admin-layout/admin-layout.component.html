@@ -78,6 +78,14 @@
 
     <!-- Aide, toujours accessible en bas de la barre laterale -->
     <div class="sidebar__help">
+      @if (canSeeSystemConfig()) {
+        <a class="sidebar__link" routerLink="/system-config"
+           routerLinkActive="sidebar__link--active" ariaCurrentWhenActive="page"
+           (click)="closeDrawer()">
+          <span class="sidebar__icon" aria-hidden="true">⚙</span>
+          <span>Configuration système</span>
+        </a>
+      }
       <button type="button" class="sidebar__link sidebar__link--button" (click)="replayTour()">
         <span class="sidebar__icon" aria-hidden="true">◎</span>
         <span>Reprendre le guide</span>

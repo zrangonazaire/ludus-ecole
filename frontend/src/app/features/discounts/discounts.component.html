@@ -98,6 +98,12 @@
                     @if (level.status === 'PENDING' && level.levelNumber === request.currentLevel && request.awaitingMyDecision) {
                       <div class="level-now">Palier en attente de votre décision</div>
                     }
+                    @for (member of level.members ?? []; track member.userId) {
+                      <div class="leveltrace">{{ member.name }} : {{ member.decision === 'APPROVED' ? 'Validé' : member.decision === 'REJECTED' ? 'Refusé' : 'En attente' }}
+                        @if (member.decidedAt) { · {{ member.decidedAt | date:'dd/MM/yyyy HH:mm' }} }
+                        @if (member.comment) { — {{ member.comment }} }
+                      </div>
+                    }
                     @if (level.approverName) {
                       <div class="leveltrace">Validé par {{ level.approverName }}</div>
                     }
@@ -205,37 +211,23 @@
           <label class="section-label">Circuit de validation</label>
           <p class="form-hint">Chaque niveau est validé dans l’ordre. La réduction n’est appliquée qu’après le dernier.</p>
 
-          <div class="levels-list">
-            @for (level of formLevels(); track $index; let i = $index) {
-              <div class="level-input">
-                <div class="level-input-head">
-                  <span class="level-index">Niveau {{ i + 1 }}</span>
-                  @if (formLevels().length > 1) {
-                    <button type="button" class="btn-link-remove" (click)="removeLevel(i)">Retirer</button>
-                  }
-                </div>
-                <div class="form-row form-row-2">
-                  <div class="form-section">
-                    <label class="section-label" [for]="'level-name-' + i">Nom du niveau</label>
-                    <input type="text" [id]="'level-name-' + i" class="input" placeholder="Exemple : Intendance" [ngModel]="level.name" (ngModelChange)="updateLevel(i, 'name', $event)">
-                  </div>
-                  <div class="form-section">
-                    <label class="section-label" [for]="'level-role-' + i">Profil habilité</label>
-                    <select [id]="'level-role-' + i" class="input input-select" [ngModel]="level.roleCode" (ngModelChange)="updateLevel(i, 'roleCode', $event)">
-                      <option value="">— Choisir un profil —</option>
-                      @for (profile of profiles(); track profile.code) {
-                        <option [value]="profile.code">{{ profile.label }} ({{ profile.code }})</option>
-                      }
-                    </select>
-                  </div>
-                </div>
-              </div>
-            }
-          </div>
-
-          <div class="levels-actions">
-            <button type="button" class="btn btn-ghost btn-sm" (click)="addLevel()">+ Ajouter un niveau</button>
-          </div>
+          <select class="input input-select" aria-label="Circuit de validation" [ngModel]="circuitId()" (ngModelChange)="circuitId.set($event)">
+            <option value="">— Choisir un circuit —</option>
+            @for (c of circuits(); track c.id) { <option [value]="c.id">{{ c.code }} — {{ c.name }}</option> }
+          </select>
+          @if (!circuits().length) { <p class="form-hint">Créez un circuit « Réductions » dans Configuration système avant de soumettre.</p> }
+          @for (l of formLevels(); track $index) {
+            <p>{{ $index + 1 }}. {{ l.name }} — {{ l.mode === 'ALL' ? 'Tous les membres' : 'Un seul membre suffit' }}</p>
+            @for (m of l.members; track m.id) { <span class="chip">{{ m.fullName || m.username }}</span> }
+          }
+        </div>
+        <div class="form-section">
+          <label class="section-label" for="discount-fee">Frais concernés</label>
+          <select id="discount-fee" class="input input-select" [ngModel]="feeTypeId()" (ngModelChange)="feeTypeId.set($event)">
+            <option value="">Tous les frais restant dus</option>
+            @for (fee of feeTypes(); track fee.id) { <option [value]="fee.id">{{ fee.name }}</option> }
+          </select>
+          <p class="form-hint">Le montant est limité au solde restant dû. La dernière validation applique automatiquement la réduction.</p>
         </div>
 
         <div class="form-preview">

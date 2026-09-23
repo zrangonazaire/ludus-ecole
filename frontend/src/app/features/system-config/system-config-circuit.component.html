@@ -1,0 +1,143 @@
+@if (loading()) {
+  <eduops-loading-state message="Chargement des circuits…" />
+} @else if (failed()) {
+  <eduops-error-state title="Circuits indisponibles"
+    message="Les comptes valideurs n’ont pas pu être chargés." (retry)="reload()" />
+} @else {
+  <p class="section-note">Créez un ou plusieurs circuits. Chaque circuit a un code et des niveaux :
+  à chaque niveau, un ou plusieurs membres valideurs.</p>
+
+  <div class="card"><div class="card__body card__body--flush">
+    <div class="circuit-head">
+      <span class="circuit-head__count">{{ circuits().length }} circuit(s)</span>
+      @if (canEdit()) {
+        <button type="button" class="btn btn--primary btn--sm" (click)="openNew()">+ Nouveau circuit</button>
+      }
+    </div>
+    <div class="table-wrap"><table class="circuit-table">
+      <thead><tr><th>Code</th><th>Nom</th><th>Niveaux</th><th></th></tr></thead>
+      <tbody>
+        @for (c of circuits(); track c.id) {
+          <tr>
+            <td><span class="chip mono">{{ c.code }}</span></td>
+            <td>{{ c.name }}</td>
+            <td>{{ c.levels.length }} niveau(x)</td>
+            <td class="row-ops">
+              @if (canEdit()) {
+                <button type="button" class="btn btn--ghost btn--sm" (click)="openEdit(c)">Modifier</button>
+                <button type="button" class="btn btn--ghost btn--sm" (click)="deleteCircuit(c.id)">Supprimer</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="4">Aucun circuit pour le moment.</td></tr>
+        }
+      </tbody>
+    </table></div>
+  </div></div>
+
+  @if (!canEdit()) {
+    <p class="restricted">La modification demande la gestion de l’établissement ou des réductions.</p>
+  }
+
+  <p class="section-note">Suivi des demandes : <a routerLink="/discounts">Remises et bourses →</a></p>
+}
+
+@if (draft(); as d) {
+  <div class="modal-backdrop" (click)="closeDraft()">
+    <section class="modal" role="dialog" aria-modal="true" aria-label="Circuit de validation"
+             (click)="$event.stopPropagation()">
+      <h2>{{ draftIsNew() ? 'Nouveau circuit' : 'Modifier le circuit' }}</h2>
+      <div class="grid">
+        <label class="field"><span>Code</span>
+          <input class="input mono" [ngModel]="d.code" [disabled]="saving()"
+                 (ngModelChange)="updateDraft('code', $event)" maxlength="20" placeholder="CAISSE" />
+        </label>
+        <label class="field"><span>Nom du circuit</span>
+          <input class="input" [ngModel]="d.name" [disabled]="saving()"
+                 (ngModelChange)="updateDraft('name', $event)" maxlength="150"
+                 placeholder="Ex : Validation des dépenses" />
+        </label>
+      </div>
+
+      <label class="field"><span>Opérations soumises au circuit</span>
+        <select class="input" [ngModel]="d.usage" (ngModelChange)="updateDraft('usage', $event)" [disabled]="saving()">
+          <option value="DISCOUNT">Réductions</option>
+          <option value="FEE">Types de frais et tarifs</option>
+        </select>
+      </label>
+
+      @for (level of d.levels; track $index; let i = $index) {
+        <div class="draft-level">
+          <span class="circuit__rank">Niveau {{ i + 1 }}</span>
+          <div class="draft-level__row">
+            <label class="field"><span>Code (ex : DOPI)</span>
+              <input class="input mono" [ngModel]="level.code" [disabled]="saving()"
+                     (ngModelChange)="updateDraftLevel(i, $event)" maxlength="20" />
+            </label>
+            <label class="field"><span>Approbation</span>
+              <select class="input" [ngModel]="level.mode" [disabled]="saving()"
+                      (ngModelChange)="setDraftMode(i, $event)">
+                <option value="ALL">Tous</option>
+                <option value="ONE">Un seul</option>
+              </select>
+            </label>
+            <label class="check">
+              <input type="checkbox" [checked]="isDraftLast(i)" disabled />
+              <span>Dernier niveau</span>
+            </label>
+            @if (canEdit()) {
+              <button type="button" class="btn btn--ghost btn--sm" (click)="removeDraftLevel(i)"
+                      [disabled]="d.levels.length <= 1 || saving()">✕</button>
+            }
+          </div>
+          @if (!level.memberIds.length) {
+            <p class="members-none">Aucun membre à ce niveau.</p>
+          }
+          <div class="chips">
+            @for (m of level.memberIds; track m) {
+              <span class="chip">{{ userLabel(m) }}
+                @if (canEdit()) {
+                  <button type="button" class="chip__x" (click)="removeDraftMember(i, m)"
+                          [disabled]="saving()" aria-label="Retirer">✕</button>
+                }
+              </span>
+            }
+          </div>
+          @if (canEdit()) {
+            <div class="member-add">
+              <select class="input" [ngModel]="memberPick()[i] ?? ''"
+                      (ngModelChange)="setMemberPick(i, $event)" [disabled]="saving()">
+                <option value="">+ Ajouter un membre du comité…</option>
+                @for (u of users(); track u.id) {
+                  <option [value]="u.id">{{ u.firstName }} {{ u.lastName }} ({{ u.username }})</option>
+                }
+              </select>
+              <button type="button" class="btn btn--ghost btn--sm" (click)="addDraftMember(i)"
+                      [disabled]="saving()">Ajouter</button>
+            </div>
+          }
+        </div>
+      }
+
+      @if (canEdit()) {
+        <button type="button" class="btn btn--ghost btn--sm" (click)="addDraftLevel()"
+                [disabled]="d.levels.length >= 5 || saving()">+ Ajouter un niveau</button>
+      }
+
+      @if (draftError()) {
+        <p class="field__error" role="alert">{{ draftError() }}</p>
+      }
+
+      <div class="foot-actions">
+        <button type="button" class="btn btn--ghost" (click)="closeDraft()"
+                [disabled]="saving()">Annuler</button>
+        @if (canEdit()) {
+          <button type="button" class="btn btn--primary" (click)="saveDraft()" [disabled]="saving()">
+            {{ saving() ? 'Enregistrement…' : 'Enregistrer le circuit' }}
+          </button>
+        }
+      </div>
+    </section>
+  </div>
+}

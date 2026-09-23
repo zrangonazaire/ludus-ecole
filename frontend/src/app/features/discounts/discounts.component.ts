@@ -6,9 +6,11 @@ import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import {
-  ACCESS_PROFILE_DATA_SOURCE, FINANCE_DATA_SOURCE, STUDENT_DATA_SOURCE
+  FEE_DATA_SOURCE, FINANCE_DATA_SOURCE, STUDENT_DATA_SOURCE
 } from '@core/datasource/data-source';
-import { AccessProfile } from '@core/models/access-profile.models';
+import { ApprovalCircuit } from '@core/models/approval-circuit.models';
+import { FeeType } from '@core/models/fee.models';
+import { ApprovalCircuitService } from '@core/services/approval-circuit.service';
 import {
   DISCOUNT_KIND_LABELS, DISCOUNT_LEVEL_LABELS, DISCOUNT_STATUS_LABELS,
   DiscountDecisionPayload, DiscountKind, DiscountLevelInput, DiscountRequest
@@ -45,7 +47,8 @@ type TabKey = 'MINE' | 'PENDING' | 'ALL';
 export class DiscountsComponent implements OnInit {
   private readonly finance = inject(FINANCE_DATA_SOURCE);
   private readonly students = inject(STUDENT_DATA_SOURCE);
-  private readonly accessProfiles = inject(ACCESS_PROFILE_DATA_SOURCE);
+  private readonly circuitsService = inject(ApprovalCircuitService);
+  private readonly fees = inject(FEE_DATA_SOURCE);
   private readonly notifications = inject(NotificationService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
@@ -56,7 +59,11 @@ export class DiscountsComponent implements OnInit {
   readonly error = signal(false);
   readonly tab = signal<TabKey>('MINE');
 
-  readonly profiles = signal<AccessProfile[]>([]);
+  readonly circuits = signal<ApprovalCircuit[]>([]);
+  readonly feeTypes = signal<FeeType[]>([]);
+  readonly circuitId = signal('');
+  readonly feeTypeId = signal('');
+  readonly selectedCircuit = computed(() => this.circuits().find(c => c.id === this.circuitId()));
 
   readonly tabs: readonly { key: TabKey; label: string }[] = [
     { key: 'MINE', label: 'À valider par moi' },
@@ -96,7 +103,8 @@ export class DiscountsComponent implements OnInit {
   readonly formReason = signal('');
   readonly formKind = signal<DiscountKind>('PERCENTAGE');
   readonly formValue = signal<number | null>(null);
-  readonly formLevels = signal<DiscountLevelInput[]>([]);
+  readonly formLevels = computed(() => (this.selectedCircuit()?.levels ?? [])
+    .map(l => ({ name: l.code, roleCode: '', mode: l.mode, members: l.members })));
 
   private readonly studentQuery$ = new Subject<string>();
 
@@ -107,13 +115,13 @@ export class DiscountsComponent implements OnInit {
   readonly applying = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.accessProfiles.overview().pipe(
-      takeUntilDestroyed(this.destroyRef),
-      catchError(() => of(null))
-    ).subscribe((overview) => {
-      if (overview) {
-        this.profiles.set(overview.profiles.filter((p) => p.code !== 'SUPER_ADMIN'));
-      }
+    this.circuitsService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: rows => { this.circuits.set(rows.filter(c => c.usage === 'DISCOUNT')); this.circuitId.set(this.circuits()[0]?.id ?? ''); },
+      error: () => this.notifications.error('Chargement des circuits impossible. Réessayez avant de soumettre.')
+    });
+    this.fees.listTypes().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: rows => this.feeTypes.set(rows),
+      error: () => this.notifications.error('Chargement des types de frais impossible.')
     });
 
     this.studentQuery$
@@ -151,7 +159,7 @@ export class DiscountsComponent implements OnInit {
     this.formReason.set('');
     this.formKind.set('PERCENTAGE');
     this.formValue.set(null);
-    this.formLevels.set([{ name: 'Intendance', roleCode: 'ACCOUNTANT' }]);
+    this.feeTypeId.set('');
     this.formStudentId.set('');
     this.selectedStudentName.set('');
     this.studentSearch.set('');
@@ -185,26 +193,6 @@ export class DiscountsComponent implements OnInit {
     this.selectedStudentName.set('');
   }
 
-  addLevel(): void {
-    if (this.formLevels().length >= 5) {
-      return;
-    }
-    this.formLevels.set([...this.formLevels(),
-      { name: `Niveau ${this.formLevels().length + 1}`, roleCode: 'DIRECTOR' }]);
-  }
-
-  removeLevel(index: number): void {
-    this.formLevels.set(this.formLevels().filter((_, i) => i !== index));
-  }
-
-  updateLevel(index: number, field: 'name' | 'roleCode', value: string): void {
-    this.formLevels.set(
-      this.formLevels().map((level, i) =>
-        i === index ? { ...level, [field]: value } : level
-      )
-    );
-  }
-
   submitRequest(): void {
     if (!this.formStudentId()) {
       this.formError.set('Choisissez l’élève concerné.');
@@ -223,12 +211,8 @@ export class DiscountsComponent implements OnInit {
       this.formError.set('Un pourcentage ne peut dépasser 100.');
       return;
     }
-    if (this.formLevels().length === 0) {
-      this.formError.set('Ajoutez au moins un niveau de validation.');
-      return;
-    }
-    if (this.formLevels().some((l) => !l.name.trim() || !l.roleCode)) {
-      this.formError.set('Chaque niveau doit avoir un nom et un profil.');
+    if (!this.selectedCircuit()) {
+      this.formError.set('Choisissez un circuit enregistré dans Configuration système.');
       return;
     }
 
@@ -240,7 +224,8 @@ export class DiscountsComponent implements OnInit {
       reason: this.formReason().trim() || undefined,
       discountType: this.formKind(),
       value,
-      levels: this.formLevels()
+      circuitId: this.circuitId(),
+      feeTypeId: this.feeTypeId() || undefined
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (created) => {
         this.submitting.set(false);
@@ -289,7 +274,7 @@ export class DiscountsComponent implements OnInit {
             decision === 'APPROVE'
               ? (updated.status === 'SUBMITTED'
                   ? `Palier validé. En attente de « ${this.currentLevelLabel(updated)} ».`
-                  : 'Tous les paliers sont validés : la réduction peut être appliquée.')
+                  : 'Tous les paliers sont validés : la réduction est appliquée.')
               : `Demande ${updated.reference} refusée.`,
             decision === 'APPROVE' ? 'Validation enregistrée' : 'Demande refusée');
           this.load();
@@ -348,9 +333,7 @@ export class DiscountsComponent implements OnInit {
 
   computedAmountLabel(request: DiscountRequest): string {
     const amount = request.computedAmount ?? request.value;
-    return request.discountType === 'PERCENTAGE'
-      ? `${amount} %`
-      : this.moneyPipe.transform(amount);
+    return this.moneyPipe.transform(amount);
   }
 
   effectiveAtLabel(request: DiscountRequest): string {

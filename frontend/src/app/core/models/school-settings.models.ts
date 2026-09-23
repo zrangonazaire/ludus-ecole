@@ -59,6 +59,29 @@ export interface SchoolSettingsPayload {
   invoiceNumberPattern: string;
 }
 
+/**
+ * Apparence et région de l'établissement (`GET/PUT /api/v1/school/appearance`).
+ *
+ * <p>La couleur et la taille de police sont propres à l'affichage ; la devise,
+ * la langue et le fuseau sont les valeurs officielles qui suivent les reçus et
+ * les documents. Elles sont partagées par tous les postes du même
+ * établissement : ce n'est pas une préférence de navigateur.</p>
+ */
+export interface AppearanceSettings {
+  /** Couleur principale du portail, hexadécimal, ex. #1f5fd6. */
+  brand: string;
+  /** Taille de police : small, normal ou large. */
+  fontSize: 'small' | 'normal' | 'large';
+  /** Devise officielle, trois majuscules, ex. XOF. */
+  currency: string;
+  /** Langue, ex. fr-CI. */
+  locale: string;
+  /** Fuseau horaire, ex. Africa/Abidjan. */
+  timezone: string;
+}
+
+export type AppearanceSettingsPayload = AppearanceSettings;
+
 /** Fuseaux courants d'un établissement d'Afrique de l'Ouest et d'Europe. */
 export const COMMON_TIMEZONES: ReadonlyArray<string> = [
   'Africa/Abidjan',

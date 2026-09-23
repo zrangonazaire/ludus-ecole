@@ -55,6 +55,13 @@ export class AdminLayoutComponent implements OnInit {
   readonly drawerOpen = signal(false);
   readonly searchTerm = signal('');
 
+  /**
+   * « Configuration système » dans le pied de la barre latérale, juste avant
+   * « Reprendre le guide ». Même garde que la route (SCHOOL_VIEW) pour que
+   * le lien et l'écran restent cohérents.
+   */
+  readonly canSeeSystemConfig = computed(() => this.auth.has(PERMISSIONS.SCHOOL_VIEW));
+
   private readonly allItems: NavItem[] = [
     // ─────────────────────────────────────────────────────── Pilotage
     { section: 'Pilotage', label: 'Tableau de bord', route: '/dashboard', icon: '▤',

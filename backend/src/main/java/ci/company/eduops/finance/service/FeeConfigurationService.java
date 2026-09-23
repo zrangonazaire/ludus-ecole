@@ -268,8 +268,7 @@ public class FeeConfigurationService {
      */
     @Transactional
     public void deleteSchedule(UUID scheduleId) {
-        FeeSchedule schedule = feeScheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.FEE_SCHEDULE_NOT_FOUND));
+        FeeSchedule schedule = requireSchedule(scheduleId);
 
         if (studentFeeRepository.existsForSchedule(scheduleId)) {
             throw new BusinessException(ErrorCode.FEE_SCHEDULE_IN_USE,
@@ -312,6 +311,89 @@ public class FeeConfigurationService {
                         "replaceExisting", request.isReplaceExisting()));
         log.info("Tarif {} appliqué à {} niveau(x)", type.getName(), touched.size());
         return touched;
+    }
+
+    /** Read-only validation before the operation enters the circuit. */
+    @Transactional(readOnly = true)
+    public UUID validateChange(String operation, UUID target, UUID yearId, Object input) {
+        requireSchool();
+        switch (operation) {
+            case "CREATE_TYPE", "UPDATE_TYPE" -> {
+                FeeTypeUpsertRequest dto = (FeeTypeUpsertRequest) input;
+                String code = normaliseCode(dto.getCode());
+                FeeType existing = operation.equals("UPDATE_TYPE") ? requireType(target) : null;
+                if ((existing == null || !existing.getCode().equals(code))
+                        && feeTypeRepository.existsBySchoolIdAndCode(requireSchool(), code)) {
+                    throw new BusinessException(ErrorCode.FEE_TYPE_CODE_ALREADY_USED);
+                }
+                applyType(new FeeType(), dto);
+            }
+            case "ARCHIVE_TYPE" -> {
+                requireType(target);
+                if (feeScheduleRepository.countByFeeTypeIdAndStatus(target, CommonStatus.ACTIVE) > 0)
+                    throw new BusinessException(ErrorCode.FEE_TYPE_IN_USE);
+            }
+            case "DELETE_SCHEDULE" -> {
+                requireSchedule(target);
+                if (studentFeeRepository.existsForSchedule(target)) throw new BusinessException(ErrorCode.FEE_SCHEDULE_IN_USE);
+            }
+            case "SAVE_SCHEDULE", "APPLY_SCHEDULE" -> {
+                AcademicYear year = resolveYear(yearId);
+                if (year.getStatus() != AcademicYearStatus.ACTIVE)
+                    throw new BusinessException(ErrorCode.ACADEMIC_YEAR_NOT_ACTIVE);
+                FeeScheduleUpsertRequest dto;
+                if (input instanceof FeeApplyRequest group) {
+                    group.getLevelIds().forEach(this::requireLevel);
+                    dto = group.getSchedule();
+                } else {
+                    dto = (FeeScheduleUpsertRequest) input;
+                    if (dto.getLevelId() != null) requireLevel(dto.getLevelId());
+                }
+                FeeType type = requireType(dto.getFeeTypeId());
+                if (type.getStatus() != CommonStatus.ACTIVE) throw new BusinessException(ErrorCode.FEE_TYPE_NOT_FOUND);
+                BigDecimal total = MoneyUtils.normalize(dto.getTotalAmount());
+                if (total.signum() < 0) throw new BusinessException(ErrorCode.FEE_AMOUNT_INVALID);
+                var plan = buildInstalments(dto, total, year);
+                if (!plan.isEmpty() && plan.stream().map(FeeScheduleInstalment::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add).compareTo(total) != 0)
+                    throw new BusinessException(ErrorCode.FEE_INSTALMENTS_MISMATCH);
+                return year.getId();
+            }
+            default -> throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+        return null;
+    }
+
+    @Transactional(readOnly = true)
+    public String changeBaseline(String operation, UUID target, UUID year, Object input) {
+        if (operation.equals("CREATE_TYPE")) return "new";
+        if (operation.equals("UPDATE_TYPE") || operation.equals("ARCHIVE_TYPE")) {
+            FeeType type = requireType(target);
+            return type.getId() + ":" + type.getVersion();
+        }
+        if (operation.equals("DELETE_SCHEDULE")) {
+            FeeSchedule schedule = requireSchedule(target);
+            return schedule.getId() + ":" + schedule.getVersion();
+        }
+        FeeScheduleUpsertRequest dto = input instanceof FeeApplyRequest group ? group.getSchedule() : (FeeScheduleUpsertRequest) input;
+        List<UUID> targets = input instanceof FeeApplyRequest group ? group.getLevelIds() : java.util.Collections.singletonList(dto.getLevelId());
+        var type = requireType(dto.getFeeTypeId());
+        String schedules = feeScheduleRepository.findAllOfYear(year).stream()
+                .filter(s -> s.getFeeType().getId().equals(dto.getFeeTypeId()))
+                .filter(s -> targets.contains(s.getLevel() == null ? null : s.getLevel().getId()))
+                .map(s -> s.getId() + ":" + s.getVersion()).sorted().collect(java.util.stream.Collectors.joining(","));
+        return type.getId() + ":" + type.getVersion() + "/" + schedules;
+    }
+
+    @Transactional(readOnly = true)
+    public String typeName(UUID id) { return requireType(id).getName(); }
+    @Transactional(readOnly = true)
+    public String scheduleName(UUID id) { return requireSchedule(id).getLabel(); }
+
+    private FeeSchedule requireSchedule(UUID id) {
+        return feeScheduleRepository.findById(id)
+                .filter(s -> s.getAcademicYear().getSchool().getId().equals(requireSchool()))
+                .orElseThrow(() -> new BusinessException(ErrorCode.FEE_SCHEDULE_NOT_FOUND));
     }
 
     // ------------------------------------------------------------- internals
@@ -576,6 +658,7 @@ public class FeeConfigurationService {
     private AcademicYear resolveYear(UUID academicYearId) {
         if (academicYearId != null) {
             return academicYearRepository.findById(academicYearId)
+                    .filter(y -> y.getSchool().getId().equals(requireSchool()))
                     .orElseThrow(() -> new BusinessException(ErrorCode.ACADEMIC_YEAR_NOT_FOUND));
         }
         return academicYearRepository

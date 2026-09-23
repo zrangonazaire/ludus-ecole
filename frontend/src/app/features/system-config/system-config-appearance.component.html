@@ -1,0 +1,58 @@
+<div [formGroup]="form">
+<p class="section-note">Couleur du portail, taille de police, devise, langue et fuseau horaire :
+appliqués immédiatement sur ce navigateur, réversibles à tout moment.
+Les paramètres officiels de l’établissement restent dans « Paramètres ».</p>
+
+<div class="card"><div class="card__body">
+  <div class="preview" aria-hidden="true">
+    <span class="preview__chip">Aperçu couleur</span>
+    <span class="preview__title">Portail de l’établissement</span>
+  </div>
+  <div class="grid">
+    <label class="field"><span>Couleur principale</span>
+      <span class="color-row">
+        <input type="color" formControlName="brand" />
+        <input class="input mono" formControlName="brand" maxlength="7" />
+      </span>
+      @if (invalid('brand')) { <span class="field__error">Hexadécimal, ex. #1f5fd6.</span> }
+    </label>
+    <label class="field"><span>Taille de police</span>
+      <select class="input" formControlName="fontSize">
+        @for (c of fontChoices; track c.key) {
+          <option [value]="c.key">{{ c.label }}</option>
+        }
+      </select>
+    </label>
+    <label class="field"><span>Devise (3 lettres)</span>
+      <input class="input mono" formControlName="currency" maxlength="3" />
+      @if (invalid('currency')) { <span class="field__error">Trois majuscules, ex. XOF.</span> }
+    </label>
+    <label class="field"><span>Langue</span>
+      <select class="input" formControlName="locale">
+        @for (locale of locales; track locale) {
+          <option [value]="locale">{{ locale }}</option>
+        }
+      </select>
+    </label>
+    <label class="field"><span>Fuseau horaire</span>
+      <input class="input" list="sysconfig-tz" formControlName="timezone" maxlength="60" />
+      <datalist id="sysconfig-tz">
+        @for (zone of timezones; track zone) {
+          <option [value]="zone"></option>
+        }
+      </datalist>
+    </label>
+  </div>
+</div></div>
+
+@if (canEdit()) {
+  <div class="foot-actions">
+    <button type="button" class="btn btn--ghost" (click)="reset()">Réinitialiser</button>
+    <button type="button" class="btn btn--primary" (click)="save()" [disabled]="form.invalid">
+      Enregistrer l’apparence
+    </button>
+  </div>
+} @else {
+  <p class="restricted">La modification demande le droit de gestion de l’établissement.</p>
+}
+</div>
