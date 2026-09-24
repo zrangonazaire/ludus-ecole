@@ -87,10 +87,6 @@ export class AdminLayoutComponent implements OnInit {
       permissions: [PERMISSIONS.ADMISSION_VIEW], ready: true },
     { section: 'Scolarité', label: 'Inscriptions', route: '/enrollments', icon: '✓',
       permissions: [PERMISSIONS.ENROLLMENT_VIEW], ready: true },
-    // Le choix des enseignements à option : LV2, latin, série au lycée.
-    // Distinct de l'inscription, et souvent décidé plus tard.
-    { section: 'Scolarité', label: 'Options et langues', route: '/options', icon: '◈',
-      permissions: [PERMISSIONS.ENROLLMENT_VIEW], ready: true },
     // Fin d'année : qui passe, qui redouble, qui s'oriente ailleurs.
     { section: 'Scolarité', label: 'Passage et réinscription', route: '/promotions',
       icon: '↻', permissions: ['PROMOTION_DECIDE'] },
@@ -149,8 +145,6 @@ export class AdminLayoutComponent implements OnInit {
     // ───────────────────────────────────────────── Personnel et accès
     { section: 'Personnel et accès', label: 'Enseignants', route: '/teachers', icon: '◍',
       permissions: [PERMISSIONS.TEACHER_VIEW] },
-    { section: 'Personnel et accès', label: 'Personnel', route: '/staff', icon: '◌',
-      permissions: [PERMISSIONS.STAFF_VIEW], ready: true },
     { section: 'Personnel et accès', label: 'Utilisateurs', route: '/users', icon: '◒',
       permissions: [PERMISSIONS.USER_MANAGE], ready: true },
     { section: 'Personnel et accès', label: 'Profils d’accès', route: '/access-profiles', icon: '◒',
@@ -189,7 +183,7 @@ export class AdminLayoutComponent implements OnInit {
   /**
    * Sections repliées par l'utilisateur.
    *
-   * <p>Sept sections et trente entrées ne tiennent pas à l'écran d'un portable.
+   * <p>Sept sections et une trentaine d'entrées ne tiennent pas à l'écran d'un portable.
    * Le choix est conservé d'une session à l'autre : un comptable qui replie la
    * pédagogie ne veut pas la rouvrir à chaque connexion.</p>
    */

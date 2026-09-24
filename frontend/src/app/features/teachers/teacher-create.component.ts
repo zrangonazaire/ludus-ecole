@@ -3,7 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CURRICULUM_DATA_SOURCE, REFERENCE_DATA_SOURCE, TEACHER_DATA_SOURCE } from '@core/datasource/data-source';
-import { CONTRACT_TYPES, ContractType } from '@core/models/staff.models';
+import { CONTRACT_TYPES, ContractType } from '@core/models/teacher.models';
 import { SUBJECT_CATEGORIES, SUBJECT_COLORS, SubjectCategoryCode } from '@core/models/curriculum.models';
 import { AuthService } from '@core/auth/auth.service';
 import { NotificationService } from '@core/services/notification.service';

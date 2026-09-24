@@ -1,7 +1,9 @@
 <div class="page">
   <header class="page__header">
     <div><p class="eyebrow">Personnel et accès</p><h1 class="page__title">Utilisateurs</h1>
-      <p class="page__meta">Créez les comptes de connexion et attribuez leurs profils d’accès.</p></div>
+      <p class="page__meta">Tout le personnel de l’établissement — enseignants, personnel non
+        enseignant, administration — est un utilisateur : créez ses comptes de connexion et
+        attribuez leurs profils d’accès.</p></div>
     <div class="page__actions">
       @if (auth.has('ROLE_MANAGE')) { <a class="btn btn--secondary" routerLink="/access-profiles">Profils d’accès</a> }
       <button class="btn btn--primary" type="button" (click)="open()" [disabled]="loading() || error()">+ Créer un utilisateur</button>
@@ -9,7 +11,9 @@
   </header>
   <section class="intro card"><div>
     <h2>Donner accès à votre établissement</h2>
-    <p>Créez un compte, choisissez ses profils, puis communiquez personnellement son identifiant, son mot de passe et le lien de connexion. Aucun e-mail n’est envoyé automatiquement.</p>
+    <p>Créez un compte pour chaque membre du personnel, choisissez ses profils, puis communiquez
+      personnellement son identifiant, son mot de passe et le lien de connexion. Aucun e-mail
+      n’est envoyé automatiquement.</p>
     <p>Les profils définissent les droits. Pour les portails élèves, parents et enseignants, le compte doit aussi être rattaché à la fiche de la personne concernée.</p>
   </div></section>
   @if (created(); as username) {

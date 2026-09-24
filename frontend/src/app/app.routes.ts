@@ -319,10 +319,12 @@ export const routes: Routes = [
           .then((m) => m.OutstandingComponent)
       },
       {
+        // L'ancienne page « Personnel » est retirée : tout le personnel est
+        // un utilisateur, géré depuis /users. La route reste pour que les
+        // favoris et les liens déjà distribués n'atterrissent pas sur 404.
         path: 'staff',
-        loadComponent: () => import('./features/staff/staff.component')
-          .then((m) => m.StaffComponent),
-        data: { title: 'Personnel' }
+        redirectTo: 'users',
+        pathMatch: 'full'
       },
       {
         path: 'users',
