@@ -109,6 +109,7 @@ export interface StudentSummary {
 }
 
 export interface StudentDetail extends StudentSummary {
+  version?: number;
   middleName?: string;
   birthPlace?: string;
   nationality?: string;
@@ -129,6 +130,10 @@ export interface StudentDetail extends StudentSummary {
 
 /** Édition de l'identité de l'élève : champs partiels, absent = inchangé. */
 export interface StudentUpdatePayload {
+  version?: number;
+  gender?: StudentSummary['gender'];
+  middleName?: string;
+  city?: string;
   firstName?: string;
   lastName?: string;
   birthDate?: string;

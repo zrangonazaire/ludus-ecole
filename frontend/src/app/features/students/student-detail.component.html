@@ -27,9 +27,44 @@
         <a class="btn btn--secondary" routerLink="/students">Retour</a>
         <a class="btn btn--secondary" routerLink="/student-files"
            [queryParams]="{ studentId: student.id, type: 'SCHOOL_CERTIFICATE' }">Certificat de scolarité</a>
-        <button type="button" class="btn btn--primary">Modifier</button>
+        @if (canStatement()) {
+          <button type="button" class="btn btn--secondary" [disabled]="printing() || editing()"
+                  (click)="printStatement()">{{ printing() ? 'Préparation…' : 'Imprimer la fiche / paiements' }}</button>
+        }
+        @if (canEdit()) {
+          <button type="button" class="btn btn--primary" [disabled]="editing()" (click)="openEdit()">Modifier</button>
+        }
       </div>
     </header>
+
+    @if (editing()) {
+      <section class="card edit-card" aria-labelledby="edit-title">
+        <header class="card__header"><h2 id="edit-title" class="card__title">Modifier les informations de l’élève</h2></header>
+        <form class="card__body" [formGroup]="editForm" (ngSubmit)="save()">
+          <fieldset [disabled]="saving()">
+            <div class="edit-grid">
+              <label>Nom *<input class="input" formControlName="lastName" maxlength="80" /></label>
+              <label>Prénom *<input class="input" formControlName="firstName" maxlength="80" /></label>
+              <label>Autres prénoms<input class="input" formControlName="middleName" maxlength="80" /></label>
+              <label>Sexe *<select class="select" formControlName="gender"><option value="FEMALE">Féminin</option><option value="MALE">Masculin</option><option value="OTHER">Autre</option></select></label>
+              <label>Date de naissance *<input class="input" type="date" formControlName="birthDate" [max]="maxBirthDate" /></label>
+              <label>Lieu de naissance<input class="input" formControlName="birthPlace" maxlength="120" /></label>
+              <label>Nationalité<input class="input" formControlName="nationality" maxlength="80" /></label>
+              <label>Téléphone<input class="input" type="tel" formControlName="phone" maxlength="40" /></label>
+              <label>Courriel<input class="input" type="email" formControlName="email" maxlength="160" /></label>
+              <label>Adresse<input class="input" formControlName="address" maxlength="200" /></label>
+              <label>Ville<input class="input" formControlName="city" maxlength="120" /></label>
+              <label>Établissement précédent<input class="input" formControlName="previousSchool" maxlength="160" /></label>
+            </div>
+            @if (editForm.invalid && editForm.touched) {
+              <p class="edit-error" role="alert">Vérifiez les champs obligatoires, la date de naissance (antérieure à aujourd’hui) et le format du courriel.</p>
+            }
+            <div class="edit-actions"><button type="button" class="btn btn--secondary" (click)="cancelEdit()">Annuler</button>
+              <button type="submit" class="btn btn--primary">{{ saving() ? 'Enregistrement…' : 'Enregistrer les modifications' }}</button></div>
+          </fieldset>
+        </form>
+      </section>
+    }
 
     <nav class="tabs" role="tablist" aria-label="Sections de la fiche">
       <button type="button" role="tab" class="tabs__tab"
@@ -47,7 +82,7 @@
       <button type="button" role="tab" class="tabs__tab"
               [class.tabs__tab--active]="activeTab() === 'finance'"
               [attr.aria-selected]="activeTab() === 'finance'"
-              (click)="activeTab.set('finance')">Situation financiere</button>
+              (click)="openFinance()">Situation financière</button>
     </nav>
 
     @switch (activeTab()) {
@@ -58,10 +93,14 @@
             <dl class="definition card__body">
               <div><dt>Matricule</dt><dd class="numeric">{{ student.studentNumber }}</dd></div>
               <div><dt>Nom complet</dt><dd>{{ student.fullName }}</dd></div>
-              <div><dt>Sexe</dt><dd>{{ student.gender === 'FEMALE' ? 'Feminin' : 'Masculin' }}</dd></div>
+              <div><dt>Sexe</dt><dd>{{ student.gender === 'FEMALE' ? 'Féminin' : student.gender === 'MALE' ? 'Masculin' : 'Autre' }}</dd></div>
               <div><dt>Date de naissance</dt><dd>{{ student.birthDate | date:'dd/MM/yyyy' }}</dd></div>
               <div><dt>Lieu de naissance</dt><dd>{{ student.birthPlace ?? '-' }}</dd></div>
               <div><dt>Nationalite</dt><dd>{{ student.nationality ?? '-' }}</dd></div>
+              <div><dt>Téléphone</dt><dd>{{ student.phone || '—' }}</dd></div>
+              <div><dt>Courriel</dt><dd>{{ student.email || '—' }}</dd></div>
+              <div><dt>Adresse</dt><dd>{{ student.addressLine1 || '—' }}</dd></div>
+              <div><dt>Ville</dt><dd>{{ student.city || '—' }}</dd></div>
               <div><dt>Date d'admission</dt><dd>{{ student.admissionDate | date:'dd/MM/yyyy' }}</dd></div>
               <div><dt>Établissement precedent</dt><dd>{{ student.previousSchool ?? '-' }}</dd></div>
             </dl>
@@ -139,6 +178,7 @@
       }
 
       @case ('finance') {
+        <p class="muted">Échéancier et totaux de l’année scolaire active.</p>
         @if (student.financialSummary; as finance) {
           <div class="grid grid--kpi">
             <div class="stat card"><p class="stat__label">Total du</p>
@@ -176,6 +216,37 @@
                 </tbody>
               </table>
             </div>
+          </section>
+        }
+        @if (canStatement()) {
+          <section class="card" style="margin-top: var(--space-6)">
+            <header class="card__header"><h3 class="card__title">Historique financier — toutes années</h3>
+              <button class="btn btn--secondary btn--sm" (click)="loadStatement()" [disabled]="statementLoading()">Actualiser</button></header>
+            @if (statementLoading()) { <eduops-loading-state message="Chargement des paiements…" /> }
+            @else if (statementError()) { <eduops-error-state (retry)="loadStatement()" /> }
+            @else {
+              @if (statement(); as statement) {
+                <div class="table-wrapper"><table class="table"><caption>Situation par année scolaire</caption>
+                  <thead><tr><th>Année</th><th>Frais dus</th><th>Réglé sur frais</th><th>Reste à payer</th></tr></thead><tbody>
+                  @for (balance of statement.balances; track balance.academicYearId) {
+                    <tr><td>{{ balance.yearLabel }}</td><td>{{ balance.summary.totalDue | money:balance.summary.currency }}</td>
+                      <td>{{ balance.summary.totalPaid | money:balance.summary.currency }}</td><td>{{ balance.summary.outstandingAmount | money:balance.summary.currency }}</td></tr>
+                  } @empty { <tr><td colspan="4">Aucun frais enregistré.</td></tr> }
+                  </tbody></table></div>
+                <div class="table-wrapper"><table class="table"><caption>Paiements enregistrés</caption>
+                  <thead><tr><th>Date</th><th>Année</th><th>Référence / reçu</th><th>Mode / payeur</th><th>Montant</th><th>Statut</th></tr></thead><tbody>
+                  @for (payment of statement.payments; track payment.id) {
+                    <tr><td>{{ payment.paymentDate | date:'dd/MM/yyyy' }}</td><td>{{ payment.yearLabel }}</td>
+                      <td>{{ payment.reference }}<br />{{ payment.receiptNumber || 'Sans reçu' }}</td>
+                      <td>{{ payment.method | statusLabel }}<br />{{ payment.payerName || '—' }}</td>
+                      <td>{{ payment.amount | money:payment.currency }}
+                        @if (payment.status === 'VALIDATED' && payment.unallocatedAmount > 0) { <br /><small>Non affecté : {{ payment.unallocatedAmount | money:payment.currency }}</small> }
+                      </td><td><eduops-status-badge [status]="payment.status" /></td></tr>
+                  } @empty { <tr><td colspan="6">Aucun paiement enregistré.</td></tr> }
+                  </tbody></table></div>
+                <p class="card__body muted">Les paiements en attente, annulés, contre-passés ou échoués ne sont pas comptés comme des règlements validés.</p>
+              }
+            }
           </section>
         }
       }

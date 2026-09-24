@@ -75,3 +75,12 @@ code { font-family: ui-monospace, monospace; background: var(--surface-sunken); 
 @include mobile {
   .profile { flex-direction: column; align-items: flex-start; text-align: left; }
 }
+.edit-card { margin-bottom: var(--space-6); }
+.edit-card fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.edit-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+.edit-grid label { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--text-sm); }
+.edit-actions { display: flex; gap: var(--space-3); justify-content: flex-end; margin-top: var(--space-5); }
+.edit-error { color: var(--danger); }
+.edit-grid .ng-invalid.ng-touched { border-color: var(--danger); }
+@media (max-width: 800px) { .edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .edit-grid { grid-template-columns: 1fr; } }

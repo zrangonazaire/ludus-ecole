@@ -9,7 +9,12 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** A kind of fee: inscription, scolarite, examen... (section 39). */
+/** A kind of fee: inscription, scolarite, examen... (section 39).
+ *
+ * <p>La rubrique est un code appartenant à {@code fee_category}, table
+ * par école créée en V54 ; l'intégrité est portée par la clé étrangère
+ * (school_id, category).</p>
+ */
 @Entity
 @Table(name = "fee_type")
 @Getter
@@ -26,10 +31,8 @@ public class FeeType extends BaseEntity {
     @Column(name = "name", nullable = false, length = 150)
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "category", nullable = false, columnDefinition = "fee_category")
-    private FeeCategory category = FeeCategory.OTHER;
+    @Column(name = "category", nullable = false, length = 40)
+    private String category = "OTHER";
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

@@ -2,6 +2,10 @@ package ci.company.eduops.student.dto.request;
 
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.PositiveOrZero;
+import ci.company.eduops.common.domain.Gender;
 
 import java.time.LocalDate;
 
@@ -14,9 +18,28 @@ import java.time.LocalDate;
  */
 public class StudentUpdateRequest {
 
+    @PositiveOrZero
+    private Long version;
+    private Gender gender;
+    @Size(max = 80)
+    private String middleName;
+    @Size(max = 120)
+    private String city;
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
+    public Gender getGender() { return gender; }
+    public void setGender(Gender gender) { this.gender = gender; }
+    public String getMiddleName() { return middleName; }
+    public void setMiddleName(String middleName) { this.middleName = middleName; }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    @Pattern(regexp = "(?s).*\\S.*", message = "Le prénom est obligatoire")
     @Size(max = 80, message = "Le prénom ne doit pas dépasser 80 caractères")
     private String firstName;
 
+    @Pattern(regexp = "(?s).*\\S.*", message = "Le nom est obligatoire")
     @Size(max = 80, message = "Le nom ne doit pas dépasser 80 caractères")
     private String lastName;
 
@@ -29,13 +52,14 @@ public class StudentUpdateRequest {
     @Size(max = 80)
     private String nationality;
 
+    @Email
     @Size(max = 160)
     private String email;
 
     @Size(max = 40)
     private String phone;
 
-    @Size(max = 255)
+    @Size(max = 200)
     private String address;
 
     @Size(max = 160)

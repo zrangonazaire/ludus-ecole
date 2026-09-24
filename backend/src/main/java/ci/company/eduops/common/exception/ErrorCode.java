@@ -221,6 +221,11 @@ public enum ErrorCode {
     // ---------- finance ----------
     FEE_TYPE_NOT_FOUND(HttpStatus.NOT_FOUND, "Fee type not found."),
     FEE_SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "Fee schedule not found."),
+    FEE_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Fee category not found."),
+    FEE_CATEGORY_CODE_ALREADY_USED(HttpStatus.CONFLICT,
+            "Another fee category already uses this code."),
+    FEE_CATEGORY_IN_USE(HttpStatus.CONFLICT,
+            "Fee types still use this category and it cannot be archived or renamed."),
     FEE_TYPE_CODE_ALREADY_USED(HttpStatus.CONFLICT,
             "Another fee type already uses this code."),
     FEE_TYPE_IN_USE(HttpStatus.CONFLICT,

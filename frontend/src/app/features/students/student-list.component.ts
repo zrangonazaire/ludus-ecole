@@ -52,6 +52,7 @@ export class StudentListComponent implements OnInit {
   readonly classroom = signal<Classroom | null>(null);
 
   readonly createPermission = PERMISSIONS.STUDENT_CREATE;
+  readonly editPermission = PERMISSIONS.STUDENT_UPDATE;
 
   /**
    * Déclencheur de recherche, porteur de sa clé.
@@ -73,6 +74,7 @@ export class StudentListComponent implements OnInit {
   statusTpl!: TemplateRef<{ $implicit: StudentSummary }>;
 
   columns: TableColumn<StudentSummary>[] = [];
+  @ViewChild('actionsTpl', { static: true }) actionsTpl!: TemplateRef<{ $implicit: StudentSummary }>;
 
   /** Relance une recherche avec les critères courants. */
   private requery(): void {
@@ -92,7 +94,8 @@ export class StudentListComponent implements OnInit {
       { key: 'classroomName', label: 'Classe', width: '15%' },
       { key: 'levelName', label: 'Niveau', width: '12%' },
       { key: 'age', label: 'Age', numeric: true, width: '8%' },
-      { key: 'status', label: 'Statut', template: this.statusTpl, width: '15%' }
+      { key: 'status', label: 'Statut', template: this.statusTpl },
+      { key: 'actions', label: 'Actions', template: this.actionsTpl }
     ];
 
     this.query$

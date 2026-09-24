@@ -13,6 +13,7 @@ import ci.company.eduops.common.exception.ErrorCode;
 import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.common.tenant.TenantBypass;
 import ci.company.eduops.config.EduOpsProperties;
+import ci.company.eduops.finance.service.FeeCategoryService;
 import ci.company.eduops.notification.service.MailService;
 import ci.company.eduops.school.domain.School;
 import ci.company.eduops.school.domain.SchoolStatus;
@@ -67,6 +68,7 @@ public class SignupService {
     private final MailService mailService;
     private final AuditService auditService;
     private final SignupProvisioningService provisioningService;
+    private final FeeCategoryService feeCategoryService;
     private final EduOpsProperties properties;
 
     public SignupService(SchoolRepository schoolRepository,
@@ -80,6 +82,7 @@ public class SignupService {
                          MailService mailService,
                          AuditService auditService,
                          SignupProvisioningService provisioningService,
+                         FeeCategoryService feeCategoryService,
                          EduOpsProperties properties) {
         this.schoolRepository = schoolRepository;
         this.campusRepository = campusRepository;
@@ -92,6 +95,7 @@ public class SignupService {
         this.mailService = mailService;
         this.auditService = auditService;
         this.provisioningService = provisioningService;
+        this.feeCategoryService = feeCategoryService;
         this.properties = properties;
     }
 
@@ -119,6 +123,8 @@ public class SignupService {
         }
 
         School school = createSchool(request, code);
+        // Les rubriques de frais d'origine, avant tout type qui les référencera.
+        feeCategoryService.seedDefaults(school);
         Campus campus = createMainCampus(school, request);
         AcademicYear year = createCurrentAcademicYear(school);
         createTerms(year);

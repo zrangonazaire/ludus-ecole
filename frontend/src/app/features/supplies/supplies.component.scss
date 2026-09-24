@@ -1,0 +1,21 @@
+:host { display: block; }
+.supplies { max-width: 1200px; margin: 0 auto; padding: 28px; color: var(--text-strong); }
+h1 { font-size: 28px; margin: 8px 0; } h2 { font-size: 21px; } header p { color: var(--text-muted); }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--brand); }
+.filters, .toolbar, .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.filters { margin: 28px 0; } .filters label { min-width: 220px; }
+label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 600; }
+input, select, textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-strong); border-radius: 8px; padding: 11px; font: inherit; background: var(--surface-card); color: inherit; }
+button { border: 1px solid var(--border-strong); background: var(--surface-card); color: inherit; border-radius: 8px; padding: 10px 16px; font: inherit; cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; } button.primary { background: var(--brand); border-color: transparent; color: var(--text-on-brand); }
+.toolbar { justify-content: space-between; margin: 20px 0; } .toolbar span { color: var(--text-muted); }
+.empty, .sheet, form { background: var(--surface-card); border: 1px solid var(--border); border-radius: 14px; padding: 28px; }
+.empty { text-align: center; padding: 48px 24px; } fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.item { display: grid; grid-template-columns: 2fr 100px 2fr auto; align-items: end; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.items { margin: 16px 0; } .remove, .validation { color: var(--danger); } .notes { margin: 24px 0; }
+.sheet h2 { margin: 12px 0; } table { border-collapse: collapse; width: 100%; margin: 24px 0; table-layout: fixed; }
+th, td { text-align: left; padding: 14px 12px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; white-space: pre-wrap; }
+th { font-size: 12px; color: var(--text-muted); } th:nth-child(2) { width: 90px; }
+.preserve { white-space: pre-wrap; overflow-wrap: anywhere; } .table-wrap { overflow-x: auto; }
+input.ng-invalid.ng-touched { border-color: var(--danger); }
+@media(max-width: 700px) { .supplies { padding: 16px; } .item { grid-template-columns: 1fr 90px; } .sheet, form { padding: 18px; } .filters label { min-width: 0; flex: 1; } }

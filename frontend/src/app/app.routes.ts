@@ -365,6 +365,14 @@ export const routes: Routes = [
         data: { title: 'Années et périodes' }
       },
       {
+        path: 'supplies',
+        canActivate: [permissionGuard],
+        canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
+        data: { permissions: [PERMISSIONS.LEVEL_VIEW], title: 'Fournitures scolaires' },
+        loadComponent: () => import('./features/supplies/supplies.component')
+          .then((m) => m.SuppliesComponent)
+      },
+      {
         path: 'levels',
         canActivate: [permissionGuard],
         data: { permissions: [PERMISSIONS.LEVEL_VIEW], title: 'Cycles et niveaux' },

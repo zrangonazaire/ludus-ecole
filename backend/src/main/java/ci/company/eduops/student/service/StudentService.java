@@ -103,6 +103,18 @@ public class StudentService {
     public Student update(UUID studentId, ci.company.eduops.student.dto.request.StudentUpdateRequest request) {
         Student student = require(studentId);
 
+        UUID schoolId = ci.company.eduops.common.tenant.TenantContext.getSchoolId();
+        if (schoolId == null || student.getSchool() == null || !schoolId.equals(student.getSchool().getId())) {
+            throw BusinessException.of(ErrorCode.STUDENT_NOT_FOUND);
+        }
+        if (request.getVersion() != null && !request.getVersion().equals(student.getVersion())) {
+            throw BusinessException.of(ErrorCode.CONCURRENT_MODIFICATION);
+        }
+        Map<String, Object> before = identitySnapshot(student);
+        if (request.getGender() != null) student.setGender(request.getGender());
+        if (request.getMiddleName() != null) student.setMiddleName(request.getMiddleName().trim());
+        if (request.getCity() != null) student.setCity(request.getCity().trim());
+
         if (request.getFirstName() != null && !request.getFirstName().isBlank()) {
             student.setFirstName(request.getFirstName().trim());
         }
@@ -130,15 +142,30 @@ public class StudentService {
         if (request.getPreviousSchool() != null) {
             student.setPreviousSchool(request.getPreviousSchool().trim());
         }
-        studentRepository.save(student);
+        studentRepository.saveAndFlush(student);
 
         auditService.logUpdate("Student", student.getId(), student.getStudentNumber(),
-                Map.<String, Object>of("field", "identity"),
-                Map.<String, Object>of("firstName", student.getFirstName(),
-                        "lastName", student.getLastName()));
+                before, identitySnapshot(student));
 
         log.info("Student {} identity updated", student.getStudentNumber());
         return student;
+    }
+
+    private Map<String, Object> identitySnapshot(Student student) {
+        Map<String, Object> values = new java.util.LinkedHashMap<>();
+        values.put("firstName", student.getFirstName());
+        values.put("lastName", student.getLastName());
+        values.put("middleName", student.getMiddleName());
+        values.put("gender", student.getGender());
+        values.put("birthDate", student.getBirthDate());
+        values.put("birthPlace", student.getBirthPlace());
+        values.put("nationality", student.getNationality());
+        values.put("email", student.getEmail());
+        values.put("phone", student.getPhone());
+        values.put("address", student.getAddressLine1());
+        values.put("city", student.getCity());
+        values.put("previousSchool", student.getPreviousSchool());
+        return values;
     }
 
     /**

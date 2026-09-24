@@ -1,0 +1,59 @@
+<section class="supplies">
+  <header><div><span class="eyebrow">PRÉPARER LA RENTRÉE</span><h1>Fournitures scolaires</h1>
+    <p>Une liste par niveau et par année scolaire, prête à remettre aux familles.</p></div></header>
+  <div class="filters">
+    <label>Année scolaire<select #year [value]="selectedYear()" [disabled]="loading() || saving()"
+      (change)="select('year', year.value); year.value = selectedYear()">
+      @for (y of years(); track y.id) { <option [value]="y.id">{{ y.label }}</option> }
+    </select></label>
+    <label>Niveau<select #level [value]="selectedLevel()" [disabled]="loading() || saving()"
+      (change)="select('level', level.value); level.value = selectedLevel()">
+      @for (l of levels(); track l.id) { <option [value]="l.id">{{ l.name }}{{ l.status === 'ARCHIVED' ? ' (archivé)' : '' }}</option> }
+    </select></label>
+  </div>
+  @if (loading()) { <p role="status" class="empty">Chargement de la liste…</p> }
+  @else if (error()) { <div class="empty" role="alert"><p>{{ error() }}</p><button (click)="years().length ? load() : initialize()">Réessayer</button></div> }
+  @else if (!levels().length || !years().length) {
+    <div class="empty">Créez d’abord un niveau et une année scolaire pour préparer une liste de fournitures.</div>
+  }
+  @if (current(); as list) {
+    @if (editing()) {
+      <form [formGroup]="form" (ngSubmit)="save()">
+        <fieldset [disabled]="saving()">
+          <div class="toolbar"><h2>{{ list.id ? 'Modifier la liste' : 'Créer la liste' }}</h2><span>{{ list.levelName }} · {{ list.yearLabel }}</span></div>
+          <label>Titre de la liste<input formControlName="title" maxlength="160" /></label>
+          <div formArrayName="items" class="items">
+            @for (item of items.controls; track item; let i = $index) {
+              <div class="item" [formGroupName]="i">
+                <label>Fourniture {{ i + 1 }}<input formControlName="name" maxlength="200" placeholder="Ex. Cahier grand format, 96 pages" /></label>
+                <label>Quantité<input formControlName="quantity" type="number" min="1" max="999" step="1" /></label>
+                <label>Précisions<input formControlName="details" maxlength="500" placeholder="Format, couleur, matière…" /></label>
+                <button type="button" class="remove" (click)="remove(i)" [attr.aria-label]="'Retirer la fourniture ' + (i + 1)">Retirer</button>
+              </div>
+            }
+          </div>
+          <button type="button" (click)="add()" [disabled]="items.length >= 200">+ Ajouter une fourniture</button>
+          <label class="notes">Recommandations aux familles<textarea formControlName="notes" rows="4" maxlength="4000" placeholder="Consignes générales, matériel à étiqueter…"></textarea></label>
+          @if (form.invalid && form.touched) { <p class="validation" role="alert">Renseignez un titre, au moins une fourniture et des quantités entières comprises entre 1 et 999.</p> }
+          <div class="actions"><button type="button" (click)="cancel()">Annuler</button><button class="primary" type="submit">{{ saving() ? 'Enregistrement…' : 'Enregistrer la liste' }}</button></div>
+        </fieldset>
+      </form>
+    } @else if (!list.id) {
+      <div class="empty"><h2>Aucune liste pour {{ list.levelName }}</h2><p>Année scolaire {{ list.yearLabel }}</p>
+        @if (canManage()) { <button class="primary" (click)="edit()">Créer la liste de fournitures</button> }
+      </div>
+    } @else {
+      <div class="toolbar"><span>{{ list.items.length }} fournitures · {{ list.levelName }} · {{ list.yearLabel }}</span>
+        <div class="actions"><button (click)="load()">Actualiser</button>@if (canManage()) { <button (click)="edit()">Modifier</button> }
+          <button class="primary" (click)="print()">Imprimer / PDF</button></div>
+      </div>
+      <article class="sheet"><span class="eyebrow">{{ list.schoolName }}</span><h2>{{ list.title }}</h2>
+        <p>Niveau : <strong>{{ list.levelName }}</strong> · Année scolaire : <strong>{{ list.yearLabel }}</strong></p>
+        <div class="table-wrap"><table><thead><tr><th>Fourniture</th><th>Quantité</th><th>Précisions</th></tr></thead><tbody>
+          @for (item of list.items; track $index) { <tr><td>{{ item.name }}</td><td>{{ item.quantity }}</td><td>{{ item.details || '—' }}</td></tr> }
+        </tbody></table></div>
+        @if (list.notes) { <h3>Recommandations</h3><p class="preserve">{{ list.notes }}</p> }
+      </article>
+    }
+  }
+</section>

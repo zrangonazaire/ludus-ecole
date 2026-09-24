@@ -167,8 +167,8 @@ export class MockStudentDataSource implements StudentDataSource {
   update(id: string, payload: unknown): Observable<StudentDetail> {
     const patch: Record<string, string> = {};
     for (const [key, value] of Object.entries((payload ?? {}) as Record<string, unknown>)) {
-      if (typeof value === 'string' && value !== '') {
-        patch[key] = value;
+      if (typeof value === 'string') {
+        patch[key === 'address' ? 'addressLine1' : key] = value;
       }
     }
     this.detailPatches.set(id, { ...this.detailPatches.get(id), ...patch });

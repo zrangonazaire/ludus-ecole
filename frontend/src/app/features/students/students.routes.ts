@@ -7,6 +7,7 @@ export const STUDENT_ROUTES: Routes = [
   },
   {
     path: ':id',
+    canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
     loadComponent: () => import('./student-detail.component').then((m) => m.StudentDetailComponent)
   }
 ];

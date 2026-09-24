@@ -15,8 +15,8 @@ import ci.company.eduops.common.exception.ErrorCode;
 import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.cycle.domain.Cycle;
 import ci.company.eduops.cycle.repository.CycleRepository;
-import ci.company.eduops.finance.domain.FeeCategory;
 import ci.company.eduops.finance.domain.FeeRecurrence;
+import ci.company.eduops.finance.service.FeeCategoryService;
 import ci.company.eduops.finance.domain.FeeSchedule;
 import ci.company.eduops.finance.domain.FeeScheduleInstalment;
 import ci.company.eduops.finance.domain.FeeType;
@@ -96,6 +96,7 @@ public class OnboardingService {
     private final AcademicYearRepository academicYearRepository;
     private final SchoolRepository schoolRepository;
     private final CampusRepository campusRepository;
+    private final FeeCategoryService feeCategoryService;
     private final AuditService auditService;
 
     public OnboardingService(CycleRepository cycleRepository,
@@ -107,6 +108,7 @@ public class OnboardingService {
                              AcademicYearRepository academicYearRepository,
                              SchoolRepository schoolRepository,
                              CampusRepository campusRepository,
+                             FeeCategoryService feeCategoryService,
                              AuditService auditService) {
         this.cycleRepository = cycleRepository;
         this.levelRepository = levelRepository;
@@ -117,6 +119,7 @@ public class OnboardingService {
         this.academicYearRepository = academicYearRepository;
         this.schoolRepository = schoolRepository;
         this.campusRepository = campusRepository;
+        this.feeCategoryService = feeCategoryService;
         this.auditService = auditService;
     }
 
@@ -149,6 +152,10 @@ public class OnboardingService {
         Set<String> usedLevelCodes = new LinkedHashSet<>();
         Set<String> usedClassroomCodes = new LinkedHashSet<>();
         int cycleSequence = 1;
+
+        // Les types de frais pointent vers fee_category par clé étrangère :
+        // les huit rubriques d'origine doivent exister avant toute création.
+        feeCategoryService.seedDefaults(school);
 
         FeeType registrationType = null;
         FeeType tuitionType = null;
@@ -216,7 +223,7 @@ public class OnboardingService {
                 if (levelSetup.getRegistrationFee() > 0) {
                     if (registrationType == null) {
                         registrationType = feeTypeFor(school, REGISTRATION_CODE,
-                                "Frais d'inscription", FeeCategory.REGISTRATION,
+                                "Frais d'inscription", "REGISTRATION",
                                 FeeRecurrence.ONE_TIME);
                     }
                     createSchedule(year, registrationType, savedLevel,
@@ -227,7 +234,7 @@ public class OnboardingService {
                 if (levelSetup.getTuitionTotal() > 0) {
                     if (tuitionType == null) {
                         tuitionType = feeTypeFor(school, TUITION_CODE,
-                                "Scolarité", FeeCategory.TUITION, FeeRecurrence.ANNUAL);
+                                "Scolarité", "TUITION", FeeRecurrence.ANNUAL);
                     }
                     createSchedule(year, tuitionType, savedLevel,
                             "Scolarité — " + levelName,
@@ -273,7 +280,7 @@ public class OnboardingService {
 
     /** Reuses the fee type if the school already has one under that code. */
     private FeeType feeTypeFor(School school, String code, String name,
-                               FeeCategory category, FeeRecurrence recurrence) {
+                               String category, FeeRecurrence recurrence) {
         return feeTypeRepository.findBySchoolIdAndCode(school.getId(), code)
                 .orElseGet(() -> {
                     FeeType type = new FeeType();

@@ -10,9 +10,11 @@ import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.enrollment.domain.Enrollment;
 import ci.company.eduops.enrollment.dto.response.EnrollmentResponse;
 import ci.company.eduops.enrollment.repository.EnrollmentRepository;
+import ci.company.eduops.finance.domain.FeeCategory;
 import ci.company.eduops.finance.domain.StudentFee;
 import ci.company.eduops.finance.dto.response.StudentFeeLineResponse;
 import ci.company.eduops.finance.dto.response.StudentFinancialSummaryResponse;
+import ci.company.eduops.finance.repository.FeeCategoryRepository;
 import ci.company.eduops.finance.repository.StudentFeeRepository;
 import ci.company.eduops.guardian.domain.StudentGuardian;
 import ci.company.eduops.guardian.repository.StudentGuardianRepository;
@@ -57,17 +59,20 @@ public class StudentQueryService {
     private final StudentGuardianRepository studentGuardianRepository;
     private final StudentFeeRepository studentFeeRepository;
     private final AcademicYearRepository academicYearRepository;
+    private final FeeCategoryRepository feeCategoryRepository;
 
     public StudentQueryService(StudentRepository studentRepository,
                                EnrollmentRepository enrollmentRepository,
                                StudentGuardianRepository studentGuardianRepository,
                                StudentFeeRepository studentFeeRepository,
-                               AcademicYearRepository academicYearRepository) {
+                               AcademicYearRepository academicYearRepository,
+                               FeeCategoryRepository feeCategoryRepository) {
         this.studentRepository = studentRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.studentGuardianRepository = studentGuardianRepository;
         this.studentFeeRepository = studentFeeRepository;
         this.academicYearRepository = academicYearRepository;
+        this.feeCategoryRepository = feeCategoryRepository;
     }
 
     /** Paginated search, optionally narrowed to one class. */
@@ -126,6 +131,7 @@ public class StudentQueryService {
         Enrollment current = activeEnrollments().get(studentId);
 
         StudentDetailResponse detail = new StudentDetailResponse();
+        detail.setVersion(student.getVersion());
         fillSummary(detail, student, current);
         detail.setMiddleName(student.getMiddleName());
         detail.setBirthPlace(student.getBirthPlace());
@@ -180,6 +186,14 @@ public class StudentQueryService {
         }
         summary.setAcademicYearId(year.getId());
 
+        // Les rubriques sont des données d'école (V54) : une seule lecture
+        // pour toutes les lignes, pas une requête par échéance.
+        Map<String, String> categoryLabels = new LinkedHashMap<>();
+        for (FeeCategory category : feeCategoryRepository.findBySchoolId(
+                TenantContext.getSchoolId())) {
+            categoryLabels.put(category.getCode(), category.getLabel());
+        }
+
         BigDecimal gross = BigDecimal.ZERO;
         BigDecimal discount = BigDecimal.ZERO;
         BigDecimal due = BigDecimal.ZERO;
@@ -191,7 +205,7 @@ public class StudentQueryService {
         String currency = "XOF";
 
         for (StudentFee fee : studentFeeRepository
-                .findOutstandingOldestFirst(studentId, year.getId())) {
+                .findStatementLines(studentId, year.getId())) {
             gross = gross.add(safe(fee.getGrossAmount()));
             discount = discount.add(safe(fee.getDiscountAmount()));
             due = due.add(safe(fee.getAmountDue()));
@@ -199,10 +213,10 @@ public class StudentQueryService {
             if (fee.getCurrency() != null) {
                 currency = fee.getCurrency();
             }
-            lines.add(toFeeLine(fee));
+            lines.add(toFeeLine(fee, categoryLabels));
 
             LocalDate dueDate = fee.getDueDate();
-            if (dueDate != null) {
+            if (dueDate != null && fee.outstanding().signum() > 0) {
                 if (dueDate.isBefore(today)) {
                     overdue++;
                 } else if (next == null || dueDate.isBefore(next)) {
@@ -230,7 +244,7 @@ public class StudentQueryService {
      * Une ligne payable : la rubrique (type de frais + tarif) déclinée
      * en échéance pour cet élève.
      */
-    private StudentFeeLineResponse toFeeLine(StudentFee fee) {
+    private StudentFeeLineResponse toFeeLine(StudentFee fee, Map<String, String> categoryLabels) {
         StudentFeeLineResponse line = new StudentFeeLineResponse();
         line.setId(fee.getId());
         line.setLabel(fee.getLabel());
@@ -240,8 +254,9 @@ public class StudentQueryService {
             line.setFeeTypeCode(fee.getFeeType().getCode());
             line.setFeeTypeName(fee.getFeeType().getName());
             if (fee.getFeeType().getCategory() != null) {
-                line.setCategory(fee.getFeeType().getCategory().name());
-                line.setCategoryLabel(categoryLabel(fee.getFeeType().getCategory().name()));
+                line.setCategory(fee.getFeeType().getCategory());
+                line.setCategoryLabel(categoryLabels.getOrDefault(
+                        fee.getFeeType().getCategory(), fee.getFeeType().getCategory()));
             }
             line.setMandatory(fee.getFeeType().isMandatory());
         }
@@ -264,19 +279,6 @@ public class StudentQueryService {
             line.setStatus(fee.getStatus().name());
         }
         return line;
-    }
-
-    private String categoryLabel(String category) {
-        return switch (category) {
-            case "REGISTRATION" -> "Inscription";
-            case "TUITION" -> "Scolarité";
-            case "EXAM" -> "Examens";
-            case "ACTIVITY" -> "Activités";
-            case "UNIFORM" -> "Tenue";
-            case "TRANSPORT" -> "Transport";
-            case "CANTEEN" -> "Cantine";
-            default -> "Autre";
-        };
     }
 
     // ----------------------------------------------------------- conversion
@@ -396,7 +398,9 @@ public class StudentQueryService {
     /** The active year, or null when the school has not opened one yet. */
     private AcademicYear resolveYear(UUID academicYearId) {
         if (academicYearId != null) {
-            return academicYearRepository.findById(academicYearId).orElse(null);
+            return academicYearRepository.findById(academicYearId)
+                    .filter(year -> requireSchoolId().equals(year.getSchool().getId()))
+                    .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
         }
         return academicYearRepository
                 .findBySchoolIdAndStatus(requireSchoolId(), AcademicYearStatus.ACTIVE)

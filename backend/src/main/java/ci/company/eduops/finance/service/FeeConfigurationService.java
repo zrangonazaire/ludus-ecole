@@ -21,6 +21,7 @@ import ci.company.eduops.finance.dto.response.FeeScheduleResponse;
 import ci.company.eduops.finance.dto.response.FeeTypeResponse;
 import ci.company.eduops.finance.dto.response.InstalmentResponse;
 import ci.company.eduops.finance.dto.response.LevelFeesResponse;
+import ci.company.eduops.finance.repository.FeeCategoryRepository;
 import ci.company.eduops.finance.repository.FeeScheduleRepository;
 import ci.company.eduops.finance.repository.FeeTypeRepository;
 import ci.company.eduops.finance.repository.StudentFeeRepository;
@@ -68,16 +69,6 @@ public class FeeConfigurationService {
 
     private static final Logger log = LoggerFactory.getLogger(FeeConfigurationService.class);
 
-    private static final Map<FeeCategory, String> CATEGORY_LABELS = Map.of(
-            FeeCategory.REGISTRATION, "Inscription",
-            FeeCategory.TUITION, "Scolarité",
-            FeeCategory.EXAM, "Examens",
-            FeeCategory.ACTIVITY, "Activités",
-            FeeCategory.UNIFORM, "Tenue",
-            FeeCategory.TRANSPORT, "Transport",
-            FeeCategory.CANTEEN, "Cantine",
-            FeeCategory.OTHER, "Autre");
-
     private static final Map<FeeRecurrence, String> RECURRENCE_LABELS = Map.of(
             FeeRecurrence.ONE_TIME, "Une seule fois",
             FeeRecurrence.ANNUAL, "Chaque année",
@@ -86,6 +77,7 @@ public class FeeConfigurationService {
 
     private final FeeTypeRepository feeTypeRepository;
     private final FeeScheduleRepository feeScheduleRepository;
+    private final FeeCategoryRepository feeCategoryRepository;
     private final StudentFeeRepository studentFeeRepository;
     private final LevelRepository levelRepository;
     private final AcademicYearRepository academicYearRepository;
@@ -94,6 +86,7 @@ public class FeeConfigurationService {
 
     public FeeConfigurationService(FeeTypeRepository feeTypeRepository,
                                    FeeScheduleRepository feeScheduleRepository,
+                                   FeeCategoryRepository feeCategoryRepository,
                                    StudentFeeRepository studentFeeRepository,
                                    LevelRepository levelRepository,
                                    AcademicYearRepository academicYearRepository,
@@ -101,6 +94,7 @@ public class FeeConfigurationService {
                                    AuditService auditService) {
         this.feeTypeRepository = feeTypeRepository;
         this.feeScheduleRepository = feeScheduleRepository;
+        this.feeCategoryRepository = feeCategoryRepository;
         this.studentFeeRepository = studentFeeRepository;
         this.levelRepository = levelRepository;
         this.academicYearRepository = academicYearRepository;
@@ -152,7 +146,7 @@ public class FeeConfigurationService {
         auditService.logCreate("FeeType", saved.getId(), saved.getName(),
                 Map.<String, Object>of(
                         "code", saved.getCode(),
-                        "category", saved.getCategory().name(),
+                        "category", saved.getCategory(),
                         "mandatory", saved.isMandatory()));
         log.info("Type de frais {} ({}) créé", saved.getName(), saved.getCode());
         return describeType(saved, 0);
@@ -522,10 +516,24 @@ public class FeeConfigurationService {
         type.setDescription(blankToNull(request.getDescription()));
         type.setMandatory(request.isMandatory());
         type.setRefundable(request.isRefundable());
-        type.setCategory(parse(FeeCategory.class, request.getCategory(), FeeCategory.OTHER,
-                "Catégorie de frais inconnue : "));
+        type.setCategory(resolveCategory(request.getCategory()));
         type.setRecurrence(parse(FeeRecurrence.class, request.getRecurrence(),
                 FeeRecurrence.ANNUAL, "Périodicité inconnue : "));
+    }
+
+    /**
+     * La catégorie vient de la table {@code fee_category} (V54), pas d'un
+     * enum : elle doit exister pour cette école, sinon la clé étrangère
+     * (school_id, category) refuserait l'écriture sans que l'écran ne
+     * sache dire pourquoi.
+     */
+    private String resolveCategory(String value) {
+        String code = value == null || value.isBlank() ? "OTHER" : value.trim().toUpperCase(Locale.ROOT);
+        if (!feeCategoryRepository.existsBySchoolIdAndCode(requireSchool(), code)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Catégorie de frais inconnue : " + code);
+        }
+        return code;
     }
 
     private <E extends Enum<E>> E parse(Class<E> type, String value, E fallback, String message) {
@@ -544,8 +552,8 @@ public class FeeConfigurationService {
         response.setId(type.getId());
         response.setCode(type.getCode());
         response.setName(type.getName());
-        response.setCategory(type.getCategory().name());
-        response.setCategoryLabel(CATEGORY_LABELS.getOrDefault(type.getCategory(), "Autre"));
+        response.setCategory(type.getCategory());
+        response.setCategoryLabel(categoryLabel(type.getCategory()));
         response.setRecurrence(type.getRecurrence().name());
         response.setRecurrenceLabel(
                 RECURRENCE_LABELS.getOrDefault(type.getRecurrence(), "Chaque année"));
@@ -601,7 +609,7 @@ public class FeeConfigurationService {
         response.setFeeTypeId(schedule.getFeeType().getId());
         response.setFeeTypeCode(schedule.getFeeType().getCode());
         response.setFeeTypeName(schedule.getFeeType().getName());
-        response.setCategory(schedule.getFeeType().getCategory().name());
+        response.setCategory(schedule.getFeeType().getCategory());
         response.setMandatory(schedule.getFeeType().isMandatory());
         response.setLabel(schedule.getLabel());
         response.setTotalAmount(schedule.getTotalAmount());
@@ -635,6 +643,19 @@ public class FeeConfigurationService {
         return schoolRepository.findById(schoolId)
                 .map(School::getCurrency)
                 .orElse("XOF");
+    }
+
+    /**
+     * Libellé d'une rubrique, lu dans {@code fee_category} — la table
+     * remplaçant l'enum d'origine (V54). Repli sur le code lui-même si la
+     * ligne venait à manquer : un reçu vaut mieux avec son code qu'avec
+     * rien du tout.
+     */
+    @Transactional(readOnly = true)
+    public String categoryLabel(String code) {
+        return feeCategoryRepository.findBySchoolIdAndCode(requireSchool(), code)
+                .map(FeeCategory::getLabel)
+                .orElse(code);
     }
 
     private FeeType requireType(UUID id) {

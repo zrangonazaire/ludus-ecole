@@ -63,6 +63,13 @@ import { PERMISSIONS } from '@core/models/auth.models';
       </span>
     </ng-template>
 
+    <ng-template #actionsTpl let-enrollment>
+      <a class="btn btn--secondary btn--sm" [routerLink]="['/students', enrollment.studentId]"
+         *eduopsHasPermission="viewPermission">Fiche / impression</a>
+      <a class="btn btn--primary btn--sm" [routerLink]="['/students', enrollment.studentId]" [queryParams]="{ edit: true }"
+         *eduopsHasPermission="editPermission">Modifier</a>
+    </ng-template>
+
     <ng-template #statusTpl let-enrollment>
       <div class="row">
         <eduops-status-badge [status]="enrollment.status" />
@@ -82,6 +89,8 @@ export class EnrollmentListComponent implements OnInit {
   readonly page = signal<PageResponse<Enrollment> | null>(null);
   readonly loading = signal(true);
   readonly createPermission = PERMISSIONS.ENROLLMENT_CREATE;
+  readonly viewPermission = PERMISSIONS.STUDENT_VIEW;
+  readonly editPermission = PERMISSIONS.STUDENT_UPDATE;
 
   /** 5 lignes par défaut, modifiable via le combo du tableau. */
   readonly pageSize = signal(5);
@@ -95,16 +104,18 @@ export class EnrollmentListComponent implements OnInit {
   statusTpl!: TemplateRef<{ $implicit: Enrollment }>;
 
   columns: TableColumn<Enrollment>[] = [];
+  @ViewChild('actionsTpl', { static: true }) actionsTpl!: TemplateRef<{ $implicit: Enrollment }>;
 
   ngOnInit(): void {
     this.columns = [
       { key: 'enrollmentNumber', label: 'N° inscription', numeric: true, width: '16%' },
-      { key: 'studentName', label: 'Élève', width: '22%' },
+      { key: 'studentName', label: 'Élève' },
       { key: 'studentNumber', label: 'Matricule', numeric: true, width: '16%' },
       { key: 'classroomName', label: 'Classe', width: '12%' },
       { key: 'enrollmentDate', label: 'Date', width: '10%' },
       { key: 'enrollmentKind', label: 'Type', template: this.kindTpl, width: '12%' },
-      { key: 'status', label: 'Statut', template: this.statusTpl, width: '12%' }
+      { key: 'status', label: 'Statut', template: this.statusTpl },
+      { key: 'actions', label: 'Actions', template: this.actionsTpl }
     ];
     this.load();
   }

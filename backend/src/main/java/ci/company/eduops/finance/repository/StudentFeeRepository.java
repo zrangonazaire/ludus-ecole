@@ -18,6 +18,22 @@ import java.util.UUID;
 @Repository
 public interface StudentFeeRepository extends JpaRepository<StudentFee, UUID> {
 
+    /** A statement includes settled fees, unlike the payment allocation queue. */
+    @Query("""
+           SELECT f FROM StudentFee f
+           LEFT JOIN FETCH f.feeType
+           LEFT JOIN FETCH f.feeSchedule
+           LEFT JOIN FETCH f.instalment
+           WHERE f.student.id = :studentId AND f.academicYear.id = :academicYearId
+             AND f.status <> 'CANCELLED'
+           ORDER BY f.dueDate ASC, f.sequence ASC
+           """)
+    List<StudentFee> findStatementLines(@Param("studentId") UUID studentId,
+                                       @Param("academicYearId") UUID academicYearId);
+
+    @Query("SELECT DISTINCT f.academicYear.id FROM StudentFee f WHERE f.student.id = :studentId")
+    List<UUID> findAcademicYearIdsForStudent(@Param("studentId") UUID studentId);
+
     List<StudentFee> findByStudentIdAndAcademicYearIdOrderByDueDateAsc(UUID studentId,
                                                                        UUID academicYearId);
 
