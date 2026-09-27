@@ -63,9 +63,9 @@ public class PortalService {
     @Transactional(readOnly = true)
     public List<ClassroomResponse> classesOfCurrentTeacher() {
         UUID userId = currentUser.requireId();
-        Teacher teacher = teacherRepository.findAll().stream()
-                .filter((row) -> userId.equals(row.getUserAccountId()))
-                .findFirst()
+        Teacher teacher = teacherRepository.findByUserAccountId(userId)
+                .filter(row -> row.getSchool() != null
+                        && requireSchoolId().equals(row.getSchool().getId()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.PORTAL_PROFILE_MISSING,
                         "Ce compte n'est rattaché à aucun professeur."));
 

@@ -18,7 +18,7 @@
         <div>
           <p>Solde total à recevoir</p>
           <strong class="money">{{ data.totalOutstanding | money:data.currency }}</strong>
-          <span>{{ data.studentCount }} famille(s) concernée(s)</span>
+          <span>{{ data.studentCount }} élève(s) concerné(s)</span>
         </div>
       </article>
       <article class="metric metric--danger">
@@ -34,7 +34,7 @@
         <div>
           <p>Priorité de relance</p>
           <strong class="numeric">{{ data.criticalCount }}</strong>
-          <span>Retards de plus de 30 jours</span>
+          <span>Retards de 30 jours ou plus</span>
         </div>
       </article>
     </section>
@@ -44,6 +44,12 @@
     </section>
   }
 
+  @for (student of selectedStudent() ? [selectedStudent()!] : []; track student.studentId) {
+    <section class="card" aria-label="Dossier de recouvrement">
+      <button type="button" class="btn" (click)="selectedStudent.set(null)">Fermer le dossier</button>
+      <eduops-collection-panel [student]="student" (saved)="reload()" />
+    </section>
+  }
   <section class="card collection-card">
     <div class="collection-toolbar">
       <div class="collection-toolbar__top">
@@ -122,6 +128,8 @@
   <div class="due-date">
     <strong class="numeric">{{ row.oldestDueDate | date:'dd MMM yyyy' }}</strong>
     <small>{{ row.instalmentCount }} échéance(s) ouverte(s)</small>
+    @if (row.nextContactDate) { <small>Relance : {{ row.nextContactDate | date:'dd/MM/yyyy' }}</small> }
+    @if (row.promisedAmount) { <small>Promesse : {{ row.promisedAmount | money:row.currency }} le {{ row.promisedDate | date:'dd/MM/yyyy' }}</small> }
   </div>
 </ng-template>
 
@@ -141,6 +149,7 @@
 </ng-template>
 
 <ng-template #actionsTpl let-row>
+  <button type="button" class="btn btn--sm" (click)="selectedStudent.set(row)">Suivi</button>
   <a class="btn btn--primary btn--sm collect-action"
      [routerLink]="['/payments']" [queryParams]="{ studentId: row.studentId }"
      *eduopsHasPermission="createPaymentPermission">

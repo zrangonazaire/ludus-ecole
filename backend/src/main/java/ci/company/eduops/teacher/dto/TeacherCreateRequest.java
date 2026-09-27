@@ -5,10 +5,7 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 
 public record TeacherCreateRequest(
-        @NotBlank @Size(max = 120) String firstName,
-        @NotBlank @Size(max = 120) String lastName,
-        @NotBlank @Email @Size(max = 180) String email,
-        @Size(max = 40) String phone,
+        @NotNull java.util.UUID userAccountId,
         @Size(max = 150) String speciality,
         @Size(max = 150) String qualification,
         @NotNull LocalDate hireDate,

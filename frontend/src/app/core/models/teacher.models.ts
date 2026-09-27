@@ -19,13 +19,15 @@ export const CONTRACT_TYPES: ReadonlyArray<{ code: ContractType; label: string }
 ];
 
 export interface TeacherCreatePayload {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
+  userAccountId: string;
   speciality: string;
   qualification: string;
   hireDate: string;
   contractType: ContractType;
   weeklyHoursMax: number;
+}
+
+export interface TeacherAccount {
+  id: string; username: string; firstName: string; lastName: string;
+  email: string; phone?: string;
 }

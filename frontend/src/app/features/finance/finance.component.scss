@@ -733,3 +733,68 @@
 .approval-request li p { margin: .3rem 0; }
 .current-stage { border-left: 3px solid var(--color-primary, #2563eb); background: #f4f7fb; }
 .approval-request textarea { display: block; width: 100%; margin: .5rem 0; }
+
+/* ═══════════════ État par catégorie ═══════════════ */
+
+.state-kpis { margin-bottom: var(--space-4); }
+
+.state-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-4);
+
+  &__label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+  }
+
+  &__value {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--text-strong);
+  }
+
+  &__note { font-size: var(--text-xs); color: var(--text-light); }
+}
+
+.state-table {
+  padding: var(--space-4);
+
+  &__label { font-weight: 600; color: var(--text-strong); }
+
+  /* Une rubrique sans tarif reste lisible, mais s'efface derrière celles qui pèsent. */
+  &__row--empty { color: var(--text-light); }
+
+  &__share { white-space: nowrap; }
+
+  &__empty {
+    padding: var(--space-10) !important;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .hint-block { margin-top: var(--space-4); }
+}
+
+.state-note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-muted);
+}
+
+.share {
+  display: inline-block;
+  width: 64px;
+  height: 6px;
+  margin-right: var(--space-2);
+  overflow: hidden;
+  vertical-align: middle;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-pill);
+
+  &__bar { display: block; height: 100%; background: var(--brand); }
+}

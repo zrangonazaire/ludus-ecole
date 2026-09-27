@@ -15,6 +15,33 @@ import java.util.UUID;
 @Repository
 public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from AppUser u where u.id = :id and u.schoolId = :schoolId")
+    Optional<AppUser> lockInSchool(@Param("id") UUID id, @Param("schoolId") UUID schoolId);
+
+    @Query("""
+            select distinct u from AppUser u join u.roles r
+            where u.schoolId = :schoolId and r.code = 'TEACHER' and u.status = 'ACTIVE'
+              and (r.schoolId is null or r.schoolId = :schoolId)
+              and not exists (select t.id from Teacher t where t.userAccountId = u.id)
+            order by u.lastName, u.firstName
+            """)
+    java.util.List<AppUser> availableTeacherAccounts(@Param("schoolId") UUID schoolId);
+
+    /**
+     * Tous les comptes de l'établissement portant le profil Enseignant.
+     *
+     * <p>Ils sont enseignants même sans fiche pédagogique : le tableau des
+     * enseignants part de ces comptes, pas de la table {@code teacher}. Les
+     * rôles sont chargés avec le compte, la double jointure les dédoublonne.</p>
+     */
+    @Query("""
+           select distinct u from AppUser u join u.roles r
+           where u.schoolId = :schoolId and r.code = 'TEACHER'
+             and (r.schoolId is null or r.schoolId = :schoolId)
+           """)
+    java.util.List<AppUser> findTeacherProfiles(@Param("schoolId") UUID schoolId);
+
     java.util.List<AppUser> findBySchoolIdOrderByLastNameAscFirstNameAsc(UUID schoolId);
 
     @Query("""

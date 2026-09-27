@@ -20,7 +20,8 @@ class UserManagementServiceTest {
     private final AppRoleRepository roles = mock(AppRoleRepository.class);
     private final CurrentUser actor = mock(CurrentUser.class);
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(4);
-    private final UserManagementService service = new UserManagementService(users, roles, encoder, actor, new EduOpsProperties());
+    private final ci.company.eduops.teacher.repository.TeacherRepository teachers = mock(ci.company.eduops.teacher.repository.TeacherRepository.class);
+    private final UserManagementService service = new UserManagementService(users, roles, encoder, actor, new EduOpsProperties(), teachers);
     private final UUID schoolId = UUID.randomUUID();
     private final UUID roleId = UUID.randomUUID();
 
@@ -79,7 +80,7 @@ class UserManagementServiceTest {
     }
     @Test void rejectsCrossSchoolAccountUpdate() {
         AppUser other = new AppUser(); other.setSchoolId(UUID.randomUUID());
-        UUID id = UUID.randomUUID(); when(users.findById(id)).thenReturn(Optional.of(other));
+        UUID id = UUID.randomUUID(); when(users.lockInSchool(id, schoolId)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.updateProfiles(id, new UserProfilesRequest(Set.of(roleId))))
                 .isInstanceOfSatisfying(BusinessException.class,
                         ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.RESOURCE_NOT_FOUND));
@@ -87,21 +88,51 @@ class UserManagementServiceTest {
     }
     @Test void preventsSelfLockout() {
         UUID id = UUID.randomUUID(); AppUser self = new AppUser(); self.setSchoolId(schoolId);
-        when(users.findById(id)).thenReturn(Optional.of(self)); when(actor.requireId()).thenReturn(id);
+        when(users.lockInSchool(id, schoolId)).thenReturn(Optional.of(self)); when(actor.requireId()).thenReturn(id);
         assertThatThrownBy(() -> service.updateProfiles(id, new UserProfilesRequest(Set.of(roleId))))
                 .isInstanceOf(BusinessException.class);
         verify(users, never()).saveAndFlush(any());
     }
+    @Test void linkedTeacherCannotLoseTeacherRole() {
+        allowProfile();
+        UUID id = UUID.randomUUID();
+        AppUser user = new AppUser(); user.setId(id); user.setSchoolId(schoolId);
+        when(users.lockInSchool(id, schoolId)).thenReturn(Optional.of(user));
+        when(actor.requireId()).thenReturn(UUID.randomUUID());
+        when(teachers.findByUserAccountId(id)).thenReturn(Optional.of(new ci.company.eduops.teacher.domain.Teacher()));
+        assertThatThrownBy(() -> service.updateProfiles(id, new UserProfilesRequest(Set.of(roleId))))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("Enseignant");
+        verify(users, never()).saveAndFlush(any());
+    }
+
     @Test void replacesProfilesOfExistingAccount() {
         allowProfile();
         UUID id = UUID.randomUUID(); AppUser user = new AppUser();
         user.setId(id); user.setSchoolId(schoolId); user.setStatus(UserStatus.ACTIVE);
-        when(users.findById(id)).thenReturn(Optional.of(user));
+        when(users.lockInSchool(id, schoolId)).thenReturn(Optional.of(user));
         when(actor.requireId()).thenReturn(UUID.randomUUID());
         when(users.saveAndFlush(user)).thenReturn(user);
         assertThat(service.updateProfiles(id, new UserProfilesRequest(Set.of(roleId))).profiles())
                 .extracting(ManagedUserResponse.Profile::id).containsExactly(roleId);
     }
+    @Test void reportsTheTeacherProfileAndTheMissingTeacherRecordSeparately() {
+        AppRole teacherRole = role("TEACHER");
+        UUID pendingId = UUID.randomUUID(), linkedId = UUID.randomUUID();
+        AppUser pending = new AppUser();
+        pending.setId(pendingId); pending.setSchoolId(schoolId); pending.setStatus(UserStatus.ACTIVE);
+        pending.setRoles(Set.of(teacherRole));
+        AppUser linked = new AppUser();
+        linked.setId(linkedId); linked.setSchoolId(schoolId); linked.setStatus(UserStatus.ACTIVE);
+        linked.setRoles(Set.of(teacherRole));
+        when(users.findBySchoolIdOrderByLastNameAscFirstNameAsc(schoolId)).thenReturn(List.of(pending, linked));
+        when(teachers.linkedAccountIds(schoolId)).thenReturn(List.of(linkedId));
+        // Le profil dit « peut recevoir une fiche », hasTeacherRecord dit « en a une ».
+        assertThat(service.list())
+                .extracting(ManagedUserResponse::id, ManagedUserResponse::teacherProfile,
+                        ManagedUserResponse::hasTeacherRecord)
+                .containsExactly(tuple(pendingId, true, false), tuple(linkedId, true, true));
+    }
+
     @Test void requiresSchoolContext() {
         TenantContext.clear();
         assertThatThrownBy(service::list).isInstanceOf(BusinessException.class);

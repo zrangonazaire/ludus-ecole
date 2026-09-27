@@ -170,6 +170,14 @@ export interface GuardianLink {
 
 export interface Teacher {
   id: string;
+  userAccountId?: string;
+  /**
+   * Faux quand la ligne est un compte au profil Enseignant dont la fiche
+   * pédagogique reste à créer. Dans ce cas `id` porte l'identifiant du compte :
+   * la ligne existe pour créer la fiche, pas pour être ouverte comme une fiche.
+   * Absent des jeux de démonstration, où chaque ligne vient d'une fiche.
+   */
+  hasTeacherRecord?: boolean;
   employeeNumber: string;
   firstName: string;
   lastName: string;

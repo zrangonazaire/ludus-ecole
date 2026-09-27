@@ -53,6 +53,12 @@
             (click)="changeTab('TYPES')">
       Types de frais
     </button>
+    <button type="button" class="tabs__item" role="tab"
+            [class.tabs__item--on]="tab() === 'CATEGORIES'"
+            [attr.aria-selected]="tab() === 'CATEGORIES'"
+            (click)="changeTab('CATEGORIES')">
+      État par catégorie
+    </button>
     <button type="button" class="tabs__item" role="tab" [class.tabs__item--on]="tab() === 'REQUESTS'"
       [attr.aria-selected]="tab() === 'REQUESTS'" (click)="changeTab('REQUESTS')">Demandes de validation ({{ pendingCount() }})</button>
   </nav>
@@ -164,6 +170,122 @@
               Déclarer un type de frais
             </button>
           </div>
+        }
+      </section>
+    }
+
+    <!-- ═══════════════ État par catégorie ═══════════════ -->
+    @if (tab() === 'CATEGORIES') {
+      <p class="lead">
+        Ce que votre plan facture, rubrique par rubrique. Les montants sont ceux
+        des tarifs du catalogue : le total additionne les tarifs posés sur les
+        niveaux, il ne dit pas ce qu'un élève doit. La situation des familles se
+        suit dans <a routerLink="/outstanding">les impayés</a>.
+      </p>
+
+      <section class="grid grid--kpi state-kpis" aria-label="Chiffres du plan de facturation">
+        <article class="card state-kpi">
+          <span class="state-kpi__label">Types de frais</span>
+          <strong class="state-kpi__value numeric">{{ categoryTotals().feeTypes }}</strong>
+          <span class="state-kpi__note">
+            {{ categoryTotals().usedCategories }}/{{ categoryTotals().categories }} rubrique(s)
+            utilisée(s)
+          </span>
+        </article>
+        <article class="card state-kpi">
+          <span class="state-kpi__label">Niveaux tarifés</span>
+          <strong class="state-kpi__value numeric">{{ categoryTotals().pricedLevels }}</strong>
+          <span class="state-kpi__note">sur {{ levels().length }} niveau(x) déclaré(s)</span>
+        </article>
+        <article class="card state-kpi">
+          <span class="state-kpi__label">Tarifs posés</span>
+          <strong class="state-kpi__value numeric">{{ categoryTotals().schedules }}</strong>
+          <span class="state-kpi__note">couples frais × niveau</span>
+        </article>
+        <article class="card state-kpi">
+          <span class="state-kpi__label">Montant cumulé des tarifs</span>
+          <strong class="state-kpi__value numeric">
+            {{ format(categoryTotals().totalAmount) }} {{ currency() }}
+          </strong>
+          <span class="state-kpi__note">toutes rubriques, tous niveaux</span>
+        </article>
+      </section>
+
+      <section class="card state-table">
+        <div class="table-wrapper">
+          <table class="table">
+            <caption class="visually-hidden">Points de facturation par catégorie</caption>
+            <thead>
+              <tr>
+                <th>Rubrique</th>
+                <th class="numeric">Types de frais</th>
+                <th class="numeric">Niveaux tarifés</th>
+                <th class="numeric">Tarifs</th>
+                <th class="numeric">Mini</th>
+                <th class="numeric">Maxi</th>
+                <th class="numeric">Total des tarifs</th>
+                <th class="numeric">Part</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of categoryStats(); track row.code) {
+                <tr [class.state-table__row--empty]="row.scheduleCount === 0">
+                  <td>
+                    <span class="state-table__label">{{ row.label }}</span>
+                    <span class="muted">{{ row.code }}</span>
+                    @if (row.optionalCount > 0) {
+                      <span class="pill pill--opt">{{ row.optionalCount }} facultatif(s)</span>
+                    }
+                  </td>
+                  <td class="numeric">{{ row.feeTypeCount }}</td>
+                  <td class="numeric">{{ row.pricedLevels }}</td>
+                  <td class="numeric">{{ row.scheduleCount }}</td>
+                  <td class="numeric">{{ formatAmount(row.minAmount) }}</td>
+                  <td class="numeric">{{ formatAmount(row.maxAmount) }}</td>
+                  <td class="numeric">{{ format(row.totalAmount) }} {{ currency() }}</td>
+                  <td class="numeric state-table__share">
+                    <span class="share" aria-hidden="true">
+                      <span class="share__bar" [style.width.%]="row.share * 100"></span>
+                    </span>
+                    {{ formatPercent(row.share) }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="state-table__empty" colspan="8">
+                    Aucune rubrique de frais déclarée.
+                  </td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <th scope="row">Total</th>
+                <td class="numeric">{{ categoryTotals().feeTypes }}</td>
+                <td class="numeric">{{ categoryTotals().pricedLevels }}</td>
+                <td class="numeric">{{ categoryTotals().schedules }}</td>
+                <td class="numeric" colspan="2"></td>
+                <td class="numeric">
+                  <strong>{{ format(categoryTotals().totalAmount) }} {{ currency() }}</strong>
+                </td>
+                <td class="numeric">
+                  {{ categoryTotals().totalAmount > 0 ? '100 %' : '—' }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <p class="hint-block">
+          « Total des tarifs » additionne, pour chaque rubrique, les montants posés
+          sur tous les niveaux. Un frais tarifé sur douze niveaux compte donc douze
+          fois : c'est un poids de catalogue, pas une recette attendue.
+        </p>
+        @if (categoryTotals().unpricedCategories.length > 0) {
+          <p class="state-note">
+            Sans aucun tarif : {{ unpricedCategoryNames() }}. Ces rubriques restent
+            utiles — elles se remplissent dès qu'un type de frais les rejoint.
+          </p>
         }
       </section>
     }

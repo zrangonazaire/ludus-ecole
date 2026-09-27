@@ -131,6 +131,11 @@ export interface ClassroomDataSource {
 export interface TeacherDataSource {
   create(payload: import('../models/teacher.models').TeacherCreatePayload): Observable<Teacher>;
   search(query: PageQuery): Observable<PageResponse<Teacher>>;
+  /**
+   * Le tableau des enseignants : les comptes portant le profil Enseignant,
+   * avec leur fiche quand elle existe, et les fiches restées sans compte.
+   */
+  roster(query: PageQuery): Observable<PageResponse<Teacher>>;
   getById(id: string): Observable<Teacher>;
   myClasses(): Observable<Classroom[]>;
 }

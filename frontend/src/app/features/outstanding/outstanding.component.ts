@@ -17,6 +17,8 @@ import { HasPermissionDirective } from '@shared/directives/has-permission.direct
 import { MoneyPipe } from '@shared/pipes/money.pipe';
 import { PERMISSIONS } from '@core/models/auth.models';
 
+import { CollectionPanelComponent } from './collection-panel.component';
+
 interface BucketChoice {
   value: OutstandingBucket;
   label: string;
@@ -28,7 +30,7 @@ interface BucketChoice {
   standalone: true,
   imports: [
     CommonModule, RouterLink, DataTableComponent, AvatarComponent, ErrorStateComponent,
-    HasPermissionDirective, MoneyPipe
+    HasPermissionDirective, MoneyPipe, CollectionPanelComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './outstanding.component.html',
@@ -38,6 +40,7 @@ export class OutstandingComponent implements OnInit {
   private readonly dataSource = inject(FINANCE_DATA_SOURCE);
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly selectedStudent = signal<OutstandingStudent | null>(null);
   readonly board = signal<OutstandingBoard | null>(null);
   readonly loading = signal(true);
   readonly error = signal(false);
@@ -47,9 +50,10 @@ export class OutstandingComponent implements OnInit {
   readonly createPaymentPermission = PERMISSIONS.PAYMENT_CREATE;
 
   readonly buckets: readonly BucketChoice[] = [
+    { value: 'FOLLOW_UP', label: 'À relancer' },
     { value: 'ALL', label: 'Tous les soldes' },
     { value: 'OVERDUE', label: 'En retard' },
-    { value: 'CRITICAL', label: '+ de 30 jours' },
+    { value: 'CRITICAL', label: '30 jours et plus' },
     { value: 'DUE_SOON', label: 'À échéance bientôt' }
   ];
 

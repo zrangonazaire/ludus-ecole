@@ -1,12 +1,13 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CURRICULUM_DATA_SOURCE, REFERENCE_DATA_SOURCE, TEACHER_DATA_SOURCE } from '@core/datasource/data-source';
-import { CONTRACT_TYPES, ContractType } from '@core/models/teacher.models';
+import { CONTRACT_TYPES, ContractType, TeacherAccount } from '@core/models/teacher.models';
 import { SUBJECT_CATEGORIES, SUBJECT_COLORS, SubjectCategoryCode } from '@core/models/curriculum.models';
 import { AuthService } from '@core/auth/auth.service';
 import { NotificationService } from '@core/services/notification.service';
+import { TeacherAccountService } from '@core/services/teacher-account.service';
 import { PERMISSIONS } from '@core/models/auth.models';
 
 @Component({
@@ -20,27 +21,27 @@ import { PERMISSIONS } from '@core/models/auth.models';
         <div>
           <a routerLink="/teachers">← Enseignants</a>
           <h1 class="page__title">Nouvel enseignant</h1>
-          <p class="page__meta">Renseignez les informations de l’enseignant pour créer son dossier.</p>
+          <p class="page__meta">Sélectionnez un utilisateur ayant le profil Enseignant et complétez sa fiche pédagogique.</p>
         </div>
       </header>
       <form [formGroup]="form" (ngSubmit)="save()">
         <fieldset class="card" [disabled]="saving()">
-          <legend>Identité et coordonnées</legend>
-          <p>Les champs marqués d’un * sont obligatoires.</p>
-          <div class="form-grid">
-            @for (field of identityFields; track field.key) {
-              <div class="field">
-                <label [for]="field.key">{{ field.label }}{{ field.required ? ' *' : '' }}</label>
-                <input class="input" [id]="field.key" [type]="field.type"
-                  [formControlName]="field.key" [maxlength]="field.max"
-                  [attr.autocomplete]="field.autocomplete"
-                  [attr.aria-invalid]="invalid(field.key)" [attr.aria-describedby]="invalid(field.key) ? field.key + '-error' : null" />
-                @if (invalid(field.key)) {
-                  <small class="field-error" [id]="field.key + '-error'">{{ field.key === 'email' ? 'Saisissez une adresse e-mail valide.' : 'Ce champ est obligatoire.' }}</small>
-                }
-              </div>
+          <legend>Compte utilisateur</legend>
+          <label for="userAccountId">Utilisateur avec le profil Enseignant *</label>
+          <select class="input" id="userAccountId" formControlName="userAccountId">
+            <option value="">Sélectionner un utilisateur…</option>
+            @for (account of accounts(); track account.id) {
+              <option [value]="account.id">{{ account.firstName }} {{ account.lastName }} — {{ account.email }}</option>
             }
-          </div>
+          </select>
+          @if (invalid('userAccountId')) { <small class="field-error">Sélectionnez le compte de l’enseignant.</small> }
+          @if (loadingAccounts()) { <p>Chargement des utilisateurs…</p> }
+          @if (accountsError()) { <p class="field-error">Impossible de charger les utilisateurs.</p><button type="button" class="btn btn--secondary" (click)="loadAccounts()">Réessayer</button> }
+          @if (!loadingAccounts() && !accountsError() && !accounts().length) {
+            <p>Aucun utilisateur Enseignant disponible. Créez un utilisateur ou attribuez ce profil à un compte existant dans Utilisateurs.</p>
+          }
+          @if (canManageUsers()) { <a routerLink="/users">Gérer les utilisateurs et leurs profils</a> }
+          <p>Le nom et les coordonnées proviennent du compte utilisateur. Un compte possède une seule fiche enseignant.</p>
         </fieldset>
         <fieldset class="card" [disabled]="saving()">
           <legend>Informations professionnelles</legend>
@@ -51,12 +52,16 @@ import { PERMISSIONS } from '@core/models/auth.models';
                 <option value="">Choisir dans le catalogue…</option>
                 @for (subject of subjectOptions(); track subject) { <option [value]="subject">{{ subject }}</option> }
                 <option value="__other">Autre (saisie libre)…</option>
-                <option value="__new">+ Créer une nouvelle matière…</option>
+                @if (canManageSubjects()) { <option value="__new">+ Créer une nouvelle matière…</option> }
               </select>
               @if (showCustomSpeciality()) {
+                <label for="specialityCustom">Spécialité personnalisée *</label>
                 <input id="specialityCustom" class="input" formControlName="specialityCustom" maxlength="150"
-                  placeholder="Précisez la spécialité" style="margin-top: 8px" />
+                  placeholder="Précisez la spécialité" [attr.aria-invalid]="invalid('specialityCustom')" />
+                @if (invalid('specialityCustom')) { <small class="field-error">Saisissez une spécialité (150 caractères maximum).</small> }
               }
+              @if (loadingSubjects()) { <small>Chargement du catalogue…</small> }
+              @if (subjectsError()) { <small class="field-error" role="alert">Impossible de charger le catalogue.</small><button type="button" class="btn btn--secondary" (click)="loadSubjects()">Réessayer</button> }
               @if (invalid('speciality')) { <small class="field-error">Choisissez une spécialité du catalogue ou « Autre ».</small> }
               @if (canManageSubjects()) {
                 <button type="button" class="link" (click)="openSubjectDialog()" style="margin-top: 6px">
@@ -81,7 +86,7 @@ import { PERMISSIONS } from '@core/models/auth.models';
         @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
         <div class="form-actions">
           <button type="button" class="btn btn--secondary" [disabled]="saving()" (click)="cancel()">Annuler</button>
-          <button type="submit" class="btn btn--primary" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Créer l’enseignant' }}</button>
+          <button type="submit" class="btn btn--primary" [disabled]="saving() || loadingAccounts() || accountsError() || !accounts().length || subjectDialogOpen()">{{ saving() ? 'Enregistrement…' : 'Créer l’enseignant' }}</button>
         </div>
       </form>
       @if (subjectDialogOpen()) {
@@ -152,30 +157,27 @@ import { PERMISSIONS } from '@core/models/auth.models';
 })
 export class TeacherCreateComponent {
   private readonly data = inject(TEACHER_DATA_SOURCE);
+  private readonly accountService = inject(TeacherAccountService);
+  readonly accounts = signal<TeacherAccount[]>([]);
+  readonly loadingAccounts = signal(true);
+  readonly accountsError = signal(false);
   private readonly reference = inject(REFERENCE_DATA_SOURCE);
   private readonly curriculum = inject(CURRICULUM_DATA_SOURCE);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly notifications = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
   readonly saving = signal(false);
   readonly error = signal('');
   readonly loadingSubjects = signal(true);
+  readonly subjectsError = signal(false);
   readonly subjectOptions = signal<string[]>([]);
   readonly categories = SUBJECT_CATEGORIES;
   readonly contracts = CONTRACT_TYPES;
-  readonly identityFields = [
-    { key: 'lastName', label: 'Nom', type: 'text', max: 120, required: true, autocomplete: 'family-name' },
-    { key: 'firstName', label: 'Prénom(s)', type: 'text', max: 120, required: true, autocomplete: 'given-name' },
-    { key: 'email', label: 'Adresse e-mail', type: 'email', max: 180, required: true, autocomplete: 'email' },
-    { key: 'phone', label: 'Téléphone', type: 'tel', max: 40, required: false, autocomplete: 'tel' }
-  ] as const;
   readonly form = this.fb.nonNullable.group({
-    firstName: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(120)]],
-    lastName: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(120)]],
-    email: ['', [Validators.required, Validators.email, Validators.maxLength(180)]],
-    phone: ['', Validators.maxLength(40)],
+    userAccountId: ['', Validators.required],
     speciality: ['', Validators.maxLength(150)],
     specialityCustom: ['', Validators.maxLength(150)],
     qualification: ['', Validators.maxLength(150)],
@@ -185,8 +187,8 @@ export class TeacherCreateComponent {
   });
 
   readonly subjectForm = this.fb.nonNullable.group({
-    code: ['', [Validators.required, Validators.maxLength(20)]],
-    name: ['', [Validators.required, Validators.maxLength(150)]],
+    code: ['', [Validators.required, Validators.maxLength(20), Validators.pattern(/^[a-zA-Z0-9_-]+$/)]],
+    name: ['', [Validators.required, Validators.maxLength(150), Validators.pattern(/\S/)]],
     category: ['SCIENCE' as SubjectCategoryCode, [Validators.required]],
     graded: [true]
   });
@@ -194,19 +196,59 @@ export class TeacherCreateComponent {
   readonly savingSubject = signal(false);
   readonly subjectError = signal('');
 
-  readonly showCustomSpeciality = computed(() => this.form.controls.speciality.value === '__other');
+  showCustomSpeciality(): boolean { return this.form.controls.speciality.value === '__other'; }
 
   constructor() {
+    this.loadAccounts();
+    this.loadSubjects();
+    this.form.controls.speciality.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(value => {
+        const custom = this.form.controls.specialityCustom;
+        custom.setValidators(value === '__other'
+          ? [Validators.required, Validators.pattern(/\S/), Validators.maxLength(150)]
+          : [Validators.maxLength(150)]);
+        if (value !== '__other') custom.reset('', { emitEvent: false });
+        custom.updateValueAndValidity({ emitEvent: false });
+        if (value === '__new') this.openSubjectDialog();
+      });
+  }
+
+  loadSubjects(): void {
+    this.loadingSubjects.set(true);
+    this.subjectsError.set(false);
     this.reference.subjects().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: list => {
         this.subjectOptions.set([...new Set(list.map(s => s.name.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr')));
         this.loadingSubjects.set(false);
       },
-      error: () => this.loadingSubjects.set(false)
+      error: () => { this.loadingSubjects.set(false); this.subjectsError.set(true); }
     });
-    this.form.controls.speciality.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(value => { if (value === '__new') this.openSubjectDialog(); });
+  }
+
+  canManageUsers(): boolean { return this.auth.has(PERMISSIONS.USER_MANAGE); }
+
+  loadAccounts(): void {
+    this.loadingAccounts.set(true); this.accountsError.set(false);
+    this.accountService.available().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: accounts => {
+        this.accounts.set(accounts); this.loadingAccounts.set(false);
+        this.preselectAccount(accounts);
+      },
+      error: () => { this.accountsError.set(true); this.loadingAccounts.set(false); }
+    });
+  }
+
+  /**
+   * Un compte peut arriver ici depuis la liste des utilisateurs. On ne
+   * présélectionne que s'il est réellement disponible : le proposer alors
+   * qu'il a déjà une fiche ferait échouer l'enregistrement pour rien.
+   */
+  private preselectAccount(accounts: TeacherAccount[]): void {
+    const requested = this.route.snapshot.queryParamMap.get('accountId');
+    if (requested && accounts.some(account => account.id === requested)) {
+      this.form.controls.userAccountId.setValue(requested);
+    }
   }
 
   canManageSubjects(): boolean {
@@ -229,14 +271,14 @@ export class TeacherCreateComponent {
   }
 
   createSubject(): void {
-    if (this.savingSubject()) return;
+    if (this.savingSubject() || !this.canManageSubjects()) return;
     this.subjectForm.markAllAsTouched();
     if (this.subjectForm.invalid) return;
     const value = this.subjectForm.getRawValue();
     this.savingSubject.set(true);
     this.subjectError.set('');
     this.curriculum.createSubject({
-      code: value.code.trim(), name: value.name.trim(), category: value.category,
+      code: value.code.trim().toUpperCase(), name: value.name.trim(), category: value.category,
       colorHex: SUBJECT_COLORS[0], graded: value.graded
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (subject: { name: string }) => {
@@ -280,7 +322,10 @@ export class TeacherCreateComponent {
   cancel(): void { void this.router.navigate(['/teachers']); }
 
   save(): void {
-    if (this.saving()) return;
+    if (this.saving() || this.loadingAccounts() || this.accountsError() || this.subjectDialogOpen()) return;
+    if (!this.accounts().some(account => account.id === this.form.controls.userAccountId.value)) {
+      this.form.controls.userAccountId.setErrors({ unavailable: true });
+    }
     let rawSpeciality = this.form.controls.speciality.value;
     const custom = this.form.controls.specialityCustom;
     if (rawSpeciality === '__new') {
@@ -297,8 +342,7 @@ export class TeacherCreateComponent {
     const speciality = rawSpeciality === '__other' ? custom.value.trim() : (rawSpeciality || '').trim();
     this.saving.set(true);
     this.error.set('');
-    this.data.create({ ...rest, firstName: value.firstName.trim(), lastName: value.lastName.trim(),
-      email: value.email.trim().toLowerCase(), phone: value.phone.trim(), speciality, qualification: value.qualification.trim() })
+    this.data.create({ ...rest, speciality, qualification: value.qualification.trim() })
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: teacher => {
           this.notifications.success(`L’enseignant ${teacher.fullName} a été créé (${teacher.employeeNumber}).`);
@@ -306,7 +350,7 @@ export class TeacherCreateComponent {
         },
         error: err => {
           this.saving.set(false);
-          this.error.set(err.status === 409 ? 'Un enseignant utilise déjà cette adresse e-mail.' : 'Impossible de créer l’enseignant. Vérifiez les informations et réessayez.');
+          this.error.set(err?.error?.message ?? 'Impossible de créer la fiche enseignant. Vérifiez le compte sélectionné.');
         }
       });
   }

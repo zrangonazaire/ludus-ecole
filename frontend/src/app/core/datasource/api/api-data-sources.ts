@@ -204,6 +204,11 @@ export class ApiTeacherDataSource implements TeacherDataSource {
     return this.http.get<PageResponse<Teacher>>(`${API}/teachers`, { params: toParams(query) });
   }
 
+  /** Le tableau : comptes au profil Enseignant + fiches sans compte. */
+  roster(query: PageQuery): Observable<PageResponse<Teacher>> {
+    return this.http.get<PageResponse<Teacher>>(`${API}/teachers/roster`, { params: toParams(query) });
+  }
+
   getById(id: string): Observable<Teacher> {
     return this.http.get<Teacher>(`${API}/teachers/${id}`);
   }

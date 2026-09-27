@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.spec.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "dom", "dom.iterable"]
+  },
+  "exclude": ["src/app/features/teachers/teacher-list.component.spec.ts"]
+}

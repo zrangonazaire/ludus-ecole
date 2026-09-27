@@ -21,20 +21,25 @@ public class UserManagementService {
     private final PasswordEncoder encoder;
     private final CurrentUser actor;
     private final EduOpsProperties properties;
+    private final ci.company.eduops.teacher.repository.TeacherRepository teachers;
 
     public UserManagementService(AppUserRepository users, AppRoleRepository roles,
-                                 PasswordEncoder encoder, CurrentUser actor, EduOpsProperties properties) {
+                                 PasswordEncoder encoder, CurrentUser actor, EduOpsProperties properties,
+                                 ci.company.eduops.teacher.repository.TeacherRepository teachers) {
         this.users = users;
         this.roles = roles;
         this.encoder = encoder;
         this.actor = actor;
         this.properties = properties;
+        this.teachers = teachers;
     }
 
     @Transactional(readOnly = true)
     public List<ManagedUserResponse> list() {
-        return users.findBySchoolIdOrderByLastNameAscFirstNameAsc(school())
-                .stream().map(ManagedUserResponse::from).toList();
+        UUID schoolId = school();
+        Set<UUID> linked = new HashSet<>(teachers.linkedAccountIds(schoolId));
+        return users.findBySchoolIdOrderByLastNameAscFirstNameAsc(schoolId)
+                .stream().map(user -> ManagedUserResponse.from(user, linked.contains(user.getId()))).toList();
     }
 
     @Transactional(readOnly = true)
@@ -65,7 +70,9 @@ public class UserManagementService {
         user.setPasswordHash(encoder.encode(request.password()));
         user.setStatus(UserStatus.ACTIVE);
         try {
-            return ManagedUserResponse.from(users.saveAndFlush(user));
+            // Une fiche enseignant ne naît pas ici : elle porte le matricule,
+            // le contrat et les affectations, que cette requête n'a pas.
+            return ManagedUserResponse.from(users.saveAndFlush(user), false);
         } catch (DataIntegrityViolationException ex) {
             throw new BusinessException(ErrorCode.USER_LOGIN_ALREADY_USED);
         }
@@ -74,14 +81,22 @@ public class UserManagementService {
     @Transactional
     public ManagedUserResponse updateProfiles(UUID id, UserProfilesRequest request) {
         UUID schoolId = school();
-        AppUser user = users.findById(id).filter(u -> schoolId.equals(u.getSchoolId()))
+        AppUser user = users.lockInSchool(id, schoolId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
         // Prevent self-lockout and changing an account with powers the caller cannot grant.
         if (id.equals(actor.requireId()) || user.getRoles().stream().anyMatch(r -> !assignable(r))) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
-        user.setRoles(resolve(request.profileIds(), schoolId));
-        return ManagedUserResponse.from(users.saveAndFlush(user));
+        Set<AppRole> selected = resolve(request.profileIds(), schoolId);
+        // La fiche et le compte ne se séparent pas : retirer le profil
+        // Enseignant laisserait une fiche rattachée à un compte qui n'y a
+        // plus accès.
+        boolean hasTeacherRecord = teachers.findByUserAccountId(id).isPresent();
+        if (hasTeacherRecord && selected.stream().noneMatch(r -> "TEACHER".equals(r.getCode()))) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Le rôle Enseignant est requis pour un utilisateur rattaché à une fiche enseignant.");
+        }
+        user.setRoles(selected);
+        return ManagedUserResponse.from(users.saveAndFlush(user), hasTeacherRecord);
     }
 
     private Set<AppRole> resolve(Set<UUID> ids, UUID schoolId) {

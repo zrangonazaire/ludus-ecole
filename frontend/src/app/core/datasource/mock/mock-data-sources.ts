@@ -446,20 +446,17 @@ export class MockClassroomDataSource implements ClassroomDataSource {
 @Injectable()
 export class MockTeacherDataSource implements TeacherDataSource {
   create(payload: import('../../models/teacher.models').TeacherCreatePayload): Observable<Teacher> {
-    if (MOCK_TEACHERS.some(t => t.email.toLowerCase() === payload.email.toLowerCase())) {
-      return throwError(() => ({ status: 409 }));
-    }
-    const teacher: Teacher = {
-      ...payload, id: createUuid(), employeeNumber: `ENS-DEMO-${MOCK_TEACHERS.length + 1}`,
-      fullName: `${payload.firstName} ${payload.lastName}`, status: 'ACTIVE', classCount: 0
-    };
-    MOCK_TEACHERS.unshift(teacher);
-    return of(teacher).pipe(delay(LATENCY));
+    return throwError(() => ({ error: { message: 'La création liée à un compte utilisateur nécessite le serveur.' } }));
   }
   search(query: PageQuery): Observable<PageResponse<Teacher>> {
     const filtered = MOCK_TEACHERS.filter((t) =>
       matches([t.fullName, t.employeeNumber, t.speciality ?? ''], query.search));
     return of(paginate(filtered, query)).pipe(delay(LATENCY));
+  }
+
+  /** Le jeu de démonstration ne contient que des fiches : même liste. */
+  roster(query: PageQuery): Observable<PageResponse<Teacher>> {
+    return this.search(query);
   }
 
   getById(id: string): Observable<Teacher> {

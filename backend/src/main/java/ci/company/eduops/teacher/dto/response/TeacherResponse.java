@@ -14,6 +14,20 @@ import java.util.UUID;
 public class TeacherResponse {
 
     private UUID id;
+    private UUID userAccountId;
+    public UUID getUserAccountId() { return userAccountId; }
+    public void setUserAccountId(UUID value) { userAccountId = value; }
+    /**
+     * Vrai quand une fiche enseignant existe.
+     *
+     * <p>La liste des enseignants part des comptes portant le profil
+     * Enseignant : un compte sans fiche y figure avec {@code false}, et la
+     * fiche reste à créer. Quand la fiche manque, {@code id} porte
+     * l'identifiant du compte, faute d'autre identifiant de ligne.</p>
+     */
+    private boolean hasTeacherRecord = true;
+    public boolean isHasTeacherRecord() { return hasTeacherRecord; }
+    public void setHasTeacherRecord(boolean value) { hasTeacherRecord = value; }
     private String employeeNumber;
     private String firstName;
     private String lastName;

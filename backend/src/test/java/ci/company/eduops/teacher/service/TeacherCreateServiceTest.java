@@ -25,9 +25,9 @@ class TeacherCreateServiceTest {
     final NumberSequenceService numbers = mock(NumberSequenceService.class);
     final AuditService audit = mock(AuditService.class);
     final TeacherQueryService queries = mock(TeacherQueryService.class);
-    final TeacherCreateService service = new TeacherCreateService(teachers, schools, numbers, audit, queries);
-    final TeacherCreateRequest request = new TeacherCreateRequest(" Ada ", " Koffi ", "ADA@example.com",
-            " 0123456789 ", " Maths ", " Master ", LocalDate.of(2026, 9, 1), ContractType.PERMANENT, 24);
+    final TeacherAccountService accounts = mock(TeacherAccountService.class);
+    final TeacherCreateService service = new TeacherCreateService(teachers, schools, numbers, audit, queries, accounts);
+    final TeacherCreateRequest request = new TeacherCreateRequest(UUID.randomUUID(), " Maths ", " Master ", LocalDate.of(2026, 9, 1), ContractType.PERMANENT, 24);
 
     @AfterEach void clear() { TenantContext.clear(); }
 
@@ -51,6 +51,7 @@ class TeacherCreateServiceTest {
         when(teachers.saveAndFlush(any(Teacher.class))).thenAnswer(call -> {
             Teacher teacher = call.getArgument(0);
             assertSame(school, teacher.getSchool());
+            assertEquals(request.userAccountId(), teacher.getUserAccountId());
             assertEquals("Ada", teacher.getFirstName());
             assertEquals("ada@example.com", teacher.getEmail());
             assertEquals(TeacherStatus.ACTIVE, teacher.getStatus());
@@ -68,6 +69,10 @@ class TeacherCreateServiceTest {
         school.setId(UUID.randomUUID());
         school.setCode("ECOLE");
         TenantContext.setSchoolId(school.getId());
+        var user = new ci.company.eduops.security.entity.AppUser();
+        user.setId(request.userAccountId()); user.setFirstName("Ada"); user.setLastName("Koffi");
+        user.setEmail("ada@example.com"); user.setSchoolId(school.getId());
+        when(accounts.requireAvailable(request.userAccountId())).thenReturn(user);
         when(schools.findById(school.getId())).thenReturn(Optional.of(school));
         return school;
     }

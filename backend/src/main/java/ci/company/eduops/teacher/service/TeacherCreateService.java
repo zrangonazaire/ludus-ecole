@@ -13,7 +13,6 @@ import ci.company.eduops.teacher.repository.TeacherRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -24,6 +23,7 @@ public class TeacherCreateService {
     private final NumberSequenceService numbers;
     private final AuditService audit;
     private final TeacherQueryService queries;
+    private final TeacherAccountService accounts;
 
     @Transactional
     public TeacherResponse create(TeacherCreateRequest request) {
@@ -31,17 +31,14 @@ public class TeacherCreateService {
         if (schoolId == null) throw new BusinessException(ErrorCode.SCHOOL_NOT_FOUND);
         var school = schools.findById(schoolId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SCHOOL_NOT_FOUND));
-        var email = request.email().trim().toLowerCase(Locale.ROOT);
-        if (teachers.existsBySchoolIdAndEmailIgnoreCase(schoolId, email)) {
-            throw new BusinessException(ErrorCode.CONFLICT, "Un enseignant utilise déjà cette adresse e-mail.");
+        var user = accounts.requireAvailable(request.userAccountId());
+        if (teachers.existsBySchoolIdAndEmailIgnoreCase(schoolId, user.getEmail())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "Une ancienne fiche utilise cet e-mail. Rattachez-la au compte depuis la liste des enseignants.");
         }
         var teacher = new Teacher();
         teacher.setSchool(school);
         teacher.setEmployeeNumber(numbers.next(schoolId, "TEACHER", "ENS-{year}-{seq:4}", school.getCode()));
-        teacher.setFirstName(request.firstName().trim());
-        teacher.setLastName(request.lastName().trim());
-        teacher.setEmail(email);
-        teacher.setPhone(clean(request.phone()));
+        TeacherAccountService.copyIdentity(teacher, user);
         teacher.setSpeciality(clean(request.speciality()));
         teacher.setQualification(clean(request.qualification()));
         teacher.setHireDate(request.hireDate());
@@ -49,7 +46,7 @@ public class TeacherCreateService {
         teacher.setWeeklyHoursMax(request.weeklyHoursMax());
         var saved = teachers.saveAndFlush(teacher);
         audit.logCreate("Teacher", saved.getId(), saved.getEmployeeNumber(),
-                Map.of("contractType", saved.getContractType().name()));
+                Map.of("contractType", saved.getContractType().name(), "userAccountId", user.getId()));
         return queries.detail(saved.getId());
     }
 

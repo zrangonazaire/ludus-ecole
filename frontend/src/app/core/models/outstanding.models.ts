@@ -1,6 +1,6 @@
 import { PageResponse } from './common.models';
 
-export type OutstandingBucket = 'ALL' | 'OVERDUE' | 'CRITICAL' | 'DUE_SOON';
+export type OutstandingBucket = 'ALL' | 'OVERDUE' | 'CRITICAL' | 'DUE_SOON' | 'FOLLOW_UP';
 
 export interface OutstandingQuery {
   page?: number;
@@ -12,6 +12,9 @@ export interface OutstandingQuery {
 
 /** One family balance, aggregated from its unpaid fee instalments. */
 export interface OutstandingStudent {
+  nextContactDate?: string;
+  promisedDate?: string;
+  promisedAmount?: number;
   studentId: string;
   studentNumber: string;
   studentName: string;

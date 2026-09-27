@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { environment } from '@env/environment';
 import { AuthService } from '@core/auth/auth.service';
+import { PERMISSIONS } from '@core/models/auth.models';
 import { NotificationService } from '@core/services/notification.service';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
 import { ErrorStateComponent } from '@shared/ui/error-state/error-state.component';
@@ -14,6 +15,10 @@ interface Profile { id: string; label: string; }
 interface ManagedUser {
   id: string; username: string; email: string; firstName: string; lastName: string;
   status: string; profiles: Profile[];
+  /** Le compte porte le profil Enseignant, il peut donc recevoir une fiche. */
+  teacherProfile: boolean;
+  /** Une fiche enseignant lui est déjà rattachée. */
+  hasTeacherRecord: boolean;
 }
 
 @Component({
@@ -29,6 +34,7 @@ export class UsersComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly notifications = inject(NotificationService);
   readonly auth = inject(AuthService);
+  readonly permissions = PERMISSIONS;
   private readonly endpoint = `${environment.apiBaseUrl}/users`;
   readonly users = signal<ManagedUser[]>([]);
   readonly profiles = signal<Profile[]>([]);
@@ -47,6 +53,8 @@ export class UsersComponent {
   readonly selected = signal<Set<string>>(new Set());
   readonly search = signal('');
   readonly created = signal<string | null>(null);
+  /** Compte enseignant créé mais encore sans fiche : le parcours n'est pas fini. */
+  readonly pendingTeacherRecord = signal<string | null>(null);
   readonly loginUrl = `${window.location.origin}/login`;
   readonly visibleUsers = computed(() => {
     const query = this.search().trim().toLocaleLowerCase('fr');
@@ -148,11 +156,26 @@ export class UsersComponent {
       next: result => {
         this.saving.set(false);
         this.close();
-        if (!user) this.created.set(result.username);
+        if (!user) {
+          this.created.set(result.username);
+          // Un compte enseignant sans fiche n'apparaît ni dans la liste des
+          // enseignants ni dans les affectations : on propose de la créer.
+          this.pendingTeacherRecord.set(this.needsTeacherRecord(result) ? result.id : null);
+        }
         this.notifications.success(user ? 'Les profils du compte ont été enregistrés.' : 'Le compte est actif et peut se connecter.');
         this.load();
       },
       error: () => this.saving.set(false)
     });
+  }
+
+  /** Le compte porte le profil Enseignant mais n'a pas encore de fiche. */
+  needsTeacherRecord(user: ManagedUser): boolean {
+    return user.teacherProfile && !user.hasTeacherRecord;
+  }
+
+  dismissCreated(): void {
+    this.created.set(null);
+    this.pendingTeacherRecord.set(null);
   }
 }

@@ -20,7 +20,11 @@
     <section class="intro card" role="status"><div><h2>Compte {{ username }} créé</h2>
       <p>Lien de connexion : <a [href]="loginUrl">{{ loginUrl }}</a></p>
       <p>Transmettez l’identifiant « {{ username }} » et le mot de passe que vous avez choisi par un canal privé.</p>
-    </div><button class="btn btn--ghost" type="button" (click)="created.set(null)">Fermer</button></section>
+      @if (pendingTeacherRecord(); as accountId) {
+        <p>Le profil Enseignant ouvre le portail, mais la fiche pédagogique — matricule, contrat, affectations — reste à créer. En attendant, le compte figure dans la liste des enseignants, avec l’action « Créer la fiche enseignant ».</p>
+        <a class="btn btn--secondary" [routerLink]="['/teachers/new']" [queryParams]="{ accountId }">Créer la fiche enseignant</a>
+      }
+    </div><button class="btn btn--ghost" type="button" (click)="dismissCreated()">Fermer</button></section>
   }
   <div class="toolbar"><label class="search-field"><span class="visually-hidden">Rechercher un utilisateur</span>
     <input class="input" type="search" placeholder="Nom, identifiant, e-mail ou profil…" [value]="search()" (input)="search.set($any($event.target).value)" />
@@ -41,6 +45,9 @@
             <div class="user-card__profiles" aria-label="Profils d’accès">@for (profile of user.profiles; track profile.id) { <span class="badge">{{ profile.label }}</span> } @empty { <span class="locked">Aucun profil attribué</span> }</div>
           </div>
           <footer class="profile-card__foot">
+            @if (needsTeacherRecord(user) && auth.has(permissions.TEACHER_MANAGE)) {
+              <a class="btn btn--secondary btn--sm" [routerLink]="['/teachers/new']" [queryParams]="{ accountId: user.id }">Créer la fiche enseignant</a>
+            }
             @if (canEdit(user)) { <button class="btn btn--secondary btn--sm" type="button" (click)="open(user)">Attribuer les profils</button> }
             @else if (user.id === auth.currentUser()?.userId) { <button class="btn btn--secondary btn--sm" type="button" (click)="openAccount(user)">Votre compte</button> }
             @else { <span class="locked">Compte protégé</span> }
@@ -91,6 +98,7 @@
         @if (form.touched && form.invalid) { <p class="field__error">Complétez tous les champs avec un e-mail, un identifiant et un mot de passe valides.</p> }
       }
       <section class="permission-section"><h3>Profils d’accès *</h3><p>Sélectionnez au moins un profil. Les droits des profils sélectionnés se cumulent.</p>
+        <p>Le profil Enseignant ouvre le portail ; la fiche pédagogique (matricule, contrat) se crée ensuite depuis Enseignants → Nouvel enseignant.</p>
         <div class="permission-groups">@for (profile of profiles(); track profile.id) {
           <label class="permission-item"><input type="checkbox" [checked]="selected().has(profile.id)" (change)="toggle(profile.id)" /><span>{{ profile.label }}</span></label>
         } @empty { <p>Aucun profil attribuable. Un administrateur doit vous accorder les droits nécessaires.</p> }</div>

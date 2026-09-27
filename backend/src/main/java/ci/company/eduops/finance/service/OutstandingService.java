@@ -37,13 +37,16 @@ public class OutstandingService {
     private static final int CRITICAL_AFTER_DAYS = 30;
     private static final int DUE_SOON_DAYS = 15;
 
+    private final ci.company.eduops.finance.repository.CollectionActionRepository collectionRepository;
     private final StudentFeeRepository feeRepository;
     private final StudentGuardianRepository guardianRepository;
     private final AcademicYearRepository academicYearRepository;
 
     public OutstandingService(StudentFeeRepository feeRepository,
                               StudentGuardianRepository guardianRepository,
-                              AcademicYearRepository academicYearRepository) {
+                              AcademicYearRepository academicYearRepository,
+                              ci.company.eduops.finance.repository.CollectionActionRepository collectionRepository) {
+        this.collectionRepository = collectionRepository;
         this.feeRepository = feeRepository;
         this.guardianRepository = guardianRepository;
         this.academicYearRepository = academicYearRepository;
@@ -56,6 +59,17 @@ public class OutstandingService {
         List<OutstandingStudentResponse> allRows = aggregate(
                 feeRepository.findAllOutstandingForYear(year.getId()));
 
+        var latest = collectionRepository.latestForYear(requireSchool(), year.getId()).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                    ci.company.eduops.finance.domain.CollectionAction::getStudentId, a -> a));
+        allRows.forEach(row -> {
+            var action = latest.get(row.getStudentId());
+            if (action != null) {
+                row.setNextContactDate(action.getNextContactDate());
+                row.setPromisedDate(action.getPromisedDate());
+                row.setPromisedAmount(action.getPromisedAmount());
+            }
+        });
         OutstandingBoardResponse response = totals(allRows, year);
         List<OutstandingStudentResponse> filtered = allRows.stream()
                 .filter(row -> matches(row, search))
@@ -157,6 +171,8 @@ public class OutstandingService {
     private boolean inBucket(OutstandingStudentResponse row, String bucket) {
         if (bucket == null || bucket.isBlank() || "ALL".equalsIgnoreCase(bucket)) return true;
         return switch (bucket.toUpperCase(Locale.ROOT)) {
+            case "FOLLOW_UP" -> row.getNextContactDate() != null
+                    && !row.getNextContactDate().isAfter(LocalDate.now());
             case "OVERDUE" -> row.getDaysOverdue() > 0;
             case "CRITICAL" -> row.getDaysOverdue() >= CRITICAL_AFTER_DAYS;
             case "DUE_SOON" -> row.getDaysOverdue() == 0
@@ -165,7 +181,7 @@ public class OutstandingService {
         };
     }
 
-    private AcademicYear resolveYear(UUID academicYearId) {
+    AcademicYear resolveYear(UUID academicYearId) {
         if (academicYearId != null) {
             AcademicYear year = academicYearRepository.findById(academicYearId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.ACADEMIC_YEAR_NOT_FOUND));

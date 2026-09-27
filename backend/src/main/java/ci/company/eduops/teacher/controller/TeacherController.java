@@ -23,11 +23,14 @@ public class TeacherController {
     private final ci.company.eduops.teacher.service.TeacherCreateService teacherCreateService;
 
     private final TeacherQueryService teacherQueryService;
+    private final ci.company.eduops.teacher.service.TeacherAccountService teacherAccounts;
 
     public TeacherController(TeacherQueryService teacherQueryService,
-            ci.company.eduops.teacher.service.TeacherCreateService teacherCreateService) {
+            ci.company.eduops.teacher.service.TeacherCreateService teacherCreateService,
+            ci.company.eduops.teacher.service.TeacherAccountService teacherAccounts) {
         this.teacherQueryService = teacherQueryService;
         this.teacherCreateService = teacherCreateService;
+        this.teacherAccounts = teacherAccounts;
     }
 
     @org.springframework.web.bind.annotation.PostMapping
@@ -36,6 +39,35 @@ public class TeacherController {
     public TeacherResponse create(@jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody
             ci.company.eduops.teacher.dto.TeacherCreateRequest request) {
         return teacherCreateService.create(request);
+    }
+
+    @GetMapping("/accounts")
+    @PreAuthorize("hasAuthority('" + Permissions.TEACHER_MANAGE + "')")
+    public java.util.List<ci.company.eduops.teacher.dto.response.TeacherAccountResponse> accounts() {
+        return teacherAccounts.available();
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/{teacherId}/account")
+    @PreAuthorize("hasAuthority('" + Permissions.TEACHER_MANAGE + "')")
+    public TeacherResponse linkAccount(@PathVariable UUID teacherId,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody
+            ci.company.eduops.teacher.dto.TeacherAccountRequest request) {
+        teacherAccounts.linkExisting(teacherId, request.userAccountId());
+        return teacherQueryService.detail(teacherId);
+    }
+
+    @GetMapping("/roster")
+    @PreAuthorize("hasAuthority('" + Permissions.TEACHER_VIEW + "')")
+    @Operation(summary = "Le tableau des enseignants",
+            description = "Les comptes portant le profil Enseignant, avec leur fiche quand elle "
+                    + "existe, et les fiches restées sans compte. Recherche sur le nom, l'e-mail "
+                    + "et le matricule.")
+    public PageResponse<TeacherResponse> roster(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status) {
+        return teacherQueryService.roster(page, size, search, status);
     }
 
     @GetMapping

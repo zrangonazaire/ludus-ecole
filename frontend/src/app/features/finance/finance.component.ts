@@ -21,8 +21,33 @@ import { translateErrorCode } from '@core/services/error-messages';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
 import { ErrorStateComponent } from '@shared/ui/error-state/error-state.component';
 
-export type FinanceTab = 'TYPES' | 'TARIFS' | 'REQUESTS';
+export type FinanceTab = 'TYPES' | 'TARIFS' | 'CATEGORIES' | 'REQUESTS';
 export type FinancePanel = 'TYPE' | 'SCHEDULE' | 'APPLY' | null;
+
+/**
+ * Une rubrique du plan de facturation et ce qu'elle pèse.
+ *
+ * <p>Lecture seule : cet état ne relit que les types et les tarifs déjà
+ * chargés par l'écran. Aucun de ces montants n'est un dû d'élève — le total
+ * additionne les tarifs du catalogue, il ne dit pas ce qu'une famille doit.</p>
+ */
+export interface CategoryStat {
+  readonly code: string;
+  readonly label: string;
+  /** Types de frais déclarés dans cette rubrique. */
+  readonly feeTypeCount: number;
+  /** Niveaux distincts portant au moins un tarif de cette rubrique. */
+  readonly pricedLevels: number;
+  /** Tarifs posés, tous niveaux confondus. */
+  readonly scheduleCount: number;
+  /** Dont tarifs facultatifs, jamais générés d'office à l'inscription. */
+  readonly optionalCount: number;
+  readonly minAmount: number | null;
+  readonly maxAmount: number | null;
+  readonly totalAmount: number;
+  /** Part de la rubrique dans le total des tarifs, entre 0 et 1. */
+  readonly share: number;
+}
 
 /**
  * Fees: what the school charges, and when it falls due.
@@ -180,6 +205,109 @@ export class FinanceComponent implements OnInit {
     return { min: Math.min(...priced), max: Math.max(...priced) };
   });
 
+  /**
+   * État du plan par rubrique : ce que chaque catégorie porte réellement.
+   *
+   * <p>Toutes les rubriques connues figurent dans l'état, même celles restées
+   * vides : « Transport : 0 » est une information, pas un trou. Le libellé vient
+   * du type de frais — une rubrique créée par l'école n'est pas dans la liste
+   * statique — et rien n'est relu du serveur : cet état ne fait que recomposer
+   * les types et les tarifs déjà chargés.</p>
+   */
+  readonly categoryStats = computed<CategoryStat[]>(() => {
+    const types = this.types();
+    const typeCounts = new Map<string, number>();
+    const typeById = new Map<string, FeeType>();
+    for (const type of types) {
+      typeCounts.set(type.category, (typeCounts.get(type.category) ?? 0) + 1);
+      typeById.set(type.id, type);
+    }
+
+    interface Draft {
+      label: string;
+      readonly levels: Set<string>;
+      readonly amounts: number[];
+      optional: number;
+    }
+    const drafts = new Map<string, Draft>();
+    const ensure = (code: string, label: string): Draft => {
+      const existing = drafts.get(code);
+      if (existing) {
+        // Le code ne tient lieu de libellé que faute de mieux.
+        if (existing.label === code && label !== code) {
+          existing.label = label;
+        }
+        return existing;
+      }
+      const draft: Draft = { label, levels: new Set(), amounts: [], optional: 0 };
+      drafts.set(code, draft);
+      return draft;
+    };
+
+    // Les rubriques réellement déclarées, puis celles du catalogue d'origine.
+    for (const type of types) {
+      ensure(type.category, type.categoryLabel || type.category);
+    }
+    for (const category of FEE_CATEGORIES) {
+      ensure(category.code, category.label);
+    }
+
+    for (const level of this.levels()) {
+      for (const schedule of level.schedules) {
+        const type = typeById.get(schedule.feeTypeId);
+        const draft = ensure(schedule.category,
+          type?.categoryLabel || schedule.category);
+        draft.levels.add(level.levelId);
+        draft.amounts.push(schedule.totalAmount);
+        if (!schedule.mandatory) {
+          draft.optional += 1;
+        }
+      }
+    }
+
+    const rows = Array.from(drafts.entries()).map(([code, draft]) => {
+      const total = draft.amounts.reduce((sum, amount) => sum + amount, 0);
+      return {
+        code,
+        label: draft.label,
+        feeTypeCount: typeCounts.get(code) ?? 0,
+        pricedLevels: draft.levels.size,
+        scheduleCount: draft.amounts.length,
+        optionalCount: draft.optional,
+        minAmount: draft.amounts.length ? Math.min(...draft.amounts) : null,
+        maxAmount: draft.amounts.length ? Math.max(...draft.amounts) : null,
+        totalAmount: total,
+        share: 0
+      };
+    });
+
+    // L'ordre suit le poids réel : la rubrique qui pèse le plus vient en tête.
+    rows.sort((a, b) => b.totalAmount - a.totalAmount
+      || a.label.localeCompare(b.label, 'fr'));
+    const grandTotal = rows.reduce((sum, row) => sum + row.totalAmount, 0);
+    return grandTotal > 0
+      ? rows.map((row) => ({ ...row, share: row.totalAmount / grandTotal }))
+      : rows;
+  });
+
+  /** Chiffres de tête de l'état par rubrique. */
+  readonly categoryTotals = computed(() => {
+    const rows = this.categoryStats();
+    return {
+      categories: rows.length,
+      usedCategories: rows.filter((row) => row.scheduleCount > 0).length,
+      unpricedCategories: rows.filter((row) => row.scheduleCount === 0),
+      feeTypes: this.types().length,
+      schedules: rows.reduce((sum, row) => sum + row.scheduleCount, 0),
+      totalAmount: rows.reduce((sum, row) => sum + row.totalAmount, 0),
+      pricedLevels: this.levels().filter((level) => level.schedules.length > 0).length
+    };
+  });
+
+  /** Les rubriques déclarées qu'aucun tarif ne vient encore remplir. */
+  readonly unpricedCategoryNames = computed(() => this.categoryTotals()
+    .unpricedCategories.map((row) => row.label).join(' · '));
+
   readonly cycles = computed<Array<{ id: string; name: string; levels: LevelFees[] }>>(() => {
     const groups = new Map<string, { id: string; name: string; levels: LevelFees[] }>();
     this.levels().forEach((level) => {
@@ -209,6 +337,18 @@ export class FinanceComponent implements OnInit {
 
   format(amount: number): string {
     return new Intl.NumberFormat('fr-FR').format(amount);
+  }
+
+  /** Part d'une rubrique dans le total des tarifs, en pourcentage. */
+  formatPercent(share: number): string {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'percent', maximumFractionDigits: 1
+    }).format(share);
+  }
+
+  /** Un montant, ou un tiret quand la rubrique ne porte encore aucun tarif. */
+  formatAmount(amount: number | null): string {
+    return amount === null ? '—' : this.format(amount);
   }
 
   /**

@@ -11,6 +11,9 @@ import java.util.UUID;
 @Getter
 @Setter
 public class OutstandingStudentResponse {
+    private LocalDate nextContactDate;
+    private LocalDate promisedDate;
+    private BigDecimal promisedAmount;
     private UUID studentId;
     private String studentNumber;
     private String studentName;

@@ -78,6 +78,15 @@ public class Teacher extends AuditableEntity {
     @Column(name = "user_account_id")
     private UUID userAccountId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_account_id", insertable = false, updatable = false)
+    private ci.company.eduops.security.entity.AppUser userAccount;
+
+    public String getFirstName() { return userAccount == null ? firstName : userAccount.getFirstName(); }
+    public String getLastName() { return userAccount == null ? lastName : userAccount.getLastName(); }
+    public String getEmail() { return userAccount == null ? email : userAccount.getEmail(); }
+    public String getPhone() { return userAccount == null ? phone : userAccount.getPhone(); }
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "teacher_subject",
             joinColumns = @JoinColumn(name = "teacher_id"),
@@ -85,6 +94,6 @@ public class Teacher extends AuditableEntity {
     private Set<Subject> qualifiedSubjects = new HashSet<>();
 
     public String fullName() {
-        return firstName + " " + lastName;
+        return getFirstName() + " " + getLastName();
     }
 }

@@ -7,7 +7,7 @@ import { AuthService } from '@core/auth/auth.service';
 import { NotificationService } from '@core/services/notification.service';
 
 describe('UsersComponent account', () => {
-  const user = { id: 'self', username: 'admin', email: 'admin@example.com', firstName: 'Aminata', lastName: 'Koné', status: 'ACTIVE', profiles: [{ id: 'admin-role', label: 'Administration' }] };
+  const user = { id: 'self', username: 'admin', email: 'admin@example.com', firstName: 'Aminata', lastName: 'Koné', status: 'ACTIVE', profiles: [{ id: 'admin-role', label: 'Administration' }], teacherProfile: false, hasTeacherRecord: false };
   let http: HttpTestingController;
   let logout: jasmine.Spy;
   beforeEach(() => {
@@ -56,5 +56,18 @@ describe('UsersComponent account', () => {
     request.flush(null);
     expect(logout).toHaveBeenCalled();
     expect(fixture.componentInstance.passwordForm.controls.newPassword.value).toBe('');
+  });
+
+  it('sends a teacher account without a pedagogical record to the teacher form', () => {
+    const pendingTeacher = { ...user, id: 'teacher', teacherProfile: true, hasTeacherRecord: false };
+    const fixture = TestBed.createComponent(UsersComponent);
+    http.expectOne('/api/v1/users').flush([pendingTeacher]);
+    http.expectOne('/api/v1/users/profiles').flush(pendingTeacher.profiles);
+    fixture.detectChanges();
+    const link = fixture.nativeElement.querySelector('a[href*="/teachers/new"]') as HTMLAnchorElement;
+    expect(link.textContent).toContain('Créer la fiche enseignant');
+    expect(link.getAttribute('href')).toContain('accountId=teacher');
+    expect(fixture.componentInstance.needsTeacherRecord(pendingTeacher)).toBeTrue();
+    expect(fixture.componentInstance.needsTeacherRecord(user)).toBeFalse();
   });
 });
