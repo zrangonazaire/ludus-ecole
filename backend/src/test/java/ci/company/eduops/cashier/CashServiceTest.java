@@ -6,6 +6,8 @@ import ci.company.eduops.cashier.service.CashService;
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.payment.repository.PaymentRepository;
+import ci.company.eduops.payment.domain.PaymentMethod;
+import ci.company.eduops.payment.domain.PaymentStatus;
 import ci.company.eduops.school.domain.School;
 import ci.company.eduops.school.repository.SchoolRepository;
 import ci.company.eduops.security.service.CurrentUser;
@@ -31,6 +33,7 @@ class CashServiceTest {
         session=new CashSession(); session.setId(sessionId); session.setSchool(school); session.setCashierUserId(userId);
         session.setReference("CSH-TEST"); session.setOpeningBalance(new BigDecimal("5000"));
         when(sessions.lockById(sessionId)).thenReturn(Optional.of(session));
+        when(sessions.findById(sessionId)).thenReturn(Optional.of(session));
         when(payments.sumCashForSession(sessionId)).thenReturn(new BigDecimal("15000"));
     }
     @AfterEach void cleanup() { TenantContext.clear(); }
@@ -69,5 +72,12 @@ class CashServiceTest {
         when(sessions.findOpenForCashier(userId)).thenReturn(Optional.of(session));
         assertThrows(BusinessException.class,() -> service.open(BigDecimal.ZERO,""));
         verify(sessions,never()).saveAndFlush(any());
+    }
+    @Test void cashReportMovementsIncludeOnlyValidatedCashPayments() {
+        when(payments.findByCashSessionIdAndStatusAndPaymentMethod(
+                sessionId, PaymentStatus.VALIDATED, PaymentMethod.CASH)).thenReturn(List.of());
+        assertTrue(service.movements(sessionId).isEmpty());
+        verify(payments).findByCashSessionIdAndStatusAndPaymentMethod(
+                sessionId, PaymentStatus.VALIDATED, PaymentMethod.CASH);
     }
 }

@@ -19,6 +19,14 @@ public interface StudentAttendanceRepository extends JpaRepository<StudentAttend
 
     List<StudentAttendance> findByAttendanceSessionId(UUID attendanceSessionId);
 
+    @Query("""
+           SELECT a.status, COUNT(a) FROM StudentAttendance a
+           WHERE a.student.id = :studentId AND a.academicYear.id = :academicYearId
+           GROUP BY a.status
+           """)
+    List<Object[]> summarizeStudentInYear(@Param("studentId") UUID studentId,
+                                          @Param("academicYearId") UUID academicYearId);
+
     Optional<StudentAttendance> findByAttendanceSessionIdAndStudentId(UUID sessionId, UUID studentId);
 
     Page<StudentAttendance> findByStudentIdOrderByAttendanceDateDesc(UUID studentId, Pageable pageable);

@@ -6,6 +6,7 @@ import ci.company.eduops.common.exception.*;
 import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.payment.repository.PaymentRepository;
 import ci.company.eduops.payment.domain.PaymentStatus;
+import ci.company.eduops.payment.domain.PaymentMethod;
 import ci.company.eduops.school.repository.SchoolRepository;
 import ci.company.eduops.security.service.CurrentUser;
 import ci.company.eduops.audit.service.AuditService;
@@ -47,7 +48,8 @@ public class CashService {
     @Transactional(readOnly=true)
     public List<Movement> movements(UUID id) {
         owned(sessions.findById(id).orElseThrow(() -> BusinessException.of(ErrorCode.CASH_SESSION_NOT_FOUND)));
-        return payments.findByCashSessionIdAndStatus(id, PaymentStatus.VALIDATED).stream()
+        return payments.findByCashSessionIdAndStatusAndPaymentMethod(
+                id, PaymentStatus.VALIDATED, PaymentMethod.CASH).stream()
             .map(p -> new Movement(p.getId(), p.getPaymentReference(), p.getStudent().getFirstName()+" "+p.getStudent().getLastName(),
                 p.getAmount(), p.getPaymentMethod().name(), p.getPaymentDate().toString())).toList();
     }

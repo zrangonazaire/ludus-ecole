@@ -4,6 +4,8 @@ export type OfficialDocumentType =
   | 'STUDENT_FILE'
   | 'SCHOOL_CERTIFICATE'
   | 'ENROLLMENT_ATTESTATION'
+  | 'ATTENDANCE_CERTIFICATE'
+  | 'FINANCIAL_STATEMENT'
   | 'TRANSCRIPT'
   | 'SUMMONS'
   | 'STUDENT_CARD'
@@ -47,13 +49,42 @@ export interface OfficialDocumentMetadata {
   meetingDate?: string;
   meetingTime?: string;
   meetingPlace?: string;
+  attendanceSummary?: {
+    totalRecords: number;
+    presentCount: number;
+    absenceCount: number;
+    latenessCount: number;
+    attendanceRate: number;
+  };
+  financialSummary?: {
+    totalGross: number;
+    totalDiscount: number;
+    totalDue: number;
+    totalPaid: number;
+    outstandingAmount: number;
+    currency: string;
+    globalStatus: 'PAID' | 'PARTIALLY_PAID' | 'DUE';
+    fees?: Array<{
+      label: string;
+      amountDue: number;
+      amountPaid: number;
+      amountRemaining: number;
+      currency: string;
+      dueDate?: string;
+    }>;
+  };
 }
 
-export interface OfficialDocumentIssuePayload extends OfficialDocumentMetadata {
+export interface OfficialDocumentIssuePayload
+  extends Omit<OfficialDocumentMetadata, 'attendanceSummary' | 'financialSummary'> {
   studentId: string;
   type: OfficialDocumentType;
   issueDate: string;
   validUntil?: string;
+}
+
+export interface OfficialDocumentBatchIssuePayload extends Omit<OfficialDocumentIssuePayload, 'studentId'> {
+  studentIds: string[];
 }
 
 export interface OfficialDocument {
@@ -122,6 +153,20 @@ export const OFFICIAL_DOCUMENT_TEMPLATES: readonly OfficialDocumentTemplate[] = 
     tone: 'green'
   },
   {
+    type: 'ATTENDANCE_CERTIFICATE',
+    label: 'Certificat de fréquentation',
+    description: "Confirme la fréquentation de l’établissement pour l’année en cours.",
+    shortCode: 'CF',
+    tone: 'violet'
+  },
+  {
+    type: 'FINANCIAL_STATEMENT',
+    label: 'Situation des frais',
+    description: "Présente les frais dus, les règlements reçus et le solde restant.",
+    shortCode: 'SF',
+    tone: 'amber'
+  },
+  {
     type: 'STUDENT_FILE',
     label: 'Fiche individuelle',
     description: "Synthèse officielle de l'identité et de la situation scolaire.",
@@ -143,4 +188,3 @@ export const OFFICIAL_DOCUMENT_TEMPLATES: readonly OfficialDocumentTemplate[] = 
     tone: 'violet'
   }
 ];
-

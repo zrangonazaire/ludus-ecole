@@ -97,14 +97,29 @@
                 <option [value]="classroom.id">{{ classroom.name }}</option>
               }
             </select>
+            <label class="bulk-toggle">
+              <input type="checkbox" [checked]="bulkMode()"
+                     (change)="setBulkMode($any($event.target).checked)" />
+              <span>Génération en lot</span>
+            </label>
           </div>
 
-          <div class="student-list" role="listbox" aria-label="Élèves">
+          @if (bulkMode()) {
+            <div class="bulk-selection">
+              <span>{{ selectedBatchCount() }} / 100 élève(s) sélectionné(s)</span>
+              <button type="button" class="btn btn--ghost btn--sm"
+                      (click)="selectVisibleStudents()">Sélectionner les résultats visibles</button>
+              <small>La génération est atomique : si une inscription est invalide, aucun document n’est émis.</small>
+            </div>
+          }
+
+          <div class="student-list" role="listbox" aria-label="Élèves"
+               [attr.aria-multiselectable]="bulkMode() ? 'true' : 'false'">
             @for (student of visibleStudents(); track student.id) {
               <button type="button" class="student-row" role="option"
-                      [class.student-row--on]="selectedStudentId() === student.id"
-                      [attr.aria-selected]="selectedStudentId() === student.id"
-                      (click)="chooseStudent(student.id)">
+                      [class.student-row--on]="isStudentSelected(student.id)"
+                      [attr.aria-selected]="isStudentSelected(student.id)"
+                      (click)="selectStudentRow(student.id)">
                 <span class="student-row__avatar" aria-hidden="true">
                   {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
                 </span>
@@ -198,17 +213,40 @@
           <footer class="builder__actions">
             <div class="issue-note">
               <span class="issue-note__icon" aria-hidden="true">✓</span>
-              <span>Le numéro et le code d’authenticité sont attribués au moment de l’émission.</span>
+              <span>
+                Le numéro et le code d’authenticité sont attribués au moment de l’émission.
+                @if (bulkMode()) { Tous les documents sont émis ensemble, avec un numéro distinct par élève. }
+              </span>
             </div>
-            <button type="button" class="btn btn--secondary"
-                    [disabled]="!readyToIssue()" (click)="issue(false)">
-              {{ saving() ? 'Émission...' : 'Émettre sans imprimer' }}
-            </button>
-            <button type="button" class="btn btn--primary"
-                    [disabled]="!readyToIssue()" (click)="issue(true)">
-              <span aria-hidden="true">▣</span>
-              {{ saving() ? 'Préparation...' : 'Émettre et imprimer' }}
-            </button>
+            @if (bulkMode()) {
+                @if (issueForm.controls.type.value === 'STUDENT_CARD') {
+                  <button type="button" class="btn btn--secondary"
+                          [disabled]="!readyToIssue()" (click)="issue(false)">
+                    {{ saving() ? 'Génération...' : 'Émettre les badges sans imprimer' }}
+                  </button>
+                  <button type="button" class="btn btn--primary"
+                          [disabled]="!readyToIssue()" (click)="issue(true)">
+                    <span aria-hidden="true">▣</span>
+                    {{ saving() ? 'Préparation...' : 'Émettre et imprimer ' + selectedBatchCount() + ' badge(s)' }}
+                  </button>
+                } @else {
+                  <button type="button" class="btn btn--primary"
+                          [disabled]="!readyToIssue()" (click)="issue(false)">
+                    <span aria-hidden="true">▣</span>
+                    {{ saving() ? 'Génération...' : 'Émettre ' + selectedBatchCount() + ' document(s)' }}
+                  </button>
+                }
+            } @else {
+              <button type="button" class="btn btn--secondary"
+                      [disabled]="!readyToIssue()" (click)="issue(false)">
+                {{ saving() ? 'Émission...' : 'Émettre sans imprimer' }}
+              </button>
+              <button type="button" class="btn btn--primary"
+                      [disabled]="!readyToIssue()" (click)="issue(true)">
+                <span aria-hidden="true">▣</span>
+                {{ saving() ? 'Préparation...' : 'Émettre et imprimer' }}
+              </button>
+            }
           </footer>
         </section>
 
@@ -216,13 +254,17 @@
           <header class="preview-panel__head">
             <div>
               <span class="preview-panel__eyebrow">Aperçu avant émission</span>
-              <strong>A4 · Portrait</strong>
+              <strong>{{ issueForm.controls.type.value === 'STUDENT_CARD' ? 'Badge · format carte' : 'A4 · Portrait' }}</strong>
             </div>
             <span class="preview-panel__scale">72 %</span>
           </header>
           <div class="preview-stage">
             @if (previewDocument(); as document) {
-              <ng-container *ngTemplateOutlet="officialSheet; context: { $implicit: document }" />
+              @if (document.type === 'STUDENT_CARD') {
+                <ng-container *ngTemplateOutlet="studentBadge; context: { $implicit: document }" />
+              } @else {
+                <ng-container *ngTemplateOutlet="officialSheet; context: { $implicit: document }" />
+              }
             } @else {
               <div class="preview-empty">Sélectionnez un élève pour afficher le document.</div>
             }
@@ -565,7 +607,6 @@
 <!-- Un seul gabarit sert à l’aperçu et à l’impression : aucune divergence visuelle. -->
 <ng-template #officialSheet let-document>
   <article class="official-sheet" [class.official-sheet--revoked]="document.status === 'REVOKED'"
-           [class.official-sheet--card]="document.type === 'STUDENT_CARD'"
            [style.--document-accent]="document.layout.accentColor">
     @if (document.status === 'DRAFT') {
       <span class="official-sheet__watermark">APERÇU</span>
@@ -658,6 +699,82 @@
           @else { pour servir et valoir ce que de droit }.
         </p>
       </section>
+    } @else if (document.type === 'ATTENDANCE_CERTIFICATE') {
+      <section class="document-body document-body--prose">
+        <p>
+          Je soussigné(e), <strong>{{ document.layout.signatoryName || document.layout.signatoryTitle }}</strong>,
+          {{ document.layout.signatoryTitle }}, certifie que
+        </p>
+        <p class="student-name">{{ document.studentName }}</p>
+        <p>
+          matricule <strong class="numeric">{{ document.studentNumber }}</strong>,
+          {{ bornLabel(document) }} le <strong>{{ formatDate(document.birthDate) }}</strong>,
+          est inscrit(e) et suit sa scolarité en classe de
+          <strong>{{ document.classroomName || document.levelName }}</strong>
+          au titre de l’année scolaire <strong>{{ document.academicYearCode }}</strong>.
+        </p>
+        @if (document.metadata.attendanceSummary; as attendance) {
+          @if (attendance.totalRecords > 0) {
+            <p>
+              Selon le registre de présence de l’année en cours :
+              <strong>{{ attendance.presentCount }}</strong> présence(s) sur
+              <strong>{{ attendance.totalRecords }}</strong> séance(s),
+              soit <strong>{{ attendance.attendanceRate }} %</strong> ;
+              <strong>{{ attendance.absenceCount }}</strong> absence(s) et
+              <strong>{{ attendance.latenessCount }}</strong> retard(s).
+            </p>
+          } @else {
+            <p>Aucune feuille de présence n’a encore été enregistrée pour cette année scolaire.</p>
+          }
+        }
+        <p>
+          Le présent certificat est délivré
+          @if (document.metadata.recipient) { à l’attention de <strong>{{ document.metadata.recipient }}</strong> }
+          @if (document.metadata.purpose) { pour <strong>{{ document.metadata.purpose }}</strong> }
+          @else { pour servir et valoir ce que de droit }.
+        </p>
+      </section>
+    } @else if (document.type === 'FINANCIAL_STATEMENT') {
+      <section class="document-body">
+        <p>
+          Situation financière de <strong>{{ document.studentName }}</strong>
+          ({{ document.studentNumber }}) pour l’année scolaire
+          <strong>{{ document.academicYearCode }}</strong>.
+        </p>
+        @if (document.metadata.financialSummary; as summary) {
+          <dl class="identity-grid">
+            <div><dt>Total des frais</dt><dd class="numeric">{{ formatAmount(summary.totalGross, summary.currency) }}</dd></div>
+            <div><dt>Réductions</dt><dd class="numeric">{{ formatAmount(summary.totalDiscount, summary.currency) }}</dd></div>
+            <div><dt>Montant net dû</dt><dd class="numeric">{{ formatAmount(summary.totalDue, summary.currency) }}</dd></div>
+            <div><dt>Déjà réglé</dt><dd class="numeric">{{ formatAmount(summary.totalPaid, summary.currency) }}</dd></div>
+            <div><dt>Reste à payer</dt><dd class="numeric">{{ formatAmount(summary.outstandingAmount, summary.currency) }}</dd></div>
+            <div><dt>État</dt><dd>
+              @if (summary.globalStatus === 'PAID') { Soldé }
+              @else if (summary.globalStatus === 'PARTIALLY_PAID') { Partiellement réglé }
+              @else { À régler }
+            </dd></div>
+          </dl>
+          @if (summary.fees?.length) {
+            <h2 class="section-title">Détail des échéances</h2>
+            <table class="table financial-document-table">
+              <thead><tr><th>Rubrique</th><th>Échéance</th><th>Net dû</th><th>Réglé</th><th>Solde</th></tr></thead>
+              <tbody>
+                @for (fee of summary.fees; track fee.label + fee.dueDate) {
+                  <tr>
+                    <td>{{ fee.label }}</td>
+                    <td>{{ formatDate(fee.dueDate) }}</td>
+                    <td class="numeric">{{ formatAmount(fee.amountDue, fee.currency) }}</td>
+                    <td class="numeric">{{ formatAmount(fee.amountPaid, fee.currency) }}</td>
+                    <td class="numeric">{{ formatAmount(fee.amountRemaining, fee.currency) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        } @else {
+          <p>Le détail financier sera disponible après le chargement des données de l’élève.</p>
+        }
+      </section>
     } @else if (document.type === 'STUDENT_FILE') {
       <section class="document-body">
         <h2 class="section-title">Identité de l’élève</h2>
@@ -693,28 +810,6 @@
           <div><dt>Lieu</dt><dd>{{ document.metadata.meetingPlace || 'Administration' }}</dd></div>
         </dl>
         <p>Votre présence est vivement souhaitée. Nous vous remercions de votre ponctualité.</p>
-      </section>
-    } @else if (document.type === 'STUDENT_CARD') {
-      <section class="student-card-print">
-        <header>
-          <span>CARTE D’ÉLÈVE</span><strong>{{ document.academicYearCode }}</strong>
-        </header>
-        <div class="student-card-print__body">
-          <div class="student-card-print__photo">
-            @if (document.photoUrl) { <img [src]="document.photoUrl" alt="" /> }
-            @else { <span>{{ document.studentName.charAt(0) }}</span> }
-          </div>
-          <dl>
-            <div><dt>Nom et prénoms</dt><dd>{{ document.studentName }}</dd></div>
-            <div><dt>Matricule</dt><dd class="numeric">{{ document.studentNumber }}</dd></div>
-            <div><dt>Classe</dt><dd>{{ document.classroomName }}</dd></div>
-            <div><dt>Né(e) le</dt><dd>{{ formatDate(document.birthDate) }}</dd></div>
-          </dl>
-        </div>
-        <footer>
-          <span>{{ document.layout.signatoryTitle }}</span>
-          <span class="numeric">{{ document.verificationCode }}</span>
-        </footer>
       </section>
     }
 
@@ -754,9 +849,47 @@
   </article>
 </ng-template>
 
+<ng-template #studentBadge let-document>
+  <article class="student-badge" [style.--document-accent]="document.layout.accentColor">
+    <header>
+      @if (document.layout.showLogo && document.layout.logoDataUrl) {
+        <img [src]="document.layout.logoDataUrl" alt="" />
+      }
+      <span>{{ document.layout.schoolName }}</span>
+      <strong>{{ document.academicYearCode }}</strong>
+    </header>
+    <div class="student-badge__body">
+      <div class="student-badge__photo">
+        @if (document.photoUrl) {
+          <img [src]="document.photoUrl" alt="" />
+        } @else {
+          <span>{{ document.studentName.charAt(0) }}</span>
+        }
+      </div>
+      <dl>
+        <div class="student-badge__name"><dt>Nom et prénoms</dt><dd>{{ document.studentName }}</dd></div>
+        <div><dt>Matricule</dt><dd class="numeric">{{ document.studentNumber }}</dd></div>
+        <div><dt>Classe</dt><dd>{{ document.classroomName || document.levelName }}</dd></div>
+        <div><dt>Né(e) le</dt><dd>{{ formatDate(document.birthDate) }}</dd></div>
+      </dl>
+    </div>
+    <footer>
+      <span>{{ document.layout.signatoryTitle }}</span>
+      <span class="numeric">{{ document.verificationCode }}</span>
+    </footer>
+  </article>
+</ng-template>
+
 <div class="print-only">
-  @if (printing(); as document) {
-    <ng-container *ngTemplateOutlet="officialSheet; context: { $implicit: document }" />
+  @if (printingBadges().length) {
+    <div class="badge-print-sheet">
+      @for (document of printingBadges(); track document.id) {
+        <ng-container *ngTemplateOutlet="studentBadge; context: { $implicit: document }" />
+      }
+    </div>
+  } @else {
+    @if (printing(); as document) {
+      <ng-container *ngTemplateOutlet="officialSheet; context: { $implicit: document }" />
+    }
   }
 </div>
-

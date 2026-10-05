@@ -384,7 +384,7 @@ export const routes: Routes = [
             {
         path: 'campus',
         canActivate: [permissionGuard],
-        data: { permissions: [PERMISSIONS.CAMPUS_VIEW], title: 'Campus et salles' },
+        data: { permissions: [PERMISSIONS.CAMPUS_VIEW], title: 'Campus' },
         loadComponent: () => import('./features/campus/campus.component')
           .then((m) => m.CampusComponent)
       },

@@ -39,8 +39,8 @@ import {
   InfirmaryVisitPayload, MedicalExamination, Vaccination, VaccinationPayload
 } from '../models/health.models';
 import {
-  OfficialDocument, OfficialDocumentIssuePayload, OfficialDocumentLayout,
-  OfficialDocumentQuery
+  OfficialDocument, OfficialDocumentBatchIssuePayload, OfficialDocumentIssuePayload,
+  OfficialDocumentLayout, OfficialDocumentQuery
 } from '../models/official-document.models';
 import {
   FamilyRequest, FamilyRequestBoard, FamilyRequestCreatePayload,
@@ -276,6 +276,8 @@ export interface CouncilDataSource {
 export interface OfficialDocumentDataSource {
   search(query: OfficialDocumentQuery): Observable<PageResponse<OfficialDocument>>;
   issue(payload: OfficialDocumentIssuePayload): Observable<OfficialDocument>;
+  issueBatch(payload: OfficialDocumentBatchIssuePayload): Observable<OfficialDocument[]>;
+  issueBatch(payload: OfficialDocumentBatchIssuePayload): Observable<OfficialDocument[]>;
   revoke(documentId: string, reason: string): Observable<OfficialDocument>;
   layout(): Observable<OfficialDocumentLayout>;
   saveLayout(layout: OfficialDocumentLayout): Observable<OfficialDocumentLayout>;

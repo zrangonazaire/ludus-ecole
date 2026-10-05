@@ -169,9 +169,32 @@
 
 .student-filters {
   display: grid;
-  grid-template-columns: 1fr 180px;
+  grid-template-columns: minmax(0, 1fr) 180px auto;
   gap: var(--space-3);
   padding: 0 var(--space-6) var(--space-3);
+}
+
+.bulk-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-normal);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.bulk-selection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-6) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+
+  span { font-weight: 700; color: var(--text-strong); }
+  small { flex-basis: 100%; }
 }
 
 .search-box {
@@ -713,6 +736,17 @@
   dd { margin: 3px 0 0; font-weight: 700; }
 }
 
+.financial-document-table {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 10px;
+
+  th, td { padding: 7px 5px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { font-weight: 700; color: var(--text-muted); }
+  td.numeric { text-align: right; white-space: nowrap; }
+}
+
 .meeting-card {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -726,24 +760,34 @@
   dd { margin: 3px 0 0; font-weight: 700; }
 }
 
-.student-card-print {
-  width: 84%;
-  margin: 30px auto;
+.student-badge {
+  --document-accent: #1f5fd6;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 420px);
+  aspect-ratio: 85.6 / 54;
+  margin: 0 auto;
   overflow: hidden;
-  font-family: Arial, sans-serif;
+  font: 10px Arial, sans-serif;
+  color: #172033;
+  background: #fff;
   border: 1px solid #98a2b3;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 4px 10px rgb(16 24 40 / 10%);
 
-  > header { display: flex; justify-content: space-between; padding: 10px 14px; color: #fff; background: var(--document-accent); }
-  > header span { font-size: 10px; font-weight: 800; letter-spacing: .12em; }
-  &__body { display: grid; grid-template-columns: 90px 1fr; gap: 18px; padding: 18px; }
-  &__photo { display: grid; height: 110px; overflow: hidden; place-items: center; font-size: 34px; font-weight: 800; color: var(--document-accent); background: #eef2f6; border-radius: 8px; }
+  > header { display: flex; align-items: center; gap: 7px; min-height: 17%; padding: 7px 10px; color: #fff; background: var(--document-accent); }
+  > header img { width: 24px; height: 24px; object-fit: contain; background: #fff; border-radius: 3px; }
+  > header span { overflow: hidden; font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  > header strong { margin-left: auto; font-size: 9px; white-space: nowrap; }
+  &__body { display: grid; grid-template-columns: 26% minmax(0, 1fr); gap: 10px; min-height: 0; flex: 1; padding: 10px; }
+  &__photo { display: grid; min-height: 0; overflow: hidden; place-items: center; font-size: 30px; font-weight: 800; color: var(--document-accent); background: #eef2f6; border-radius: 6px; }
   &__photo img { width: 100%; height: 100%; object-fit: cover; }
-  dl { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 0; }
-  dt { font-size: 6.5px; text-transform: uppercase; color: #667085; }
-  dd { margin: 2px 0 0; font-size: 10px; font-weight: 700; }
-  > footer { display: flex; justify-content: space-between; padding: 8px 14px; font-size: 7px; color: #475467; background: #f2f4f7; }
+  dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; align-content: center; margin: 0; }
+  dt { font-size: 7px; text-transform: uppercase; color: #667085; }
+  dd { overflow: hidden; margin: 2px 0 0; font-size: 10px; font-weight: 700; text-overflow: ellipsis; }
+  &__name { grid-column: 1 / -1; }
+  > footer { display: flex; align-items: center; justify-content: space-between; min-height: 15%; padding: 5px 10px; font-size: 8px; color: #475467; background: #f2f4f7; }
 }
 
 .additional-mention {
@@ -842,6 +886,7 @@
 @media print {
   .screen-only { display: none !important; }
   .print-only { display: block; }
+  @page badge-sheet { size: A4 portrait; margin: 6mm; }
 
   .official-sheet {
     width: 210mm;
@@ -862,7 +907,58 @@
   .document-heading p { font-size: 8pt; }
   .document-body--prose { font-size: 11pt; }
   .document-body .student-name { font-size: 17pt; }
+
+  .badge-print-sheet {
+    page: badge-sheet;
+    display: grid;
+    grid-template-columns: repeat(2, 85.6mm);
+    grid-auto-rows: 54mm;
+    gap: 3mm 4mm;
+    align-content: start;
+    justify-content: center;
+  }
+
+  .student-badge {
+    width: 85.6mm;
+    height: 54mm;
+    font: 7pt Arial, sans-serif;
+    border: .3mm solid #98a2b3;
+    border-radius: 2mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+
+    > header {
+      height: 9mm;
+      min-height: 9mm;
+      padding: 1.5mm 2mm;
+    }
+    > header img { width: 6mm; height: 6mm; border-radius: 1mm; }
+    > header span { font-size: 7pt; }
+    > header strong { font-size: 6pt; }
+
+    &__body {
+      display: grid;
+      grid-template-columns: 22mm minmax(0, 1fr);
+      gap: 2mm;
+      height: 37mm;
+      min-height: 37mm;
+      flex: none;
+      padding: 2mm;
+    }
+    &__photo { height: 33mm; font-size: 20pt; border-radius: 0; }
+    dl { gap: 1.5mm 2mm; }
+    dt { font-size: 5pt; }
+    dd { margin: .5mm 0 0; font-size: 7pt; }
+
+    > footer {
+      height: 8mm;
+      min-height: 8mm;
+      margin-top: auto;
+      padding: 1mm 2mm;
+      font-size: 5pt;
+    }
+    > footer span:last-child { font-weight: 700; letter-spacing: .05em; }
+  }
 }
 
 @page { size: A4 portrait; margin: 0; }
-

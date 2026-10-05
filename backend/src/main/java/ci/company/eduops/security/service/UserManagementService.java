@@ -66,6 +66,7 @@ public class UserManagementService {
         user.setEmail(email);
         user.setFirstName(request.firstName().trim());
         user.setLastName(request.lastName().trim());
+        user.setPhone(request.phone() == null || request.phone().isBlank() ? null : request.phone().trim());
         user.setRoles(resolve(request.profileIds(), schoolId));
         user.setPasswordHash(encoder.encode(request.password()));
         user.setStatus(UserStatus.ACTIVE);

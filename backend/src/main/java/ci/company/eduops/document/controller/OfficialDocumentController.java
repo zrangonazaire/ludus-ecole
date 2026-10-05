@@ -4,6 +4,7 @@ import ci.company.eduops.common.dto.PageResponse;
 import ci.company.eduops.document.domain.DocumentStatus;
 import ci.company.eduops.document.domain.DocumentType;
 import ci.company.eduops.document.dto.DocumentIssueRequest;
+import ci.company.eduops.document.dto.DocumentBatchIssueRequest;
 import ci.company.eduops.document.dto.DocumentLayoutDto;
 import ci.company.eduops.document.dto.DocumentResponse;
 import ci.company.eduops.document.service.OfficialDocumentService;
@@ -19,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/documents")
@@ -48,6 +50,24 @@ public class OfficialDocumentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.issue(request));
     }
 
+    @PostMapping("/batch")
+    @PreAuthorize("hasAuthority('" + Permissions.DOCUMENT_GENERATE + "')")
+    public ResponseEntity<List<DocumentResponse>> issueBatch(
+            @Valid @RequestBody DocumentBatchIssueRequest batch) {
+        DocumentIssueRequest request = new DocumentIssueRequest();
+        request.setType(batch.getType());
+        request.setIssueDate(batch.getIssueDate());
+        request.setValidUntil(batch.getValidUntil());
+        request.setPurpose(batch.getPurpose());
+        request.setRecipient(batch.getRecipient());
+        request.setAdditionalMention(batch.getAdditionalMention());
+        request.setMeetingDate(batch.getMeetingDate());
+        request.setMeetingTime(batch.getMeetingTime());
+        request.setMeetingPlace(batch.getMeetingPlace());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(service.issueBatch(request, batch.getStudentIds()));
+    }
+
     @PostMapping("/{id}/revoke")
     @PreAuthorize("hasAuthority('" + Permissions.DOCUMENT_GENERATE + "')")
     public ResponseEntity<DocumentResponse> revoke(@PathVariable UUID id,
@@ -75,4 +95,3 @@ public class OfficialDocumentController {
         private String reason;
     }
 }
-

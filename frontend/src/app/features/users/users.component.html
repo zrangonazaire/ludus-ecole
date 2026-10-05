@@ -41,6 +41,7 @@
           </header>
           <div class="user-card__body">
             <p class="user-card__email">{{ user.email }}</p>
+            @if (user.phone) { <p class="user-card__email">{{ user.phone }}</p> }
             <span class="user-card__status" [class.user-card__status--active]="user.status === 'ACTIVE'">{{ user.status === 'ACTIVE' ? 'Actif' : user.status === 'PENDING' ? 'En attente' : user.status === 'LOCKED' ? 'Verrouillé' : user.status === 'ARCHIVED' ? 'Archivé' : 'Désactivé' }}</span>
             <div class="user-card__profiles" aria-label="Profils d’accès">@for (profile of user.profiles; track profile.id) { <span class="badge">{{ profile.label }}</span> } @empty { <span class="locked">Aucun profil attribué</span> }</div>
           </div>
@@ -65,6 +66,7 @@
     <div class="drawer__body">
       <dl class="account-details"><div><dt>Nom</dt><dd>{{ user.firstName }} {{ user.lastName }}</dd></div>
         <div><dt>Identifiant</dt><dd>{{ user.username }}</dd></div><div><dt>E-mail</dt><dd>{{ user.email }}</dd></div>
+        <div><dt>Téléphone</dt><dd>{{ user.phone || 'Non renseigné' }}</dd></div>
         <div><dt>Profils d’accès</dt><dd class="user-card__profiles">@for (profile of user.profiles; track profile.id) { <span class="badge">{{ profile.label }}</span> }</dd></div>
       </dl>
       <p class="account-hint">Pour modifier vos propres droits, contactez un autre administrateur de l’établissement.</p>
@@ -90,6 +92,7 @@
       @else {
         <div class="field"><label for="user-first" class="field__label">Prénom *</label><input id="user-first" class="input" formControlName="firstName" autocomplete="given-name" /></div>
         <div class="field"><label for="user-last" class="field__label">Nom *</label><input id="user-last" class="input" formControlName="lastName" autocomplete="family-name" /></div>
+        <div class="field"><label for="user-phone" class="field__label">Téléphone</label><input id="user-phone" class="input" type="tel" formControlName="phone" autocomplete="tel" maxlength="40" /></div>
         <div class="field"><label for="user-email" class="field__label">E-mail *</label><input id="user-email" class="input" type="email" formControlName="email" autocomplete="email" /></div>
         <div class="field"><label for="user-login" class="field__label">Identifiant de connexion *</label><input id="user-login" class="input" formControlName="username" autocomplete="off" />
           <span class="field__hint">Lettres sans accents, chiffres, points, tirets ou tirets bas.</span></div>

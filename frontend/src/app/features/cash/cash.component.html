@@ -1,3 +1,4 @@
+<div class="screen-only">
 <div class="heading"><div><span class="eyebrow">FINANCE · MES SESSIONS</span><h1>Caisse</h1><p>Ouvrez votre caisse, suivez les espèces et contrôlez le solde en fin de journée.</p></div><button class="btn" [disabled]="loading()" (click)="load()">Actualiser</button></div>
 @if (loading()) { <div class="empty" role="status">Chargement de la caisse…</div> }
 @else if (error()) { <section class="card empty" role="alert"><h2>La caisse est indisponible</h2><p>Impossible de charger vos sessions.</p><button class="btn btn--primary" (click)="load()">Réessayer</button></section> }
@@ -29,7 +30,7 @@
   </section></div>
 }
 @if (selected(); as s) {
-  <div class="overlay"><section class="panel wide" role="dialog" aria-modal="true" aria-labelledby="session-title"><header><div><h2 id="session-title">Détail de la session</h2><p class="full-reference">{{ s.reference }}</p></div><button class="btn" aria-label="Fermer" (click)="selected.set(null)">✕</button></header>
+  <div class="overlay"><section class="panel wide" role="dialog" aria-modal="true" aria-labelledby="session-title"><header><div><h2 id="session-title">Détail de la session</h2><p class="full-reference">{{ s.reference }}</p></div><div class="buttons"><button class="btn" [disabled]="movementsLoading()" (click)="printSession(s)">Imprimer le relevé</button><button class="btn" aria-label="Fermer" (click)="selected.set(null)">✕</button></div></header>
     <span class="badge" [class.open]="s.status === 'OPEN'">{{ labels[s.status] }}</span><p>Ouverture : {{ s.openedAt | date:'dd/MM/yyyy HH:mm' }}@if (s.closedAt) { <br>Clôture : {{ s.closedAt | date:'dd/MM/yyyy HH:mm' }} }</p>
     <dl><div><dt>Fond initial</dt><dd>{{ s.openingBalance | money }}</dd></div><div><dt>Espèces encaissées</dt><dd>{{ s.cashReceived | money }}</dd></div><div><dt>Solde attendu</dt><dd>{{ s.expectedBalance | money }}</dd></div><div><dt>Montant compté</dt><dd>{{ s.actualBalance | money }}</dd></div><div><dt>Écart</dt><dd [class.discrepancy]="s.difference !== null && s.difference !== 0">{{ s.difference | money }}</dd></div></dl>
     @if (s.notes) { <h3>Observations</h3><p class="notes">{{ s.notes }}</p> }
@@ -38,4 +39,46 @@
       <div class="table-wrap"><table><thead><tr><th>Élève / référence</th><th>Mode</th><th>Montant</th></tr></thead><tbody>@for (m of movements(); track m.id) { <tr><td>{{ m.studentName }}<small>{{ m.reference }} · {{ m.date | date:'dd/MM/yyyy' }}</small></td><td>{{ methods[m.method] || m.method }}</td><td>{{ m.amount | money }}</td></tr> }</tbody></table></div>@if (!movements().length) { <p class="empty">Aucun paiement validé rattaché à cette session.</p> }
     }
   </section></div>
+}
+</div>
+@if (printing(); as s) {
+  <section class="cash-print-report print-only">
+    <header class="cash-print-report__header">
+      <div><p>GESTION DE CAISSE</p><h1>Relevé de clôture</h1></div>
+      <div class="cash-print-report__reference"><strong>{{ s.reference }}</strong><span>{{ labels[s.status] }}</span></div>
+    </header>
+    <p class="cash-print-report__date">
+      Ouverture : {{ s.openedAt | date:'dd/MM/yyyy à HH:mm' }}
+      @if (s.closedAt) { · Clôture : {{ s.closedAt | date:'dd/MM/yyyy à HH:mm' }} }
+    </p>
+    <dl class="cash-print-report__totals">
+      <div><dt>Fond initial</dt><dd>{{ s.openingBalance | money }}</dd></div>
+      <div><dt>Encaissements espèces validés</dt><dd>{{ s.cashReceived | money }}</dd></div>
+      <div><dt>Solde théorique attendu</dt><dd>{{ s.expectedBalance | money }}</dd></div>
+      <div><dt>Espèces comptées</dt><dd>{{ s.actualBalance === null ? 'Session non clôturée' : (s.actualBalance | money) }}</dd></div>
+      <div><dt>Écart de caisse</dt><dd>{{ s.difference === null ? '—' : (s.difference | money) }}</dd></div>
+    </dl>
+    <h2>Détail des encaissements en espèces</h2>
+    @if (movements().length) {
+      <table>
+        <thead><tr><th>#</th><th>Référence</th><th>Élève</th><th>Date</th><th>Montant</th></tr></thead>
+        <tbody>
+          @for (movement of movements(); track movement.id; let index = $index) {
+            <tr>
+              <td>{{ index + 1 }}</td>
+              <td>{{ movement.reference }}</td>
+              <td>{{ movement.studentName }}</td>
+              <td>{{ movement.date | date:'dd/MM/yyyy' }}</td>
+              <td class="amount">{{ movement.amount | money }}</td>
+            </tr>
+          }
+        </tbody>
+        <tfoot><tr><th colspan="4">Total encaissé</th><th class="amount">{{ s.cashReceived | money }}</th></tr></tfoot>
+      </table>
+    } @else {
+      <p>Aucun encaissement en espèces validé n’est rattaché à cette session.</p>
+    }
+    @if (s.notes) { <h2>Observations / justification de l’écart</h2><p class="cash-print-report__notes">{{ s.notes }}</p> }
+    <footer><div><span>Signature du caissier</span></div><div><span>Contrôle / direction</span></div></footer>
+  </section>
 }

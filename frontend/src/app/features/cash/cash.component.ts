@@ -22,6 +22,7 @@ export class CashComponent {
   readonly saving = signal(false);
   readonly modal = signal<'open' | 'close' | null>(null);
   readonly selected = signal<CashSession | null>(null);
+  readonly printing = signal<CashSession | null>(null);
   readonly movements = signal<CashMovement[]>([]);
   readonly movementsLoading = signal(false);
   readonly movementsError = signal(false);
@@ -70,6 +71,35 @@ export class CashComponent {
     this.service.movements(session.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: items => { if (this.selected()?.id === session.id) { this.movements.set(items); this.movementsLoading.set(false); } },
       error: () => { if (this.selected()?.id === session.id) { this.movementsError.set(true); this.movementsLoading.set(false); } }
+    });
+  }
+
+  printSession(session: CashSession) {
+    this.selected.set(session);
+    this.printing.set(session);
+    this.movements.set([]);
+    this.movementsLoading.set(true);
+    this.movementsError.set(false);
+    this.service.movements(session.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: items => {
+        if (this.printing()?.id !== session.id) return;
+        this.movements.set(items);
+        this.movementsLoading.set(false);
+        setTimeout(() => {
+          window.print();
+          this.printing.set(null);
+        }, 120);
+      },
+      error: () => {
+        if (this.printing()?.id === session.id) {
+          this.movementsError.set(true);
+          this.movementsLoading.set(false);
+          this.printing.set(null);
+          this.notifications.error(
+            'Le relevé ne peut pas être imprimé car les mouvements de caisse sont indisponibles.',
+            'Impression impossible');
+        }
+      }
     });
   }
 }

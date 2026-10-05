@@ -13,7 +13,7 @@ import { ErrorStateComponent } from '@shared/ui/error-state/error-state.componen
 
 interface Profile { id: string; label: string; }
 interface ManagedUser {
-  id: string; username: string; email: string; firstName: string; lastName: string;
+  id: string; username: string; email: string; firstName: string; lastName: string; phone: string | null;
   status: string; profiles: Profile[];
   /** Le compte porte le profil Enseignant, il peut donc recevoir une fiche. */
   teacherProfile: boolean;
@@ -58,12 +58,13 @@ export class UsersComponent {
   readonly loginUrl = `${window.location.origin}/login`;
   readonly visibleUsers = computed(() => {
     const query = this.search().trim().toLocaleLowerCase('fr');
-    return this.users().filter(u => [u.firstName, u.lastName, u.username, u.email,
+    return this.users().filter(u => [u.firstName, u.lastName, u.username, u.email, u.phone ?? '',
       ...u.profiles.map(p => p.label)].join(' ').toLocaleLowerCase('fr').includes(query));
   });
   readonly form = this.fb.nonNullable.group({
     firstName: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(120)]],
     lastName: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(120)]],
+    phone: ['', Validators.maxLength(40)],
     username: ['', [Validators.required, Validators.maxLength(120), Validators.pattern(/^[A-Za-z0-9._-]+$/)]],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(180)]],
     password: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(72)]]

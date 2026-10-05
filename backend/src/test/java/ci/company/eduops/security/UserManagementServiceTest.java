@@ -36,7 +36,8 @@ class UserManagementServiceTest {
         return role;
     }
     private UserCreateRequest request() {
-        return new UserCreateRequest("a.kone", "A@EXAMPLE.COM", "Aminata", "Koné", "SecretTest123!", Set.of(roleId));
+        return new UserCreateRequest("a.kone", "A@EXAMPLE.COM", "Aminata", "Koné",
+                "+225 07 00 00 00 00", "SecretTest123!", Set.of(roleId));
     }
     private void allowProfile() {
         when(roles.findVisible(schoolId)).thenReturn(List.of(role("SURVEILLANT")));
@@ -49,12 +50,14 @@ class UserManagementServiceTest {
             user.setId(UUID.randomUUID());
             assertThat(user.getSchoolId()).isEqualTo(schoolId);
             assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+            assertThat(user.getPhone()).isEqualTo("+225 07 00 00 00 00");
             assertThat(encoder.matches(request().password(), user.getPasswordHash())).isTrue();
             assertThat(user.getPasswordHash()).isNotEqualTo(request().password());
             return user;
         });
         var result = service.create(request());
         assertThat(result.email()).isEqualTo("a@example.com");
+        assertThat(result.phone()).isEqualTo("+225 07 00 00 00 00");
         assertThat(result.profiles()).extracting(ManagedUserResponse.Profile::id).containsExactly(roleId);
     }
     @Test void rejectsDuplicateLogin() {

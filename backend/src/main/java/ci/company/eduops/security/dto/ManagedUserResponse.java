@@ -14,12 +14,12 @@ import java.util.UUID;
  * est exactement le rattachement qu'il reste à faire.</p>
  */
 public record ManagedUserResponse(UUID id, String username, String email, String firstName,
-        String lastName, String status, List<Profile> profiles, boolean teacherProfile,
+        String lastName, String phone, String status, List<Profile> profiles, boolean teacherProfile,
         boolean hasTeacherRecord) {
     public record Profile(UUID id, String label) { }
     public static ManagedUserResponse from(AppUser user, boolean hasTeacherRecord) {
         return new ManagedUserResponse(user.getId(), user.getUsername(), user.getEmail(),
-                user.getFirstName(), user.getLastName(), user.getStatus().name(),
+                user.getFirstName(), user.getLastName(), user.getPhone(), user.getStatus().name(),
                 user.getRoles().stream().map(r -> new Profile(r.getId(), r.getLabel()))
                         .sorted(java.util.Comparator.comparing(Profile::label)).toList(),
                 user.getRoles().stream().anyMatch(r -> "TEACHER".equals(r.getCode())),

@@ -6,6 +6,8 @@ import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.common.web.CorrelationIdFilter;
 import ci.company.eduops.security.service.CurrentUser;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -25,6 +27,8 @@ import java.util.UUID;
  */
 @Service
 public class AuditService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuditService.class);
 
     private final AuditWriter writer;
     private final CurrentUser currentUser;
@@ -107,7 +111,14 @@ public class AuditService {
      * {@link AuditWriter} for what that cost.</p>
      */
     private void persist(AuditLog entry) {
-        writer.write(entry);
+        try {
+            // Catch outside the transactional proxy: failures can also surface
+            // while REQUIRES_NEW commits, after AuditWriter.write has returned.
+            writer.write(entry);
+        } catch (RuntimeException ex) {
+            log.error("Unable to write the audit entry {} on {} {}",
+                    entry.getAction(), entry.getEntityType(), entry.getEntityId(), ex);
+        }
     }
 
     private void fillContext(AuditLog entry) {

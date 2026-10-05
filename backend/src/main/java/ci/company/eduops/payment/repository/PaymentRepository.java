@@ -1,6 +1,7 @@
 package ci.company.eduops.payment.repository;
 
 import ci.company.eduops.payment.domain.Payment;
+import ci.company.eduops.payment.domain.PaymentMethod;
 import ci.company.eduops.payment.domain.PaymentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,7 +26,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     List<Payment> findByStudentIdOrderByPaymentDateDesc(UUID studentId);
 
-    List<Payment> findByCashSessionIdAndStatus(UUID cashSessionId, PaymentStatus status);
+    List<Payment> findByCashSessionIdAndStatusAndPaymentMethod(
+            UUID cashSessionId, PaymentStatus status, PaymentMethod paymentMethod);
 
     /**
      * The payment list, filtered.

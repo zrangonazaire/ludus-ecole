@@ -3,6 +3,8 @@ package ci.company.eduops.document.service;
 import ci.company.eduops.academicyear.domain.AcademicYear;
 import ci.company.eduops.academicyear.domain.AcademicYearStatus;
 import ci.company.eduops.academicyear.repository.AcademicYearRepository;
+import ci.company.eduops.attendance.domain.AttendanceStatus;
+import ci.company.eduops.attendance.repository.StudentAttendanceRepository;
 import ci.company.eduops.audit.domain.AuditAction;
 import ci.company.eduops.audit.service.AuditService;
 import ci.company.eduops.common.dto.PageResponse;
@@ -25,6 +27,8 @@ import ci.company.eduops.school.repository.SchoolRepository;
 import ci.company.eduops.security.service.CurrentUser;
 import ci.company.eduops.student.domain.Student;
 import ci.company.eduops.student.repository.StudentRepository;
+import ci.company.eduops.student.service.StudentQueryService;
+import ci.company.eduops.finance.dto.response.StudentFinancialSummaryResponse;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.Pageable;
@@ -34,9 +38,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.UUID;
 
 /** Issues traceable school documents and stores their frozen print identity. */
@@ -56,6 +65,8 @@ public class OfficialDocumentService {
     private final AuditService auditService;
     private final CurrentUser currentUser;
     private final ObjectMapper objectMapper;
+    private final StudentQueryService studentQueryService;
+    private final StudentAttendanceRepository attendanceRepository;
 
     public OfficialDocumentService(OfficialDocumentRepository documentRepository,
                                    StudentRepository studentRepository,
@@ -66,7 +77,9 @@ public class OfficialDocumentService {
                                    VerificationCodeGenerator verificationCodeGenerator,
                                    AuditService auditService,
                                    CurrentUser currentUser,
-                                   ObjectMapper objectMapper) {
+                                   ObjectMapper objectMapper,
+                                   StudentQueryService studentQueryService,
+                                   StudentAttendanceRepository attendanceRepository) {
         this.documentRepository = documentRepository;
         this.studentRepository = studentRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -77,6 +90,8 @@ public class OfficialDocumentService {
         this.auditService = auditService;
         this.currentUser = currentUser;
         this.objectMapper = objectMapper;
+        this.studentQueryService = studentQueryService;
+        this.attendanceRepository = attendanceRepository;
     }
 
     @Transactional(readOnly = true)
@@ -134,7 +149,17 @@ public class OfficialDocumentService {
                 request.getIssueDate(), LocalTime.now(), ZoneOffset.UTC));
         document.setIssuedBy(currentUser.id().orElse(null));
         document.setValidUntil(request.getValidUntil());
-        document.setMetadata(metadata(request, layout));
+        Map<String, Object> documentMetadata = metadata(request, layout);
+        if (request.getType() == DocumentType.FINANCIAL_STATEMENT) {
+            StudentFinancialSummaryResponse summary =
+                    studentQueryService.financialSummary(student.getId(), year.getId());
+            documentMetadata.put("financialSummary", objectMapper.convertValue(
+                    summary, new TypeReference<Map<String, Object>>() { }));
+        } else if (request.getType() == DocumentType.ATTENDANCE_CERTIFICATE) {
+            documentMetadata.put("attendanceSummary",
+                    attendanceSummary(student.getId(), year.getId()));
+        }
+        document.setMetadata(documentMetadata);
         document = documentRepository.save(document);
 
         auditService.record(AuditAction.PUBLISH, "OfficialDocument", document.getId())
@@ -147,6 +172,31 @@ public class OfficialDocumentService {
                         "documentNumber", documentNumber))
                 .save();
         return toResponse(document);
+    }
+
+    @Transactional
+    public List<DocumentResponse> issueBatch(DocumentIssueRequest request, List<UUID> studentIds) {
+        if (studentIds == null || studentIds.isEmpty() || studentIds.size() > 100
+                || new HashSet<>(studentIds).size() != studentIds.size()) {
+            throw BusinessException.of(ErrorCode.VALIDATION_ERROR,
+                    "La sélection doit contenir de 1 à 100 élèves distincts.");
+        }
+        List<DocumentResponse> issued = new ArrayList<>(studentIds.size());
+        for (UUID studentId : studentIds) {
+            DocumentIssueRequest individual = new DocumentIssueRequest();
+            individual.setStudentId(studentId);
+            individual.setType(request.getType());
+            individual.setIssueDate(request.getIssueDate());
+            individual.setValidUntil(request.getValidUntil());
+            individual.setPurpose(request.getPurpose());
+            individual.setRecipient(request.getRecipient());
+            individual.setAdditionalMention(request.getAdditionalMention());
+            individual.setMeetingDate(request.getMeetingDate());
+            individual.setMeetingTime(request.getMeetingTime());
+            individual.setMeetingPlace(request.getMeetingPlace());
+            issued.add(issue(individual));
+        }
+        return issued;
     }
 
     @Transactional
@@ -245,6 +295,37 @@ public class OfficialDocumentService {
         return metadata;
     }
 
+    private Map<String, Object> attendanceSummary(UUID studentId, UUID academicYearId) {
+        long total = 0;
+        long attended = 0;
+        long absences = 0;
+        long latenesses = 0;
+        for (Object[] row : attendanceRepository.summarizeStudentInYear(studentId, academicYearId)) {
+            AttendanceStatus status = (AttendanceStatus) row[0];
+            long count = ((Number) row[1]).longValue();
+            total += count;
+            if (status.countsAsPresent()) {
+                attended += count;
+            }
+            if (status.isAbsence()) {
+                absences += count;
+            }
+            if (status.isLateness()) {
+                latenesses += count;
+            }
+        }
+        BigDecimal rate = total == 0 ? BigDecimal.ZERO
+                : BigDecimal.valueOf(attended).multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(total), 1, RoundingMode.HALF_UP);
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("totalRecords", total);
+        summary.put("presentCount", attended);
+        summary.put("absenceCount", absences);
+        summary.put("latenessCount", latenesses);
+        summary.put("attendanceRate", rate);
+        return summary;
+    }
+
     private DocumentResponse toResponse(OfficialDocument document) {
         DocumentResponse response = new DocumentResponse();
         response.setId(document.getId());
@@ -296,6 +377,8 @@ public class OfficialDocumentService {
     private boolean requiresEnrollment(DocumentType type) {
         return type == DocumentType.SCHOOL_CERTIFICATE
                 || type == DocumentType.ENROLLMENT_ATTESTATION
+                || type == DocumentType.ATTENDANCE_CERTIFICATE
+                || type == DocumentType.FINANCIAL_STATEMENT
                 || type == DocumentType.STUDENT_CARD
                 || type == DocumentType.TRANSCRIPT;
     }
@@ -305,6 +388,7 @@ public class OfficialDocumentService {
             case STUDENT_FILE -> "Fiche individuelle";
             case SCHOOL_CERTIFICATE -> "Certificat de scolarité";
             case ENROLLMENT_ATTESTATION -> "Attestation d'inscription";
+            case ATTENDANCE_CERTIFICATE -> "Certificat de fréquentation";
             case TRANSCRIPT -> "Relevé de notes";
             case SUMMONS -> "Convocation";
             case STUDENT_CARD -> "Carte d'élève";
@@ -332,4 +416,3 @@ public class OfficialDocumentService {
         return first + ", " + second;
     }
 }
-

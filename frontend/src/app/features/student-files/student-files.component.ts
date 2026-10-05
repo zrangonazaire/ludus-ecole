@@ -11,10 +11,12 @@ import {
   CLASSROOM_DATA_SOURCE, OFFICIAL_DOCUMENT_DATA_SOURCE, REFERENCE_DATA_SOURCE,
   STUDENT_DATA_SOURCE
 } from '@core/datasource/data-source';
-import { Classroom, StudentSummary } from '@core/models/domain.models';
 import {
-  OFFICIAL_DOCUMENT_TEMPLATES, OfficialDocument, OfficialDocumentLayout,
-  OfficialDocumentTemplate, OfficialDocumentType
+  AttendanceSummary, Classroom, FinancialSummary, StudentSummary
+} from '@core/models/domain.models';
+import {
+  OFFICIAL_DOCUMENT_TEMPLATES, OfficialDocument, OfficialDocumentBatchIssuePayload,
+  OfficialDocumentLayout, OfficialDocumentTemplate, OfficialDocumentType
 } from '@core/models/official-document.models';
 import { AuthService } from '@core/auth/auth.service';
 import { PERMISSIONS } from '@core/models/auth.models';
@@ -54,11 +56,16 @@ export class StudentFilesComponent implements OnInit {
   readonly documents = signal<OfficialDocument[]>([]);
   readonly layout = signal<OfficialDocumentLayout | null>(null);
   readonly selectedStudentId = signal('');
+  readonly selectedStudentIds = signal<string[]>([]);
+  readonly bulkMode = signal(false);
+  readonly financialSummary = signal<FinancialSummary | null>(null);
+  readonly attendanceSummary = signal<AttendanceSummary | null>(null);
   readonly studentSearch = signal('');
   readonly classroomFilter = signal('');
   readonly historySearch = signal('');
   readonly historyType = signal<OfficialDocumentType | ''>('');
   readonly printing = signal<OfficialDocument | null>(null);
+  readonly printingBadges = signal<OfficialDocument[]>([]);
   readonly revokeTarget = signal<OfficialDocument | null>(null);
   readonly draftRevision = signal(0);
 
@@ -124,7 +131,7 @@ export class StudentFilesComponent implements OnInit {
       .filter((student) => !search || normalise(
         `${student.fullName} ${student.studentNumber} ${student.classroomName ?? ''}`)
         .includes(search))
-      .slice(0, 10);
+      .slice(0, this.bulkMode() ? 300 : 10);
   });
 
   readonly visibleDocuments = computed(() => {
@@ -141,6 +148,7 @@ export class StudentFilesComponent implements OnInit {
     this.documents().filter((document) => document.status === 'ISSUED').length);
   readonly revokedCount = computed(() =>
     this.documents().filter((document) => document.status === 'REVOKED').length);
+  readonly selectedBatchCount = computed(() => this.selectedStudentIds().length);
 
   readonly previewDocument = computed<OfficialDocument | null>(() => {
     this.draftRevision();
@@ -180,7 +188,31 @@ export class StudentFilesComponent implements OnInit {
         additionalMention: value.additionalMention.trim() || undefined,
         meetingDate: value.meetingDate || undefined,
         meetingTime: value.meetingTime || undefined,
-        meetingPlace: value.meetingPlace.trim() || undefined
+        meetingPlace: value.meetingPlace.trim() || undefined,
+        attendanceSummary: this.attendanceSummary() ? {
+          totalRecords: this.attendanceSummary()!.totalRecords,
+          presentCount: this.attendanceSummary()!.presentCount,
+          absenceCount: this.attendanceSummary()!.absenceCount,
+          latenessCount: this.attendanceSummary()!.latenessCount,
+          attendanceRate: this.attendanceSummary()!.attendanceRate
+        } : undefined,
+        financialSummary: this.financialSummary() ? {
+          totalGross: this.financialSummary()!.totalGross,
+          totalDiscount: this.financialSummary()!.totalDiscount,
+          totalDue: this.financialSummary()!.totalDue,
+          totalPaid: this.financialSummary()!.totalPaid,
+          outstandingAmount: this.financialSummary()!.outstandingAmount,
+          currency: this.financialSummary()!.currency,
+          globalStatus: this.financialSummary()!.globalStatus,
+          fees: this.financialSummary()!.fees?.map((fee) => ({
+            label: fee.label,
+            amountDue: fee.amountDue,
+            amountPaid: fee.amountPaid,
+            amountRemaining: fee.amountRemaining,
+            currency: fee.currency,
+            dueDate: fee.dueDate
+          }))
+        } : undefined
       },
       layout
     };
@@ -191,7 +223,10 @@ export class StudentFilesComponent implements OnInit {
     const value = this.issueForm.getRawValue();
     const summonsComplete = value.type !== 'SUMMONS'
       || (!!value.purpose.trim() && !!value.meetingDate);
-    return !!this.selectedStudent() && this.issueForm.valid && summonsComplete
+    const hasTarget = this.bulkMode()
+      ? this.selectedBatchCount() > 0 && this.selectedBatchCount() <= 100
+      : !!this.selectedStudent();
+    return hasTarget && this.issueForm.valid && summonsComplete
       && this.canGenerate() && !this.saving();
   });
 
@@ -231,9 +266,14 @@ export class StudentFilesComponent implements OnInit {
         const activeYear = data.years.find((year) => year.status === 'ACTIVE') ?? data.years[0];
         this.academicYearCode.set(activeYear?.code ?? '');
         this.selectedStudentId.set(data.requestedStudent?.id ?? students[0]?.id ?? '');
+        this.selectedStudentIds.set(data.requestedStudent ? [data.requestedStudent.id] : []);
         if (data.requestedStudent) this.tab.set('CREATE');
         this.loading.set(false);
         this.draftRevision.update((value) => value + 1);
+        const selectedId = this.selectedStudentId();
+        if (selectedId && this.requiresStudentSummary()) {
+          this.loadStudentSummary(selectedId);
+        }
       },
       error: () => {
         this.loading.set(false);
@@ -263,20 +303,96 @@ export class StudentFilesComponent implements OnInit {
     this.studentSearch.set('');
     this.classroomFilter.set('');
     this.selectedStudentId.set(this.students()[0]?.id ?? '');
+    this.selectedStudentIds.set(this.selectedStudentId() ? [this.selectedStudentId()] : []);
+    this.bulkMode.set(false);
+    this.financialSummary.set(null);
+    this.attendanceSummary.set(null);
     this.tab.set('CREATE');
     this.draftRevision.update((value) => value + 1);
   }
 
   chooseTemplate(type: OfficialDocumentType): void {
     this.issueForm.patchValue({ type });
+    this.financialSummary.set(null);
+    this.attendanceSummary.set(null);
+    if (this.requiresStudentSummary() && this.selectedStudentId()) {
+      this.loadStudentSummary(this.selectedStudentId());
+    } else {
+      this.draftRevision.update((value) => value + 1);
+    }
   }
 
   chooseStudent(studentId: string): void {
     this.selectedStudentId.set(studentId);
+    this.financialSummary.set(null);
+    this.attendanceSummary.set(null);
+    if (this.requiresStudentSummary()) {
+      this.loadStudentSummary(studentId);
+    }
+    this.draftRevision.update((value) => value + 1);
+  }
+
+  setBulkMode(enabled: boolean): void {
+    this.bulkMode.set(enabled);
+    this.selectedStudentIds.set(enabled && this.selectedStudentId()
+      ? [this.selectedStudentId()] : []);
+  }
+
+  toggleStudentForBatch(studentId: string): void {
+    const ids = this.selectedStudentIds();
+    const updated = ids.includes(studentId)
+      ? ids.filter((id) => id !== studentId) : [...ids, studentId];
+    this.selectedStudentIds.set(updated);
+    this.selectedStudentId.set(updated.includes(studentId) ? studentId : updated[0] ?? '');
+    this.financialSummary.set(null);
+    this.attendanceSummary.set(null);
+    if (this.selectedStudentId()
+        && this.requiresStudentSummary()) {
+      this.loadStudentSummary(this.selectedStudentId());
+    }
+    this.draftRevision.update((value) => value + 1);
+  }
+
+  selectStudentRow(studentId: string): void {
+    if (this.bulkMode()) {
+      this.toggleStudentForBatch(studentId);
+      return;
+    }
+    this.chooseStudent(studentId);
+  }
+
+  isStudentSelected(studentId: string): boolean {
+    return this.bulkMode()
+      ? this.selectedStudentIds().includes(studentId)
+      : this.selectedStudentId() === studentId;
+  }
+
+  formatAmount(amount: number, currency: string): string {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: currency || 'XOF',
+      maximumFractionDigits: 0
+    }).format(amount);
+  }
+
+  selectVisibleStudents(): void {
+    const ids = this.visibleStudents().map((student) => student.id);
+    if (ids.length > 100) {
+      this.notifications.warning(
+        'La génération en lot est limitée à 100 élèves. Affinez votre recherche ou filtrez par classe.',
+        'Sélection trop importante');
+      return;
+    }
+    this.selectedStudentIds.set(ids);
+    if (ids[0]) this.chooseStudent(ids[0]);
   }
 
   issue(printAfter: boolean): void {
     if (!this.readyToIssue()) {
+      return;
+    }
+    if (this.bulkMode()) {
+      this.issueBatch(printAfter);
       return;
     }
     this.saving.set(true);
@@ -309,11 +425,58 @@ export class StudentFilesComponent implements OnInit {
     });
   }
 
+  private issueBatch(printAfter = false): void {
+    const value = this.issueForm.getRawValue();
+    const payload: OfficialDocumentBatchIssuePayload = {
+      studentIds: this.selectedStudentIds(),
+      type: value.type,
+      issueDate: value.issueDate,
+      validUntil: value.validUntil || undefined,
+      purpose: value.purpose.trim() || undefined,
+      recipient: value.recipient.trim() || undefined,
+      additionalMention: value.additionalMention.trim() || undefined,
+      meetingDate: value.meetingDate || undefined,
+      meetingTime: value.meetingTime || undefined,
+      meetingPlace: value.meetingPlace.trim() || undefined
+    };
+    this.saving.set(true);
+    this.documentsSource.issueBatch(payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (documents) => {
+          this.documents.update((items) => [...documents, ...items]);
+          this.saving.set(false);
+          this.notifications.success(
+            `${documents.length} document(s) émis et inscrit(s) au registre.`,
+            'Génération en lot terminée');
+          if (printAfter && value.type === 'STUDENT_CARD') {
+            this.printBadges(documents);
+          } else {
+            this.tab.set('REGISTER');
+          }
+        },
+        error: () => this.saving.set(false)
+      });
+  }
+
   print(document: OfficialDocument): void {
+    if (document.type === 'STUDENT_CARD') {
+      this.printBadges([document]);
+      return;
+    }
     this.printing.set(document);
     setTimeout(() => {
       window.print();
       this.printing.set(null);
+    }, 120);
+  }
+
+  private printBadges(documents: OfficialDocument[]): void {
+    this.printingBadges.set(documents);
+    this.tab.set('REGISTER');
+    setTimeout(() => {
+      window.print();
+      this.printingBadges.set([]);
     }, 120);
   }
 
@@ -437,6 +600,28 @@ export class StudentFilesComponent implements OnInit {
     this.layoutForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.draftRevision.update((value) => value + 1));
   }
+
+  private requiresStudentSummary(): boolean {
+    const type = this.issueForm.controls.type.value;
+    return type === 'FINANCIAL_STATEMENT' || type === 'ATTENDANCE_CERTIFICATE';
+  }
+
+  private loadStudentSummary(studentId: string): void {
+    this.studentsSource.getById(studentId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (student) => {
+          if (this.selectedStudentId() === studentId) {
+            this.financialSummary.set(student.financialSummary ?? null);
+            this.attendanceSummary.set(student.attendanceSummary ?? null);
+            this.draftRevision.update((value) => value + 1);
+          }
+        },
+        error: () => this.notifications.error(
+          'Les données de situation de l’élève n’ont pas pu être chargées.',
+          'Aperçu des données indisponible')
+      });
+  }
 }
 
 function localIsoDate(): string {
@@ -456,4 +641,3 @@ function previewNumber(pattern: string, issueDate: string): string {
     .replace(/\{seq(?::(\d+))?}/g, (_match, width: string | undefined) =>
       '0'.repeat(Math.max(1, Number(width ?? 6) - 3)) + '123');
 }
-

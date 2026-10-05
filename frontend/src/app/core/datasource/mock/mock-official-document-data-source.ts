@@ -4,8 +4,8 @@ import { Observable, delay, of, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { PageResponse } from '@core/models/common.models';
 import {
-  OFFICIAL_DOCUMENT_TEMPLATES, OfficialDocument, OfficialDocumentIssuePayload,
-  OfficialDocumentLayout, OfficialDocumentQuery
+  OFFICIAL_DOCUMENT_TEMPLATES, OfficialDocument, OfficialDocumentBatchIssuePayload,
+  OfficialDocumentIssuePayload, OfficialDocumentLayout, OfficialDocumentQuery
 } from '@core/models/official-document.models';
 import { OfficialDocumentDataSource } from '../data-source';
 import { MOCK_CLASSROOMS, MOCK_STUDENTS } from './mock-data';
@@ -78,6 +78,20 @@ export class MockOfficialDocumentDataSource implements OfficialDocumentDataSourc
     this.documents = [document, ...this.documents];
     this.persist(DOCUMENTS_KEY, this.documents);
     return of(structuredClone(document)).pipe(delay(LATENCY));
+  }
+
+  issueBatch(payload: OfficialDocumentBatchIssuePayload): Observable<OfficialDocument[]> {
+    const { studentIds, ...issuePayload } = payload;
+    const issuedAt = new Date().toISOString();
+    const documents = studentIds.map((studentId) =>
+      this.buildDocument({ ...issuePayload, studentId }, issuedAt));
+    if (documents.some((document) => !document)) {
+      return throwError(() => new Error('STUDENT_NOT_FOUND')).pipe(delay(LATENCY));
+    }
+    const issued = documents.filter((document): document is OfficialDocument => document !== null);
+    this.documents = [...issued, ...this.documents];
+    this.persist(DOCUMENTS_KEY, this.documents);
+    return of(structuredClone(issued)).pipe(delay(LATENCY));
   }
 
   revoke(documentId: string, reason: string): Observable<OfficialDocument> {
@@ -201,4 +215,3 @@ function verificationCode(): string {
     return index > 0 && index % 4 === 0 ? `-${letter}` : letter;
   }).join('');
 }
-

@@ -2,8 +2,6 @@ package ci.company.eduops.audit.service;
 
 import ci.company.eduops.audit.domain.AuditLog;
 import ci.company.eduops.audit.repository.AuditLogRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,11 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
  *       takes the record with it — so the one event a head teacher wants in the
  *       journal, five failed attempts on an account, was the one event never
  *       written;</li>
- *   <li>an audit insert that failed poisoned the business transaction. The
- *       catch below swallowed the exception, the caller carried on and
- *       returned normally, and the commit then threw
- *       {@code UnexpectedRollbackException} — a 500 with no visible relation to
- *       what the request was doing.</li>
+ *   <li>an audit insert that failed could fail the business operation. A
+ *       failure during flush can mark the audit transaction rollback-only, and
+ *       its commit can fail after this method returns. {@link AuditService}
+ *       catches that failure outside this proxy boundary.</li>
  * </ul>
  *
  * <p>Crossing a bean boundary is what makes the propagation real. The rule is
@@ -40,8 +37,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class AuditWriter {
 
-    private static final Logger log = LoggerFactory.getLogger(AuditWriter.class);
-
     private final AuditLogRepository repository;
 
     public AuditWriter(AuditLogRepository repository) {
@@ -50,14 +45,6 @@ public class AuditWriter {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void write(AuditLog entry) {
-        try {
-            repository.saveAndFlush(entry);
-        } catch (RuntimeException ex) {
-            // Auditing never breaks the business operation. The failure is now
-            // confined to this transaction, so swallowing it here leaves the
-            // caller's own transaction untouched — which was not true before.
-            log.error("Unable to write the audit entry {} on {} {}",
-                    entry.getAction(), entry.getEntityType(), entry.getEntityId(), ex);
-        }
+        repository.saveAndFlush(entry);
     }
 }

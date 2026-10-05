@@ -37,6 +37,7 @@ export interface TabItem {
             <span aria-hidden="true">◔</span>
           </button>
           <eduops-avatar [name]="user()?.fullName ?? ''" size="sm" />
+          <button type="button" class="portal__logout" (click)="logout()">Déconnexion</button>
         </div>
       </header>
 
@@ -63,4 +64,8 @@ export class MobileLayoutComponent {
 
   private readonly auth = inject(AuthService);
   readonly user = this.auth.currentUser;
+
+  logout(): void {
+    this.auth.logout();
+  }
 }

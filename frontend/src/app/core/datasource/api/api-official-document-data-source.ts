@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '@env/environment';
 import { PageResponse } from '@core/models/common.models';
 import {
-  OfficialDocument, OfficialDocumentIssuePayload, OfficialDocumentLayout,
+  OfficialDocument, OfficialDocumentBatchIssuePayload, OfficialDocumentIssuePayload, OfficialDocumentLayout,
   OfficialDocumentQuery
 } from '@core/models/official-document.models';
 import { OfficialDocumentDataSource } from '../data-source';
@@ -28,6 +28,10 @@ export class ApiOfficialDocumentDataSource implements OfficialDocumentDataSource
     return this.http.post<OfficialDocument>(this.base, payload);
   }
 
+  issueBatch(payload: OfficialDocumentBatchIssuePayload): Observable<OfficialDocument[]> {
+    return this.http.post<OfficialDocument[]>(`${this.base}/batch`, payload);
+  }
+
   revoke(documentId: string, reason: string): Observable<OfficialDocument> {
     return this.http.post<OfficialDocument>(`${this.base}/${documentId}/revoke`, { reason });
   }
@@ -40,4 +44,3 @@ export class ApiOfficialDocumentDataSource implements OfficialDocumentDataSource
     return this.http.put<OfficialDocumentLayout>(`${this.base}/layout`, layout);
   }
 }
-

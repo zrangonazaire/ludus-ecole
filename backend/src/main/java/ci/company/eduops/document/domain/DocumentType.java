@@ -5,6 +5,7 @@ public enum DocumentType {
     STUDENT_FILE,
     SCHOOL_CERTIFICATE,
     ENROLLMENT_ATTESTATION,
+    ATTENDANCE_CERTIFICATE,
     REPORT_CARD,
     TRANSCRIPT,
     RECEIPT,
@@ -14,4 +15,3 @@ public enum DocumentType {
     STUDENT_CARD,
     OTHER
 }
-

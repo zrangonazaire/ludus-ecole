@@ -376,6 +376,17 @@ mock or the real API by one switch:
   useClass: useMock ? MockStudentDataSource : ApiStudentDataSource }
 ```
 
+**Official documents.** The `Documents officiels` workspace issues printable student cards,
+enrollment/schooling certificates, attendance certificates with the year's recorded presence,
+absence and lateness summary, and financial statements. Financial statements freeze the fee
+and payment totals into the issued document; bulk issuance accepts up to 100 students and is
+all-or-nothing, so a failed enrollment check cannot leave a partly issued batch. Issued
+documents retain their unique number and verification code in the school register.
+
+**Cash sessions.** The cashier can print a closing statement that reconciles the opening
+float, validated cash receipts, expected and counted balances, variance explanation, and
+the individual cash movements. Non-cash payment methods are excluded from the movement list.
+
 With `environment.useMockData = true` the whole application runs standalone on realistic
 demo data — useful for design review and for demos without a backend. Set it to `false` and
 the identical components hit the real API.

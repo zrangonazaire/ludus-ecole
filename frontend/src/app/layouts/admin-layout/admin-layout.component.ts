@@ -171,7 +171,7 @@ export class AdminLayoutComponent implements OnInit {
       permissions: [PERMISSIONS.LEVEL_VIEW], ready: true },
     { section: 'Établissement', label: 'Cycles et niveaux', route: '/levels', icon: '◱',
       permissions: [PERMISSIONS.LEVEL_VIEW], ready: true },
-        { section: 'Établissement', label: 'Campus et salles', route: '/campus', icon: '⌂',
+    { section: 'Établissement', label: 'Campus', route: '/campus', icon: '⌂',
       permissions: [PERMISSIONS.CAMPUS_VIEW], ready: true },
     // Les bâtiments, les étages et les capacités : ce que l'emploi du temps
     // réserve. Séparé de « Campus » parce que les droits diffèrent — un
