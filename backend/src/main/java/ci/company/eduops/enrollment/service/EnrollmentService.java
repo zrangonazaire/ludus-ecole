@@ -200,10 +200,20 @@ public class EnrollmentService {
         enrollment.setRepeating(request.isRepeating());
         enrollment.setNotes(request.getNotes());
         enrollment.setIdempotencyKey(request.getIdempotencyKey());
-        enrollment.setEnrollmentNumber(numberSequenceService.next(
-                student.getSchool().getId(), SCOPE_ENROLLMENT,
-                properties.getNumbering().getEnrollmentPattern(),
-                student.getSchool().getCode()));
+        String pattern = properties.getNumbering().getEnrollmentPattern();
+        if (!pattern.contains("{schoolCode}") && student.getSchool().getCode() != null) {
+            pattern = "{schoolCode}-" + pattern;
+        }
+        String enrollmentNumber;
+        int attempts = 0;
+        do {
+            enrollmentNumber = numberSequenceService.next(
+                    student.getSchool().getId(), SCOPE_ENROLLMENT,
+                    pattern,
+                    student.getSchool().getCode());
+            attempts++;
+        } while (enrollmentRepository.existsByEnrollmentNumber(enrollmentNumber) && attempts < 100);
+        enrollment.setEnrollmentNumber(enrollmentNumber);
 
         if (request.isOverCapacityOverride()) {
             enrollment.setOverCapacityOverride(true);

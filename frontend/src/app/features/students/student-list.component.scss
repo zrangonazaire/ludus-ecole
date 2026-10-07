@@ -21,3 +21,17 @@
   &__text { flex: 1; font-size: var(--text-sm); color: var(--text-normal); }
   &__link { font-size: var(--text-sm); color: var(--brand); }
 }
+
+.actions-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  white-space: nowrap;
+
+  .btn {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+  }
+}

@@ -81,6 +81,13 @@ class UserManagementServiceTest {
         assertThatThrownBy(() -> service.create(request())).isInstanceOf(BusinessException.class);
         verify(users, never()).saveAndFlush(any());
     }
+    @Test void administratorCanAssignAnySchoolProfile() {
+        when(actor.isAdministrator()).thenReturn(true);
+        when(roles.findVisible(schoolId)).thenReturn(List.of(role("DIRECTOR")));
+        when(users.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        var result = service.create(request());
+        assertThat(result.profiles()).extracting(ManagedUserResponse.Profile::id).containsExactly(roleId);
+    }
     @Test void rejectsCrossSchoolAccountUpdate() {
         AppUser other = new AppUser(); other.setSchoolId(UUID.randomUUID());
         UUID id = UUID.randomUUID(); when(users.lockInSchool(id, schoolId)).thenReturn(Optional.empty());

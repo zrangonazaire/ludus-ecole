@@ -236,8 +236,8 @@ export const routes: Routes = [
       },
       {
         path: 'pedagogical-enrollments',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
+        loadComponent: () => import('./features/pedagogical-enrollments/pedagogical-enrollments.component')
+          .then((m) => m.PedagogicalEnrollmentsComponent),
         data: { title: 'Inscriptions pédagogiques' }
       },
       {
@@ -273,8 +273,8 @@ export const routes: Routes = [
       },
       {
         path: 'certificates',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
+        loadComponent: () => import('./features/certificates/certificates.component')
+          .then((m) => m.CertificatesComponent),
         data: { title: 'Certificats et attestations' }
       },
       {
@@ -286,8 +286,8 @@ export const routes: Routes = [
       },
       {
         path: 'documents',
-        loadComponent: () => import('./features/placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
+        loadComponent: () => import('./features/documents/documents.component')
+          .then((m) => m.DocumentsComponent),
         data: { title: 'Documents' }
       },
       {

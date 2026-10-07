@@ -159,14 +159,14 @@ eduops:
     locale: fr-CI
     timezone: Africa/Abidjan
   numbering:
-    student-pattern: EDU-{year}-{seq:6}
-    receipt-pattern: REC-{year}-{seq:8}
-    invoice-pattern: INV-{year}-{seq:8}
-    enrollment-pattern: "ENR-{year}-{seq:6}"
-    admission-pattern: "ADM-{year}-{seq:6}"
-    incident-pattern: "INC-{year}-{seq:6}"
-    document-pattern: "DOC-{year}-{seq:8}"
-    cash-session-pattern: "CSH-{year}-{seq:6}"
+    student-pattern: "{schoolCode}-{year}-{seq:6}"
+    receipt-pattern: "{schoolCode}-REC-{year}-{seq:8}"
+    invoice-pattern: "{schoolCode}-INV-{year}-{seq:8}"
+    enrollment-pattern: "{schoolCode}-ENR-{year}-{seq:6}"
+    admission-pattern: "{schoolCode}-ADM-{year}-{seq:6}"
+    incident-pattern: "{schoolCode}-INC-{year}-{seq:6}"
+    document-pattern: "{schoolCode}-DOC-{year}-{seq:8}"
+    cash-session-pattern: "{schoolCode}-CSH-{year}-{seq:6}"
   security:
     jwt:
       secret: change_me_this_must_be_a_very_long_random_secret_at_least_64_chars_long

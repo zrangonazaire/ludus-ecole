@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-/** Parent portal (section 45): Accueil, Enfants, Scolarite, Paiements, Notifications, Profil. */
+/** Parent portal (section 45): Accueil, Enfants, Scolarité, Paiements, Notifications, Profil. */
 export const PARENT_PORTAL_ROUTES: Routes = [
   {
     path: '',
@@ -13,33 +13,28 @@ export const PARENT_PORTAL_ROUTES: Routes = [
       },
       {
         path: 'children',
-        loadComponent: () => import('../placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Mes enfants', endpoint: 'GET /api/v1/parent/children' }
+        loadComponent: () => import('./parent-children.component').then((m) => m.ParentChildrenComponent),
+        data: { title: 'Mes enfants' }
       },
       {
         path: 'academics',
-        loadComponent: () => import('../placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Scolarité', endpoint: 'GET /api/v1/parent/children/{id}/grades' }
+        loadComponent: () => import('./parent-academics.component').then((m) => m.ParentAcademicsComponent),
+        data: { title: 'Scolarité & Bulletins' }
       },
       {
         path: 'payments',
-        loadComponent: () => import('../placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Paiements', endpoint: 'GET /api/v1/parent/children/{id}/financial-summary' }
+        loadComponent: () => import('./parent-payments.component').then((m) => m.ParentPaymentsComponent),
+        data: { title: 'Paiements & Encaissements' }
       },
       {
         path: 'notifications',
-        loadComponent: () => import('../placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Notifications', endpoint: 'GET /api/v1/parent/notifications' }
+        loadComponent: () => import('./parent-notifications.component').then((m) => m.ParentNotificationsComponent),
+        data: { title: 'Notifications' }
       },
       {
         path: 'profile',
-        loadComponent: () => import('../placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Mon profil', endpoint: 'GET /api/v1/auth/me' }
+        loadComponent: () => import('./parent-profile.component').then((m) => m.ParentProfileComponent),
+        data: { title: 'Mon profil' }
       }
     ]
   }

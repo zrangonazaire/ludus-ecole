@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-/** Teacher portal navigation (section 29): Accueil, Classes, Presences, Notes, Profil. */
+/** Teacher portal navigation (section 29): Accueil, Classes, Présences, Notes, Profil. */
 export const TEACHER_PORTAL_ROUTES: Routes = [
   {
     path: '',
@@ -23,15 +23,15 @@ export const TEACHER_PORTAL_ROUTES: Routes = [
       },
       {
         path: 'grades',
-        loadComponent: () => import('../placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Saisie des notes', endpoint: 'POST /api/v1/teacher/grades' }
+        loadComponent: () => import('./teacher-grades.component')
+          .then((m) => m.TeacherGradesComponent),
+        data: { title: 'Saisie des notes' }
       },
       {
         path: 'profile',
-        loadComponent: () => import('../placeholder/placeholder.component')
-          .then((m) => m.PlaceholderComponent),
-        data: { title: 'Mon profil', endpoint: 'GET /api/v1/auth/me' }
+        loadComponent: () => import('./teacher-profile.component')
+          .then((m) => m.TeacherProfileComponent),
+        data: { title: 'Mon profil' }
       }
     ]
   }

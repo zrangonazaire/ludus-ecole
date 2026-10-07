@@ -49,6 +49,14 @@ public class EduOpsUserDetails implements UserDetails {
         List<GrantedAuthority> granted = new ArrayList<>();
         roleCodes.forEach(code -> granted.add(new SimpleGrantedAuthority("ROLE_" + code)));
         permissionCodes.forEach(code -> granted.add(new SimpleGrantedAuthority(code)));
+        if (roleCodes.contains("SUPER_ADMIN") || roleCodes.contains("SCHOOL_ADMIN")) {
+            if (!permissionCodes.contains("USER_MANAGE")) {
+                granted.add(new SimpleGrantedAuthority("USER_MANAGE"));
+            }
+            if (!permissionCodes.contains("ROLE_MANAGE")) {
+                granted.add(new SimpleGrantedAuthority("ROLE_MANAGE"));
+            }
+        }
         this.authorities = List.copyOf(granted);
     }
 
@@ -120,6 +128,9 @@ public class EduOpsUserDetails implements UserDetails {
     }
 
     public boolean hasPermission(String permissionCode) {
+        if (hasRole("SUPER_ADMIN") || hasRole("SCHOOL_ADMIN")) {
+            return true;
+        }
         return permissionCodes.contains(permissionCode);
     }
 }

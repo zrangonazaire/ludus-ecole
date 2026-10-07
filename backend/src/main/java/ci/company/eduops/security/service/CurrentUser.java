@@ -46,6 +46,9 @@ public class CurrentUser {
     }
 
     public boolean hasPermission(String permission) {
+        if (isAdministrator()) {
+            return true;
+        }
         return details().map(d -> d.hasPermission(permission)).orElse(false);
     }
 

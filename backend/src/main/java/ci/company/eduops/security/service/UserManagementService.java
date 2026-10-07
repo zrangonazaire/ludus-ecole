@@ -110,8 +110,13 @@ public class UserManagementService {
     }
 
     private boolean assignable(AppRole role) {
-        return !"SUPER_ADMIN".equals(role.getCode())
-                && role.getPermissions().stream().allMatch(p -> actor.hasPermission(p.getCode()));
+        if ("SUPER_ADMIN".equals(role.getCode())) {
+            return actor.hasRole("SUPER_ADMIN");
+        }
+        if (actor.isAdministrator()) {
+            return true;
+        }
+        return role.getPermissions().stream().allMatch(p -> actor.hasPermission(p.getCode()));
     }
 
     private UUID school() {

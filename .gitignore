@@ -43,9 +43,13 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# --- Runtime ---
+# --- Runtime & Diagnostics ---
 logs/
 *.log
+*boot-log*.txt
+nav-*.txt
+_*.txt
+hs_err_*.log
 storage/
 
 # --- Large local media ---

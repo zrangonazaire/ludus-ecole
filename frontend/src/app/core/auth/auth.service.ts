@@ -106,10 +106,16 @@ export class AuthService {
 
   /** True when the account holds the given fine-grained permission. */
   has(permission: string): boolean {
+    if (this.hasRole(ROLES.SUPER_ADMIN) || this.hasRole(ROLES.SCHOOL_ADMIN)) {
+      return true;
+    }
     return this.permissions().has(permission);
   }
 
   hasAny(...permissions: string[]): boolean {
+    if (this.hasRole(ROLES.SUPER_ADMIN) || this.hasRole(ROLES.SCHOOL_ADMIN)) {
+      return true;
+    }
     return permissions.some((p) => this.permissions().has(p));
   }
 
@@ -149,9 +155,8 @@ export class AuthService {
     const tokenPermissions = session.permissions?.length
       ? session.permissions
       : (claims?.['perms'] as string[]) ?? [];
-    const permissions = environment.useMockData
-      && roles.includes(ROLES.SCHOOL_ADMIN)
-      && tokenPermissions.length === 0
+    const isAdministrator = roles.includes(ROLES.SCHOOL_ADMIN) || roles.includes(ROLES.SUPER_ADMIN);
+    const permissions = (isAdministrator && tokenPermissions.length === 0)
       ? Object.values(PERMISSIONS)
       : tokenPermissions;
 
@@ -271,7 +276,11 @@ export class AuthService {
     }
 
     const roles = Array.isArray(claims?.['roles']) ? claims['roles'] as string[] : [];
-    const permissions = Array.isArray(claims?.['perms']) ? claims['perms'] as string[] : [];
+    let permissions = Array.isArray(claims?.['perms']) ? claims['perms'] as string[] : [];
+    const isAdministrator = roles.includes(ROLES.SCHOOL_ADMIN) || roles.includes(ROLES.SUPER_ADMIN);
+    if (isAdministrator && permissions.length === 0) {
+      permissions = Object.values(PERMISSIONS);
+    }
     return {
       userId,
       username,

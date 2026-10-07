@@ -89,13 +89,13 @@ export class StudentListComponent implements OnInit {
 
   ngOnInit(): void {
     this.columns = [
-      { key: 'fullName', label: 'Élève', template: this.identityTpl, width: '32%' },
-      { key: 'studentNumber', label: 'Matricule', numeric: true, width: '18%' },
-      { key: 'classroomName', label: 'Classe', width: '15%' },
-      { key: 'levelName', label: 'Niveau', width: '12%' },
-      { key: 'age', label: 'Age', numeric: true, width: '8%' },
-      { key: 'status', label: 'Statut', template: this.statusTpl },
-      { key: 'actions', label: 'Actions', template: this.actionsTpl }
+      { key: 'fullName', label: 'Élève', template: this.identityTpl, width: '25%' },
+      { key: 'studentNumber', label: 'Matricule', numeric: true, width: '15%' },
+      { key: 'classroomName', label: 'Classe', width: '12%' },
+      { key: 'levelName', label: 'Niveau', width: '11%' },
+      { key: 'age', label: 'Âge', numeric: true, width: '7%' },
+      { key: 'status', label: 'Statut', template: this.statusTpl, width: '10%' },
+      { key: 'actions', label: 'Actions', template: this.actionsTpl, width: '20%' }
     ];
 
     this.query$

@@ -84,8 +84,13 @@ export class UsersComponent {
   }
 
   canEdit(user: ManagedUser): boolean {
-    return user.id !== this.auth.currentUser()?.userId
-      && user.profiles.every(p => this.profiles().some(available => available.id === p.id));
+    if (user.id === this.auth.currentUser()?.userId) {
+      return false;
+    }
+    if (this.auth.hasRole('SUPER_ADMIN') || this.auth.hasRole('SCHOOL_ADMIN')) {
+      return true;
+    }
+    return user.profiles.every(p => this.profiles().some(available => available.id === p.id));
   }
 
   openAccount(user: ManagedUser): void {

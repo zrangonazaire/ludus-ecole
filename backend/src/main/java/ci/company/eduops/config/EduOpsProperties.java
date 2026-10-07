@@ -81,14 +81,14 @@ public class EduOpsProperties {
     }
 
     public static class Numbering {
-        private String studentPattern = "EDU-{year}-{seq:6}";
-        private String receiptPattern = "REC-{year}-{seq:8}";
-        private String invoicePattern = "INV-{year}-{seq:8}";
-        private String enrollmentPattern = "ENR-{year}-{seq:6}";
-        private String admissionPattern = "ADM-{year}-{seq:6}";
-        private String incidentPattern = "INC-{year}-{seq:6}";
-        private String documentPattern = "DOC-{year}-{seq:8}";
-        private String cashSessionPattern = "CSH-{year}-{seq:6}";
+        private String studentPattern = "{schoolCode}-{year}-{seq:6}";
+        private String receiptPattern = "{schoolCode}-REC-{year}-{seq:8}";
+        private String invoicePattern = "{schoolCode}-INV-{year}-{seq:8}";
+        private String enrollmentPattern = "{schoolCode}-ENR-{year}-{seq:6}";
+        private String admissionPattern = "{schoolCode}-ADM-{year}-{seq:6}";
+        private String incidentPattern = "{schoolCode}-INC-{year}-{seq:6}";
+        private String documentPattern = "{schoolCode}-DOC-{year}-{seq:8}";
+        private String cashSessionPattern = "{schoolCode}-CSH-{year}-{seq:6}";
 
         public String getStudentPattern() {
             return studentPattern;

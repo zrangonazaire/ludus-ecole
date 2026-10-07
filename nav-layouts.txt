@@ -1,2 +1,0 @@
-C:\PROJET\LUDUS-ECOLE\frontend\src\app\layouts\admin-layout\admin-layout.component.ts
-C:\PROJET\LUDUS-ECOLE\frontend\src\app\layouts\mobile-layout\mobile-layout.component.ts

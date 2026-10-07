@@ -24,7 +24,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/access-profiles")
 @Tag(name = "Access profiles", description = "Profils de droits propres à un établissement")
-@PreAuthorize("hasAuthority('" + Permissions.ROLE_MANAGE + "')")
+@PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('SCHOOL_ADMIN') or hasAuthority('" + Permissions.ROLE_MANAGE + "')")
 public class AccessProfileController {
 
     private final AccessProfileService accessProfileService;
