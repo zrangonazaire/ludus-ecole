@@ -534,23 +534,96 @@ export class TimetableComponent implements OnInit {
    * HH:mm — on convertit à l'affichage, jamais au stockage.</p>
    */
   frTime(time: string): string {
-    return time.replace(':', 'h');
+    if (!time) return '';
+    return this.hhmm(time).replace(':', 'h');
   }
 
-  /** Résumé lisible du cours saisi : « Départ 07h30 · Fin 09h30 (120 min) ». */
-  readonly formSummary = computed<string>(() => {
+  /**
+   * Formatage lisible d'une durée en minutes : 60 -> "1 h", 90 -> "1 h 30", 45 -> "45 min".
+   */
+  humanDuration(minutes: number | string): string {
+    const m = Number(minutes);
+    if (!Number.isFinite(m) || m <= 0) return '';
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    if (h === 0) return `${rem} min`;
+    if (rem === 0) return `${h} h`;
+    return `${h} h ${rem}`;
+  }
+
+  durationLabel(minutes: number): string {
+    const m = Number(minutes);
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    if (h === 0) return `${rem} min`;
+    if (rem === 0) return `${h} h (${m} min)`;
+    return `${h} h ${rem} (${m} min)`;
+  }
+
+  /** Durées proposées, en minutes (de 15 min jusqu'à 4 heures / 240 min). */
+  readonly durationChoices = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240];
+
+  /** L'heure d'arrivée / fin calculée au format HH:mm. */
+  readonly formEndTime = computed<string>(() => {
     const start = this.formStartTime();
     const grid = this.grid();
     if (!start || !grid) {
       return '';
     }
     const endMin = this.toMinutes(start) + Number(this.formDuration());
-    const end = this.toLabel(Math.min(endMin, this.toMinutes(grid.dayEnd)));
-    return `Départ à ${this.frTime(start)} · Fin à ${this.frTime(end)}`;
+    return this.toLabel(Math.min(endMin, this.toMinutes(grid.dayEnd)));
   });
 
-  /** Durées proposées, en minutes. */
-  readonly durationChoices = [30, 45, 60, 90, 120];
+  /** Choix d'heures d'arrivée cohérents avec l'heure de départ choisie. */
+  readonly endTimeChoices = computed<{ time: string; label: string; duration: number }[]>(() => {
+    const start = this.formStartTime();
+    const grid = this.grid();
+    if (!start || !grid) return [];
+    const startMin = this.toMinutes(start);
+    const dayEndMin = this.toMinutes(grid.dayEnd);
+    const results: { time: string; label: string; duration: number }[] = [];
+    for (const d of this.durationChoices) {
+      const endMin = startMin + d;
+      if (endMin <= dayEndMin) {
+        const time = this.toLabel(endMin);
+        results.push({
+          time,
+          label: `${this.frTime(time)} (${this.humanDuration(d)})`,
+          duration: d
+        });
+      }
+    }
+    return results;
+  });
+
+  /** Aligne la durée lorsque l'utilisateur sélectionne directement une heure d'arrivée. */
+  changeEndTime(endTime: string): void {
+    if (!endTime || !this.formStartTime()) return;
+    const startMin = this.toMinutes(this.formStartTime());
+    const endMin = this.toMinutes(endTime);
+    const duration = endMin - startMin;
+    if (duration > 0) {
+      this.formDuration.set(duration);
+    }
+  }
+
+  /** Aligne la durée lorsque le select durée change. */
+  changeDuration(value: string | number): void {
+    const duration = Number(value);
+    if (Number.isFinite(duration) && duration > 0) {
+      this.formDuration.set(duration);
+    }
+  }
+
+  /** Résumé lisible du cours saisi : « Départ 07h30 · Arrivée 09h30 (2 h) ». */
+  readonly formSummary = computed<string>(() => {
+    const start = this.formStartTime();
+    const end = this.formEndTime();
+    if (!start || !end) {
+      return '';
+    }
+    return `Départ : ${this.frTime(start)} · Arrivée : ${this.frTime(end)} (${this.humanDuration(this.formDuration())})`;
+  });
 
   canSubmitForm(): boolean {
     return !!this.grid()?.editable

@@ -35,9 +35,15 @@
             <div class="day__list">
               @for (course of day.courses; track course.id) {
                 <article class="course">
-                  <div class="course__time numeric">
-                    <strong>{{ courseTime(course, 'start') }}</strong>
-                    <span>{{ courseTime(course, 'end') }}</span>
+                  <div class="course__time numeric" [attr.aria-label]="'De ' + courseTime(course, 'start') + ' à ' + courseTime(course, 'end')">
+                    <span class="course__time-item course__time-item--start" title="Heure de départ">
+                      <small class="course__time-label">Dép.</small>
+                      <strong>{{ courseTime(course, 'start') }}</strong>
+                    </span>
+                    <span class="course__time-item course__time-item--end" title="Heure d'arrivée">
+                      <small class="course__time-label">Arr.</small>
+                      <span>{{ courseTime(course, 'end') }}</span>
+                    </span>
                   </div>
                   <span class="course__marker" aria-hidden="true"></span>
                   <div class="course__body">

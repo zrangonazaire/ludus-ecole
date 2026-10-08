@@ -105,9 +105,15 @@
         <div class="course-list">
           @for (course of data.upcomingCourses; track course.id; let first = $first) {
             <article class="course" [class.course--next]="first">
-              <div class="course__time numeric">
-                <strong>{{ course.startsAt | date:'HH:mm' }}</strong>
-                <span>{{ course.endsAt | date:'HH:mm' }}</span>
+              <div class="course__time numeric" [attr.aria-label]="'De ' + (course.startsAt | date:'HH:mm') + ' à ' + (course.endsAt | date:'HH:mm')">
+                <span class="course__time-item course__time-item--start" title="Heure de départ">
+                  <small class="course__time-label">Dép.</small>
+                  <strong>{{ course.startsAt | date:'HH:mm' }}</strong>
+                </span>
+                <span class="course__time-item course__time-item--end" title="Heure d'arrivée">
+                  <small class="course__time-label">Arr.</small>
+                  <span>{{ course.endsAt | date:'HH:mm' }}</span>
+                </span>
               </div>
               <span class="course__marker" aria-hidden="true"></span>
               <div class="course__body">

@@ -33,9 +33,34 @@
 .day__list { display: grid; gap: var(--space-1); }
 .course { display: flex; align-items: stretch; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--border-light); }
 .course:last-child { border-bottom: 0; }
-.course__time { display: flex; flex-direction: column; align-items: flex-end; min-width: 54px; }
-.course__time strong { font-family: var(--font-display); font-size: var(--text-sm); }
-.course__time span { color: var(--text-light); font-size: 11px; }
+.course__time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 64px;
+  gap: 2px;
+}
+.course__time-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.course__time-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.course__time strong {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  color: var(--text-strong);
+}
+.course__time span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
 .course__marker { width: 12px; height: 12px; flex: 0 0 12px; margin-top: 15px; border: 3px solid var(--border); border-radius: 50%; }
 .course__body { flex: 1; min-width: 0; }
 .course h3 { margin: 0; font-size: var(--text-sm); }

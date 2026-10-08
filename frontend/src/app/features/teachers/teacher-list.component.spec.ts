@@ -64,11 +64,11 @@ describe('Liste des enseignants', () => {
     expect(el.textContent).toContain('3 enseignant(s)');
     // Le compte sans fiche est bien une ligne du tableau, avec l'action qui la crée.
     expect(el.textContent).toContain('Awa Koné');
-    const create = [...el.querySelectorAll('a')].find(a => a.textContent?.includes('Créer la fiche enseignant'));
+    const create = Array.from(el.querySelectorAll('a')).find(a => a.textContent?.includes('Créer la fiche enseignant'));
     expect(create?.getAttribute('href')).toBe('/teachers/new?accountId=account-1');
     expect(el.textContent).toContain('Compte Enseignant lié');
     // La fiche orpheline ne disparaît pas : elle reste rattachable.
-    expect([...el.querySelectorAll('button')].some(b => b.textContent?.includes('Rattacher un utilisateur'))).toBeTrue();
+    expect(Array.from(el.querySelectorAll('button')).some(b => b.textContent?.includes('Rattacher un utilisateur'))).toBeTrue();
   });
 
   it('shows plain states instead of the actions without the manage permission', () => {
@@ -76,7 +76,7 @@ describe('Liste des enseignants', () => {
     const el = render();
     expect(el.textContent).toContain('Fiche à créer');
     expect(el.textContent).toContain('Compte à rattacher');
-    expect([...el.querySelectorAll('a')].some(a => a.textContent?.includes('Créer la fiche enseignant'))).toBeFalse();
+    expect(Array.from(el.querySelectorAll('a')).some(a => a.textContent?.includes('Créer la fiche enseignant'))).toBeFalse();
   });
 
   it('searches again from the first page', () => {

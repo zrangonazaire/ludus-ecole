@@ -201,6 +201,62 @@
     &-submit { margin-top: var(--space-3); width: 100%; }
   }
 
+  .time-range-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    margin-bottom: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-input);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+    &__item {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    &__label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+
+    &__value {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    &__center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    &__arrow {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    &__dur {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--surface-sunken);
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+  }
+
   &__list {
     display: flex;
     flex-direction: column;
@@ -417,10 +473,29 @@
   }
 
   &__time {
-    font-size: var(--text-xs);
-    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text-strong);
+    background: rgba(255, 255, 255, 0.85);
+    padding: 2px 6px;
+    border-radius: var(--radius-xs, 4px);
+    width: fit-content;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+    &-icon {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+
+    &-text {
+      letter-spacing: -0.01em;
+    }
   }
 }
 
@@ -472,6 +547,44 @@
 
   &__title { margin: 0; font-weight: 600; color: var(--text-strong); }
   &__meta { margin: 2px 0 0; font-size: var(--text-sm); color: var(--text-muted); }
+
+  &__time-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: 4px;
+  }
+
+  &__time-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-input);
+    font-size: var(--text-sm);
+    color: var(--text-strong);
+
+    strong {
+      color: var(--brand);
+      font-weight: 700;
+    }
+  }
+
+  &__time-tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  &__arrow {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+  }
 
   /* Changer la salle d'un cours déjà posé, sans le retirer puis le reposer. */
   &__room {

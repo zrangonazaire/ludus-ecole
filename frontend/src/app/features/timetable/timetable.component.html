@@ -220,41 +220,70 @@
 
             <div class="palette__form-row">
               <div>
-                <label class="field__label" for="manualHour">Heure de départ</label>
+                <label class="field__label" for="manualHour">Heure départ</label>
                 <select id="manualHour" class="select"
                         [ngModel]="formHour()" name="manualHour"
                         (ngModelChange)="formHour.set($event)">
                   <option value="">— h —</option>
                   @for (hour of hourChoices(); track hour) {
-                    <option [value]="hour">{{ hour }} heures</option>
+                    <option [value]="hour">{{ hour }} h</option>
                   }
                 </select>
               </div>
               <div>
-                <label class="field__label" for="manualMinute">Minutes</label>
+                <label class="field__label" for="manualMinute">Minute départ</label>
                 <select id="manualMinute" class="select"
                         [ngModel]="formMinute()" name="manualMinute"
                         (ngModelChange)="formMinute.set($event)">
-                  <option value="">— mn —</option>
+                  <option value="">— min —</option>
                   @for (minute of minuteChoices; track minute) {
-                    <option [value]="minute">{{ minute }} mn</option>
+                    <option [value]="minute">{{ minute }} min</option>
                   }
                 </select>
               </div>
             </div>
 
-            @if (formSummary()) {
-              <p class="palette__form-summary">{{ formSummary() }}</p>
-            }
+            <div class="palette__form-row">
+              <div>
+                <label class="field__label" for="manualEndTime">Heure d'arrivée</label>
+                <select id="manualEndTime" class="select"
+                        [disabled]="!formStartTime()"
+                        [ngModel]="formEndTime()" name="manualEndTime"
+                        (ngModelChange)="changeEndTime($event)">
+                  <option value="">{{ formStartTime() ? '— Choisir —' : '— Départ d\'abord —' }}</option>
+                  @for (choice of endTimeChoices(); track choice.time) {
+                    <option [value]="choice.time">{{ choice.label }}</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <label class="field__label" for="manualDuration">Durée</label>
+                <select id="manualDuration" class="select"
+                        [ngModel]="formDuration()" name="manualDuration"
+                        (ngModelChange)="changeDuration($event)">
+                  @for (duration of durationChoices; track duration) {
+                    <option [value]="duration">{{ durationLabel(duration) }}</option>
+                  }
+                </select>
+              </div>
+            </div>
 
-            <label class="field__label" for="manualDuration">Durée</label>
-            <select id="manualDuration" class="select"
-                    [ngModel]="formDuration()" name="manualDuration"
-                    (ngModelChange)="formDuration.set($event)">
-              @for (duration of durationChoices; track duration) {
-                <option [value]="duration">{{ duration }} min</option>
-              }
-            </select>
+            @if (formStartTime() && formEndTime()) {
+              <div class="time-range-card" aria-live="polite">
+                <div class="time-range-card__item">
+                  <span class="time-range-card__label">Départ</span>
+                  <span class="time-range-card__value numeric">{{ frTime(formStartTime()) }}</span>
+                </div>
+                <div class="time-range-card__center" aria-hidden="true">
+                  <span class="time-range-card__arrow">→</span>
+                  <span class="time-range-card__dur">{{ humanDuration(formDuration()) }}</span>
+                </div>
+                <div class="time-range-card__item">
+                  <span class="time-range-card__label">Arrivée</span>
+                  <span class="time-range-card__value numeric">{{ frTime(formEndTime()) }}</span>
+                </div>
+              </div>
+            }
 
             @if (formError()) {
               <p class="palette__form-error" role="alert">{{ formError() }}</p>
@@ -347,8 +376,9 @@
                             {{ slot.subjectShortName || slot.subjectName }}
                           </button>
                           <span class="course__teacher">{{ slot.teacherName }}</span>
-                          <span class="course__time numeric">
-                            {{ hhmm(slot.startTime) }} – {{ hhmm(slot.endTime) }}
+                          <span class="course__time numeric" [title]="'Départ ' + frTime(slot.startTime) + ' – Arrivée ' + frTime(slot.endTime)">
+                            <span class="course__time-icon" aria-hidden="true">⏱</span>
+                            <span class="course__time-text">{{ frTime(slot.startTime) }} – {{ frTime(slot.endTime) }}</span>
                           </span>
                           @if (g.scope !== 'CLASSROOM') {
                             <span class="course__where">{{ slot.classroomName }}</span>
@@ -396,10 +426,18 @@
           <div class="detail">
             <div class="detail__body">
               <p class="detail__title">{{ slot.subjectName }}</p>
-              <p class="detail__meta numeric">
-                {{ dayLabel(slot.dayOfWeek) }} {{ hhmm(slot.startTime) }} –
-                {{ hhmm(slot.endTime) }} · {{ slot.teacherName }}
-              </p>
+              <div class="detail__time-row">
+                <span class="detail__time-chip numeric">
+                  <span class="detail__time-tag">Départ</span>
+                  <strong>{{ frTime(slot.startTime) }}</strong>
+                </span>
+                <span class="detail__arrow" aria-hidden="true">➔</span>
+                <span class="detail__time-chip numeric">
+                  <span class="detail__time-tag">Arrivée</span>
+                  <strong>{{ frTime(slot.endTime) }}</strong>
+                </span>
+                <span class="detail__meta">({{ dayLabel(slot.dayOfWeek) }} · {{ slot.teacherName }})</span>
+              </div>
               <p class="detail__meta" data-testid="course-room">
                 Classe : {{ slot.classroomName }} · Salle : {{ slot.roomName || 'Non affectée' }}
               </p>

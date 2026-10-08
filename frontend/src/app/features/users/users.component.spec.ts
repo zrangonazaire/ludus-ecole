@@ -7,7 +7,7 @@ import { AuthService } from '@core/auth/auth.service';
 import { NotificationService } from '@core/services/notification.service';
 
 describe('UsersComponent account', () => {
-  const user = { id: 'self', username: 'admin', email: 'admin@example.com', firstName: 'Aminata', lastName: 'Koné', status: 'ACTIVE', profiles: [{ id: 'admin-role', label: 'Administration' }], teacherProfile: false, hasTeacherRecord: false };
+  const user = { id: 'self', username: 'admin', email: 'admin@example.com', firstName: 'Aminata', lastName: 'Koné', phone: null, status: 'ACTIVE', profiles: [{ id: 'admin-role', label: 'Administration' }], teacherProfile: false, hasTeacherRecord: false };
   let http: HttpTestingController;
   let logout: jasmine.Spy;
   beforeEach(() => {
