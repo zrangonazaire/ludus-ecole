@@ -34,6 +34,14 @@ export interface SchoolSettings {
   studentNumberPattern: string;
   receiptNumberPattern: string;
   invoiceNumberPattern: string;
+  teacherNumberPattern?: string | null;
+  staffNumberPattern?: string | null;
+  studentSequenceResetPolicy?: 'ANNUAL' | 'CONTINUOUS';
+  studentSequenceCurrentNumber?: number | null;
+  studentSequenceNextNumber?: number | null;
+  studentSequenceStartNumber?: number | null;
+  studentSequencePreview?: string | null;
+  studentSequenceUpdatedAt?: string | null;
 }
 
 /** Ce que l'écran peut réellement envoyer en PUT /api/v1/school. */
@@ -57,6 +65,11 @@ export interface SchoolSettingsPayload {
   studentNumberPattern: string;
   receiptNumberPattern: string;
   invoiceNumberPattern: string;
+  teacherNumberPattern?: string | null;
+  staffNumberPattern?: string | null;
+  studentSequenceResetPolicy?: 'ANNUAL' | 'CONTINUOUS';
+  studentSequenceNextNumber?: number | null;
+  studentSequenceStartNumber?: number | null;
 }
 
 /**

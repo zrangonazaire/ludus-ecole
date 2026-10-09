@@ -61,4 +61,28 @@ public class SchoolSettingsResponse {
 
     @Schema(example = "INV-{year}-{seq:8}")
     private String invoiceNumberPattern;
+
+    @Schema(example = "ANNUAL", description = "Politique de réinitialisation : ANNUAL ou CONTINUOUS")
+    private String studentSequenceResetPolicy;
+
+    @Schema(description = "Dernier numéro attribué dans la séquence actuelle")
+    private Long studentSequenceCurrentNumber;
+
+    @Schema(description = "Prochain numéro qui sera attribué lors de la création d'un élève")
+    private Long studentSequenceNextNumber;
+
+    @Schema(description = "Numéro de départ pour les nouvelles années")
+    private Long studentSequenceStartNumber;
+
+    @Schema(example = "EDU-2026-000001", description = "Aperçu du prochain matricule généré")
+    private String studentSequencePreview;
+
+    @Schema(description = "Date et heure de la dernière attribution de numéro")
+    private java.time.OffsetDateTime studentSequenceUpdatedAt;
+
+    @Schema(example = "ENS-{year}-{seq:4}", description = "Gabarit du matricule enseignant")
+    private String teacherNumberPattern;
+
+    @Schema(example = "STF-{year}-{seq:4}", description = "Gabarit du matricule personnel")
+    private String staffNumberPattern;
 }

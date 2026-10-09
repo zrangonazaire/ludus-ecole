@@ -87,7 +87,15 @@ export class SchoolSettingsService {
       rankingEnabled: true,
       studentNumberPattern: 'EDU-{year}-{seq:6}',
       receiptNumberPattern: 'REC-{year}-{seq:8}',
-      invoiceNumberPattern: 'INV-{year}-{seq:8}'
+      invoiceNumberPattern: 'INV-{year}-{seq:8}',
+      teacherNumberPattern: 'ENS-{year}-{seq:4}',
+      staffNumberPattern: 'STF-{year}-{seq:4}',
+      studentSequenceResetPolicy: 'ANNUAL',
+      studentSequenceCurrentNumber: 12,
+      studentSequenceNextNumber: 13,
+      studentSequenceStartNumber: 1,
+      studentSequencePreview: `EDU-${new Date().getFullYear()}-000013`,
+      studentSequenceUpdatedAt: new Date().toISOString()
     };
   }
 

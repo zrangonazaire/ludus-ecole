@@ -15,18 +15,7 @@ import { ErrorStateComponent } from '@shared/ui/error-state/error-state.componen
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
 
 /**
- * Paramètres de l'établissement.
- *
- * <p>La plupart des champs ici sont des réglages silencieux : ils n'ouvrent
- * aucune route et ne créent aucune ligne, mais ils se répercutent partout —
- * la devise des reçus, l'échelle des moyennes, le classement des bulletins,
- * la numérotation des élèves et des reçus. C'est ce qui les rend dangereux :
- * changer l'échelle de notation n'invalide rien de déjà imprimé, mais il faut
- * le savoir avant de le faire, pas après.</p>
- *
- * <p>Deux valeurs ne se changent nulle part : le code, qui identifie
- * l'établissement, et le statut, qui décide de ce que le système accepte
- * encore. L'écran les montre, sans proposer de les éditer.</p>
+ * Paramètres de l'établissement : identité, coordonnées, préférences et gabarits de numérotation.
  */
 @Component({
   selector: 'eduops-administration',
@@ -53,9 +42,18 @@ export class AdministrationComponent implements OnInit {
   readonly code = signal('');
   readonly status = signal<string | null>(null);
 
+  // État de la séquence
+  readonly studentCurrentNumber = signal<number>(0);
+  readonly studentSequenceUpdatedAt = signal<string | null>(null);
+  readonly previewStudent = signal<string>('');
+  readonly previewNextStudent = signal<string>('');
+  readonly previewTeacher = signal<string>('');
+  readonly previewStaff = signal<string>('');
+  readonly patternError = signal<string | null>(null);
+
   readonly canManage = computed(() => this.auth.has(PERMISSIONS.SCHOOL_MANAGE));
 
-  readonly form = this.fb.nonNullable.group({
+  readonly form = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(200)]],
     legalName: ['', Validators.maxLength(255)],
     motto: ['', Validators.maxLength(255)],
@@ -74,11 +72,22 @@ export class AdministrationComponent implements OnInit {
     rankingEnabled: [true],
     studentNumberPattern: ['EDU-{year}-{seq:6}', [Validators.required, Validators.maxLength(80)]],
     receiptNumberPattern: ['REC-{year}-{seq:8}', [Validators.required, Validators.maxLength(80)]],
-    invoiceNumberPattern: ['INV-{year}-{seq:8}', [Validators.required, Validators.maxLength(80)]]
+    invoiceNumberPattern: ['INV-{year}-{seq:8}', [Validators.required, Validators.maxLength(80)]],
+    teacherNumberPattern: ['ENS-{year}-{seq:4}', [Validators.maxLength(80)]],
+    staffNumberPattern: ['STF-{year}-{seq:4}', [Validators.maxLength(80)]],
+    studentSequenceResetPolicy: ['ANNUAL' as 'ANNUAL' | 'CONTINUOUS', [Validators.required]],
+    studentSequenceNextNumber: [1 as number | null, [Validators.required, Validators.min(1)]],
+    studentSequenceStartNumber: [1 as number | null, [Validators.required, Validators.min(1)]]
   });
 
   ngOnInit(): void {
     this.load();
+
+    this.form.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.updatePreviews();
+      });
   }
 
   load(): void {
@@ -90,6 +99,9 @@ export class AdministrationComponent implements OnInit {
         next: (settings) => {
           this.code.set(settings.code);
           this.status.set(settings.status);
+          this.studentCurrentNumber.set(settings.studentSequenceCurrentNumber ?? 0);
+          this.studentSequenceUpdatedAt.set(settings.studentSequenceUpdatedAt ?? null);
+
           this.form.patchValue({
             name: settings.name ?? '',
             legalName: settings.legalName ?? '',
@@ -107,10 +119,17 @@ export class AdministrationComponent implements OnInit {
             timezone: settings.timezone ?? 'Africa/Abidjan',
             gradingScaleMax: Number(settings.gradingScaleMax ?? 20),
             rankingEnabled: settings.rankingEnabled,
-            studentNumberPattern: settings.studentNumberPattern ?? '',
-            receiptNumberPattern: settings.receiptNumberPattern ?? '',
-            invoiceNumberPattern: settings.invoiceNumberPattern ?? ''
+            studentNumberPattern: settings.studentNumberPattern ?? 'EDU-{year}-{seq:6}',
+            receiptNumberPattern: settings.receiptNumberPattern ?? 'REC-{year}-{seq:8}',
+            invoiceNumberPattern: settings.invoiceNumberPattern ?? 'INV-{year}-{seq:8}',
+            teacherNumberPattern: settings.teacherNumberPattern ?? 'ENS-{year}-{seq:4}',
+            staffNumberPattern: settings.staffNumberPattern ?? 'STF-{year}-{seq:4}',
+            studentSequenceResetPolicy: settings.studentSequenceResetPolicy ?? 'ANNUAL',
+            studentSequenceNextNumber: settings.studentSequenceNextNumber ?? 1,
+            studentSequenceStartNumber: settings.studentSequenceStartNumber ?? 1
           }, { emitEvent: false });
+
+          this.updatePreviews();
           this.form.markAsPristine();
           this.loading.set(false);
         },
@@ -119,6 +138,70 @@ export class AdministrationComponent implements OnInit {
           this.failed.set(true);
         }
       });
+  }
+
+  /** Met à jour la prévisualisation en temps réel des matricules. */
+  updatePreviews(): void {
+    const raw = this.form.getRawValue();
+    const studentPattern = raw.studentNumberPattern?.trim() ?? '';
+    const nextNum = Number(raw.studentSequenceNextNumber) || 1;
+    const schoolCode = this.code() || 'EDU';
+
+    if (!studentPattern.includes('{seq')) {
+      this.patternError.set('Le format doit obligatoirement inclure un compteur {seq} ou {seq:n}.');
+      this.previewStudent.set('');
+      this.previewNextStudent.set('');
+    } else {
+      this.patternError.set(null);
+      this.previewStudent.set(this.formatPattern(studentPattern, schoolCode, nextNum));
+      this.previewNextStudent.set(this.formatPattern(studentPattern, schoolCode, nextNum + 1));
+    }
+
+    const teacherPat = raw.teacherNumberPattern?.trim() || 'ENS-{year}-{seq:4}';
+    this.previewTeacher.set(this.formatPattern(teacherPat, schoolCode, 1));
+
+    const staffPat = raw.staffNumberPattern?.trim() || 'STF-{year}-{seq:4}';
+    this.previewStaff.set(this.formatPattern(staffPat, schoolCode, 1));
+  }
+
+  /** Insère un jeton de variable à l'emplacement actuel du champ gabarit élève. */
+  insertTag(tag: string, controlName: string = 'studentNumberPattern'): void {
+    const ctrl = this.form.get(controlName);
+    if (!ctrl) return;
+    const current = ctrl.value ?? '';
+    ctrl.setValue(current + tag);
+    ctrl.markAsDirty();
+    this.updatePreviews();
+  }
+
+  /** Définit le prochain numéro de séquence à une valeur spécifique (ex: 1). */
+  setNextNumberTo(val: number): void {
+    const ctrl = this.form.get('studentSequenceNextNumber');
+    if (!ctrl) return;
+    ctrl.setValue(val);
+    ctrl.markAsDirty();
+    this.updatePreviews();
+  }
+
+  private formatPattern(pattern: string, schoolCode: string, seqValue: number): string {
+    if (!pattern) return '';
+    const now = new Date();
+    const year = String(now.getFullYear());
+    const yy = year.substring(year.length - 2);
+
+    let res = pattern
+      .replace(/\{year\}/g, year)
+      .replace(/\{yy\}/g, yy)
+      .replace(/\{schoolCode\}/g, schoolCode)
+      .replace(/\{code\}/g, schoolCode);
+
+    res = res.replace(/\{seq(?::(\d+))?\}/g, (_, widthStr) => {
+      const width = widthStr ? parseInt(widthStr, 10) : 6;
+      const valStr = String(seqValue);
+      return valStr.length >= width ? valStr : '0'.repeat(width - valStr.length) + valStr;
+    });
+
+    return res;
   }
 
   /** Le formulaire s'écarte-t-il de ce que le serveur a réellement ? */
@@ -136,10 +219,12 @@ export class AdministrationComponent implements OnInit {
       return;
     }
     const v = this.form.getRawValue();
-    const blank = (value: string): string | null => value.trim() || null;
+    const blank = (value: string | null | undefined): string | null =>
+      value && value.trim() ? value.trim() : null;
+
     this.saving.set(true);
     this.settingsService.update({
-      name: v.name.trim(),
+      name: v.name?.trim() ?? '',
       legalName: blank(v.legalName),
       motto: blank(v.motto),
       registrationNumber: blank(v.registrationNumber),
@@ -149,21 +234,29 @@ export class AdministrationComponent implements OnInit {
       addressLine1: blank(v.addressLine1),
       addressLine2: blank(v.addressLine2),
       city: blank(v.city),
-      country: v.country.trim(),
-      currency: v.currency.trim().toUpperCase(),
-      locale: v.locale.trim(),
-      timezone: v.timezone.trim(),
-      gradingScaleMax: Number(v.gradingScaleMax),
-      rankingEnabled: v.rankingEnabled,
-      studentNumberPattern: v.studentNumberPattern.trim(),
-      receiptNumberPattern: v.receiptNumberPattern.trim(),
-      invoiceNumberPattern: v.invoiceNumberPattern.trim()
+      country: v.country?.trim() ?? "Cote d'Ivoire",
+      currency: (v.currency?.trim() ?? 'XOF').toUpperCase(),
+      locale: v.locale?.trim() ?? 'fr-CI',
+      timezone: v.timezone?.trim() ?? 'Africa/Abidjan',
+      gradingScaleMax: Number(v.gradingScaleMax ?? 20),
+      rankingEnabled: !!v.rankingEnabled,
+      studentNumberPattern: v.studentNumberPattern?.trim() ?? 'EDU-{year}-{seq:6}',
+      receiptNumberPattern: v.receiptNumberPattern?.trim() ?? 'REC-{year}-{seq:8}',
+      invoiceNumberPattern: v.invoiceNumberPattern?.trim() ?? 'INV-{year}-{seq:8}',
+      teacherNumberPattern: blank(v.teacherNumberPattern),
+      staffNumberPattern: blank(v.staffNumberPattern),
+      studentSequenceResetPolicy: v.studentSequenceResetPolicy ?? 'ANNUAL',
+      studentSequenceNextNumber: v.studentSequenceNextNumber != null ? Number(v.studentSequenceNextNumber) : null,
+      studentSequenceStartNumber: v.studentSequenceStartNumber != null ? Number(v.studentSequenceStartNumber) : 1
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
+      next: (updated) => {
         this.saving.set(false);
+        this.studentCurrentNumber.set(updated.studentSequenceCurrentNumber ?? 0);
+        this.studentSequenceUpdatedAt.set(updated.studentSequenceUpdatedAt ?? null);
         this.form.markAsPristine();
+        this.updatePreviews();
         this.notifications.success(
-          'Les paramètres de l’établissement sont enregistrés.', 'Paramètres mis à jour');
+          'Les paramètres et la numérotation sont enregistrés avec succès.', 'Paramètres mis à jour');
       },
       error: (err) => {
         this.saving.set(false);

@@ -47,10 +47,25 @@ public class StudentService {
         this.currentUser = currentUser;
     }
 
-    /** Allocates the next matricule from the school's configurable pattern. */
+    /** Allocates the next matricule from the school's configurable pattern and sequence settings. */
     public String generateStudentNumber(School school) {
+        String resetPolicy = NumberSequenceService.POLICY_ANNUAL;
+        long startNumber = 1L;
+        if (school.getSettings() != null) {
+            Object numberingObj = school.getSettings().get("numbering");
+            if (numberingObj instanceof Map<?, ?> numbering) {
+                if (numbering.get("studentResetPolicy") != null) {
+                    resetPolicy = String.valueOf(numbering.get("studentResetPolicy"));
+                }
+                if (numbering.get("studentStartNumber") != null) {
+                    try {
+                        startNumber = Long.parseLong(String.valueOf(numbering.get("studentStartNumber")));
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
         return numberSequenceService.next(school.getId(), SCOPE_STUDENT,
-                school.getStudentNumberPattern(), school.getCode());
+                school.getStudentNumberPattern(), school.getCode(), resetPolicy, startNumber);
     }
 
     /**

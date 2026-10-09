@@ -1,9 +1,11 @@
 package ci.company.eduops.school.service;
 
 import ci.company.eduops.audit.service.AuditService;
+import ci.company.eduops.common.dto.SequenceStatus;
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.exception.ErrorCode;
 import ci.company.eduops.common.tenant.TenantContext;
+import ci.company.eduops.common.util.NumberSequenceService;
 import ci.company.eduops.school.domain.School;
 import ci.company.eduops.school.dto.request.AppearanceUpdateRequest;
 import ci.company.eduops.school.dto.request.SchoolSettingsUpdateRequest;
@@ -15,6 +17,7 @@ import ci.company.eduops.security.service.Permissions;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -46,13 +49,16 @@ public class SchoolSettingsService {
     private final SchoolRepository schoolRepository;
     private final CurrentUser currentUser;
     private final AuditService auditService;
+    private final NumberSequenceService numberSequenceService;
 
     public SchoolSettingsService(SchoolRepository schoolRepository,
                                  CurrentUser currentUser,
-                                 AuditService auditService) {
+                                 AuditService auditService,
+                                 NumberSequenceService numberSequenceService) {
         this.schoolRepository = schoolRepository;
         this.currentUser = currentUser;
         this.auditService = auditService;
+        this.numberSequenceService = numberSequenceService;
     }
 
     @Transactional(readOnly = true)
@@ -66,10 +72,76 @@ public class SchoolSettingsService {
         currentUser.requirePermission(Permissions.SCHOOL_MANAGE);
         School school = requireSchool();
 
+        // Validation des formats de numérotation
+        if (request.getStudentNumberPattern() != null) {
+            numberSequenceService.validatePattern(request.getStudentNumberPattern());
+        }
+        if (request.getTeacherNumberPattern() != null && !request.getTeacherNumberPattern().isBlank()) {
+            numberSequenceService.validatePattern(request.getTeacherNumberPattern());
+        }
+        if (request.getStaffNumberPattern() != null && !request.getStaffNumberPattern().isBlank()) {
+            numberSequenceService.validatePattern(request.getStaffNumberPattern());
+        }
+
         Map<String, Object> before = new LinkedHashMap<>();
         Map<String, Object> after = new LinkedHashMap<>();
 
         text(school, request, before, after);
+
+        // Gestion des réglages de numérotation et séquence
+        Map<String, Object> settings = new LinkedHashMap<>(
+                school.getSettings() == null ? Map.of() : school.getSettings());
+        Map<String, Object> numbering = numberingValues(settings);
+
+        String oldPolicy = numbering.get("studentResetPolicy") != null
+                ? String.valueOf(numbering.get("studentResetPolicy")) : NumberSequenceService.POLICY_ANNUAL;
+        String newPolicy = request.getStudentSequenceResetPolicy() != null && !request.getStudentSequenceResetPolicy().isBlank()
+                ? request.getStudentSequenceResetPolicy().trim().toUpperCase() : oldPolicy;
+
+        if (!Objects.equals(oldPolicy, newPolicy)) {
+            before.put("studentSequenceResetPolicy", oldPolicy);
+            after.put("studentSequenceResetPolicy", newPolicy);
+            numbering.put("studentResetPolicy", newPolicy);
+        }
+
+        if (request.getStudentSequenceStartNumber() != null) {
+            Object oldStart = numbering.get("studentStartNumber");
+            if (!Objects.equals(oldStart, request.getStudentSequenceStartNumber())) {
+                before.put("studentSequenceStartNumber", oldStart);
+                after.put("studentSequenceStartNumber", request.getStudentSequenceStartNumber());
+                numbering.put("studentStartNumber", request.getStudentSequenceStartNumber());
+            }
+        }
+
+        if (request.getTeacherNumberPattern() != null && !request.getTeacherNumberPattern().isBlank()) {
+            Object oldTeacher = numbering.get("teacherNumberPattern");
+            String newTeacher = request.getTeacherNumberPattern().trim();
+            if (!Objects.equals(oldTeacher, newTeacher)) {
+                before.put("teacherNumberPattern", oldTeacher);
+                after.put("teacherNumberPattern", newTeacher);
+                numbering.put("teacherNumberPattern", newTeacher);
+            }
+        }
+
+        if (request.getStaffNumberPattern() != null && !request.getStaffNumberPattern().isBlank()) {
+            Object oldStaff = numbering.get("staffNumberPattern");
+            String newStaff = request.getStaffNumberPattern().trim();
+            if (!Objects.equals(oldStaff, newStaff)) {
+                before.put("staffNumberPattern", oldStaff);
+                after.put("staffNumberPattern", newStaff);
+                numbering.put("staffNumberPattern", newStaff);
+            }
+        }
+
+        // Si le prochain numéro de séquence est explicitement configuré par l'utilisateur
+        if (request.getStudentSequenceNextNumber() != null) {
+            numberSequenceService.setNextNumber(school.getId(), "STUDENT", newPolicy,
+                    request.getStudentSequenceNextNumber());
+            after.put("studentSequenceNextNumber", request.getStudentSequenceNextNumber());
+        }
+
+        settings.put("numbering", numbering);
+        school.setSettings(settings);
 
         School saved = schoolRepository.save(school);
 
@@ -81,12 +153,6 @@ public class SchoolSettingsService {
 
     /**
      * Apparence et région telles qu'enregistrées pour l'établissement.
-     *
-     * <p>Couleur et taille de police vivent dans {@code settings.appearance} :
-     * des réglages de présentation qui n'ont pas de colonne dédiée, mais qui
-     * n'ont plus à rester dans le navigateur d'un seul poste. Devise, langue
-     * et fuseau sont les colonnes officielles — les changer ici change les
-     * documents, pas seulement l'affichage.</p>
      */
     @Transactional(readOnly = true)
     public AppearanceResponse appearance() {
@@ -128,19 +194,100 @@ public class SchoolSettingsService {
         return toAppearance(saved);
     }
 
-    /**
-     * Copie des réglages d'apparence — jamais le map vivant de l'entité.
-     *
-     * <p>Une colonne {@code jsonb} n'est réécrite que si la référence du champ
-     * change : modifier en place le map de l'entité est un changement que le
-     * contrôle de saleté de Hibernate ne voit pas. On travaille donc sur une
-     * copie, et on la repose dans l'entité seulement s'il y a quelque chose à
-     * enregistrer.</p>
-     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> previewSequence(String pattern, Long nextNumber, String resetPolicy) {
+        currentUser.requirePermission(Permissions.SCHOOL_VIEW);
+        School school = requireSchool();
+        String effectivePattern = pattern != null && !pattern.isBlank()
+                ? pattern.trim()
+                : school.getStudentNumberPattern();
+        numberSequenceService.validatePattern(effectivePattern);
+
+        Map<String, Object> settings = school.getSettings() == null ? Map.of() : school.getSettings();
+        Map<String, Object> numbering = numberingValues(settings);
+        String policy = resetPolicy != null && !resetPolicy.isBlank()
+                ? resetPolicy.trim().toUpperCase()
+                : (numbering.get("studentResetPolicy") != null ? String.valueOf(numbering.get("studentResetPolicy")) : NumberSequenceService.POLICY_ANNUAL);
+
+        long startNumber = 1L;
+        if (numbering.get("studentStartNumber") != null) {
+            try {
+                startNumber = Long.parseLong(String.valueOf(numbering.get("studentStartNumber")));
+            } catch (NumberFormatException ignored) {}
+        }
+
+        long next = nextNumber != null && nextNumber > 0
+                ? nextNumber
+                : numberSequenceService.getSequenceStatus(school.getId(), "STUDENT", policy,
+                        startNumber, effectivePattern, school.getCode()).nextValue();
+
+        String currentYear = String.valueOf(LocalDate.now().getYear());
+        String preview = numberSequenceService.format(effectivePattern, currentYear, school.getCode(), next);
+        String nextPreview = numberSequenceService.format(effectivePattern, currentYear, school.getCode(), next + 1);
+
+        return Map.of(
+                "valid", true,
+                "preview", preview,
+                "nextPreview", nextPreview,
+                "nextNumber", next,
+                "pattern", effectivePattern
+        );
+    }
+
+    @Transactional
+    public SequenceStatus updateSequence(String scope, Long nextNumber, String resetPolicy) {
+        currentUser.requirePermission(Permissions.SCHOOL_MANAGE);
+        School school = requireSchool();
+        String effectiveScope = scope != null ? scope.toUpperCase() : "STUDENT";
+        Map<String, Object> settings = new LinkedHashMap<>(school.getSettings() == null ? Map.of() : school.getSettings());
+        Map<String, Object> numbering = numberingValues(settings);
+
+        String policy = resetPolicy != null && !resetPolicy.isBlank()
+                ? resetPolicy.trim().toUpperCase()
+                : (numbering.get("studentResetPolicy") != null ? String.valueOf(numbering.get("studentResetPolicy")) : NumberSequenceService.POLICY_ANNUAL);
+
+        if (nextNumber != null) {
+            numberSequenceService.setNextNumber(school.getId(), effectiveScope, policy, nextNumber);
+            auditService.logUpdate("NumberSequence", school.getId(), effectiveScope,
+                    Map.of("scope", effectiveScope),
+                    Map.of("nextNumber", nextNumber, "resetPolicy", policy));
+        }
+
+        if ("STUDENT".equalsIgnoreCase(effectiveScope) && resetPolicy != null) {
+            numbering.put("studentResetPolicy", policy);
+            settings.put("numbering", numbering);
+            school.setSettings(settings);
+            schoolRepository.save(school);
+        }
+
+        long startNumber = 1L;
+        if (numbering.get("studentStartNumber") != null) {
+            try {
+                startNumber = Long.parseLong(String.valueOf(numbering.get("studentStartNumber")));
+            } catch (NumberFormatException ignored) {}
+        }
+        String pattern = "STUDENT".equalsIgnoreCase(effectiveScope)
+                ? school.getStudentNumberPattern()
+                : "{schoolCode}-{year}-{seq:6}";
+
+        return numberSequenceService.getSequenceStatus(
+                school.getId(), effectiveScope, policy, startNumber, pattern, school.getCode());
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> appearanceValues(Map<String, Object> settings) {
         Map<String, Object> out = new LinkedHashMap<>();
         Object existing = settings.get("appearance");
+        if (existing instanceof Map<?, ?> map) {
+            map.forEach((key, value) -> out.put(String.valueOf(key), value));
+        }
+        return out;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> numberingValues(Map<String, Object> settings) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        Object existing = settings.get("numbering");
         if (existing instanceof Map<?, ?> map) {
             map.forEach((key, value) -> out.put(String.valueOf(key), value));
         }
@@ -175,12 +322,6 @@ public class SchoolSettingsService {
                 .orElseThrow(() -> BusinessException.of(ErrorCode.SCHOOL_NOT_FOUND));
     }
 
-    /**
-     * Applique chaque champ texte : comparé avant d'être écrit, journalisé
-     * seulement s'il change. Comparer évite à la fois de réveiller le
-     * verrouillage optimiste pour rien et d'écrire un audit plein de
-     * « changements » identiques à l'ancienne valeur.
-     */
     private void text(School school, SchoolSettingsUpdateRequest request,
                       Map<String, Object> before, Map<String, Object> after) {
         change(school, request.getName(), school.getName(), "name",
@@ -272,6 +413,39 @@ public class SchoolSettingsService {
         response.setStudentNumberPattern(school.getStudentNumberPattern());
         response.setReceiptNumberPattern(school.getReceiptNumberPattern());
         response.setInvoiceNumberPattern(school.getInvoiceNumberPattern());
+
+        Map<String, Object> settings = school.getSettings() == null ? Map.of() : school.getSettings();
+        Map<String, Object> numbering = numberingValues(settings);
+
+        String resetPolicy = numbering.get("studentResetPolicy") != null
+                ? String.valueOf(numbering.get("studentResetPolicy"))
+                : NumberSequenceService.POLICY_ANNUAL;
+        long startNumber = 1L;
+        if (numbering.get("studentStartNumber") != null) {
+            try {
+                startNumber = Long.parseLong(String.valueOf(numbering.get("studentStartNumber")));
+            } catch (NumberFormatException ignored) {}
+        }
+        String teacherPattern = numbering.get("teacherNumberPattern") != null
+                ? String.valueOf(numbering.get("teacherNumberPattern"))
+                : "ENS-{year}-{seq:4}";
+        String staffPattern = numbering.get("staffNumberPattern") != null
+                ? String.valueOf(numbering.get("staffNumberPattern"))
+                : "STF-{year}-{seq:4}";
+
+        SequenceStatus studentSeq = numberSequenceService.getSequenceStatus(
+                school.getId(), "STUDENT", resetPolicy, startNumber,
+                school.getStudentNumberPattern(), school.getCode());
+
+        response.setStudentSequenceResetPolicy(studentSeq.resetPolicy());
+        response.setStudentSequenceCurrentNumber(studentSeq.currentValue());
+        response.setStudentSequenceNextNumber(studentSeq.nextValue());
+        response.setStudentSequenceStartNumber(studentSeq.startNumber());
+        response.setStudentSequencePreview(studentSeq.preview());
+        response.setStudentSequenceUpdatedAt(studentSeq.updatedAt());
+        response.setTeacherNumberPattern(teacherPattern);
+        response.setStaffNumberPattern(staffPattern);
+
         return response;
     }
 }

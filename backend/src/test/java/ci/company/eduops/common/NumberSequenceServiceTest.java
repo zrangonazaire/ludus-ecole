@@ -66,4 +66,45 @@ class NumberSequenceServiceTest {
                 .doesNotContain("0").doesNotContain("1");
         assertThat(generator.generate()).isNotEqualTo(code);
     }
+
+    @Test
+    @DisplayName("{code} placeholder is accepted as alias for {schoolCode}")
+    void supportsCodeAlias() {
+        assertThat(service.format("{code}-{year}-{seq:4}", "2026", "LUD", 1))
+                .isEqualTo("LUD-2026-0001");
+    }
+
+    @Test
+    @DisplayName("validatePattern succeeds for valid patterns")
+    void validatesValidPattern() {
+        service.validatePattern("LUD-{year}-{seq:5}");
+        service.validatePattern("{schoolCode}-{yy}-{seq:4}");
+        service.validatePattern("MAT-{seq}");
+    }
+
+    @Test
+    @DisplayName("validatePattern fails when {seq} is missing")
+    void rejectsPatternWithoutSequence() {
+        org.junit.jupiter.api.Assertions.assertThrows(
+                ci.company.eduops.common.exception.BusinessException.class,
+                () -> service.validatePattern("EDU-2026-STUDENT")
+        );
+    }
+
+    @Test
+    @DisplayName("validatePattern fails when pattern is blank")
+    void rejectsBlankPattern() {
+        org.junit.jupiter.api.Assertions.assertThrows(
+                ci.company.eduops.common.exception.BusinessException.class,
+                () -> service.validatePattern("   ")
+        );
+    }
+
+    @Test
+    @DisplayName("preview renders preview matricule")
+    void previewRendersCorrectly() {
+        String currentYear = String.valueOf(java.time.LocalDate.now().getYear());
+        assertThat(service.preview("EDU-{year}-{seq:6}", "GSH", 45))
+                .isEqualTo("EDU-" + currentYear + "-000045");
+    }
 }

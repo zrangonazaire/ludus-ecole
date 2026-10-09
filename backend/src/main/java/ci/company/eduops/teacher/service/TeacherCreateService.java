@@ -37,7 +37,14 @@ public class TeacherCreateService {
         }
         var teacher = new Teacher();
         teacher.setSchool(school);
-        teacher.setEmployeeNumber(numbers.next(schoolId, "TEACHER", "ENS-{year}-{seq:4}", school.getCode()));
+        String teacherPattern = "ENS-{year}-{seq:4}";
+        if (school.getSettings() != null) {
+            Object numberingObj = school.getSettings().get("numbering");
+            if (numberingObj instanceof Map<?, ?> numbering && numbering.get("teacherNumberPattern") != null) {
+                teacherPattern = String.valueOf(numbering.get("teacherNumberPattern"));
+            }
+        }
+        teacher.setEmployeeNumber(numbers.next(schoolId, "TEACHER", teacherPattern, school.getCode()));
         TeacherAccountService.copyIdentity(teacher, user);
         teacher.setSpeciality(clean(request.speciality()));
         teacher.setQualification(clean(request.qualification()));

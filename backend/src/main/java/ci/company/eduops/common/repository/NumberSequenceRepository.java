@@ -23,4 +23,8 @@ public interface NumberSequenceRepository extends JpaRepository<NumberSequence, 
     Optional<NumberSequence> lockBySchoolIdAndScopeAndYearPart(@Param("schoolId") UUID schoolId,
                                                                @Param("scope") String scope,
                                                                @Param("yearPart") String yearPart);
+
+    Optional<NumberSequence> findBySchoolIdAndScopeAndYearPart(UUID schoolId, String scope, String yearPart);
+
+    java.util.List<NumberSequence> findBySchoolIdAndScopeOrderByYearPartDesc(UUID schoolId, String scope);
 }

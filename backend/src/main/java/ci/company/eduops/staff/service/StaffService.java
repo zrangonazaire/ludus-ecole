@@ -136,8 +136,15 @@ public class StaffService {
 
         Staff staff = new Staff();
         staff.setSchool(school);
+        String staffPattern = NUMBER_PATTERN;
+        if (school.getSettings() != null) {
+            Object numberingObj = school.getSettings().get("numbering");
+            if (numberingObj instanceof Map<?, ?> numbering && numbering.get("staffNumberPattern") != null) {
+                staffPattern = String.valueOf(numbering.get("staffNumberPattern"));
+            }
+        }
         staff.setEmployeeNumber(numberSequenceService.next(
-                schoolId, NUMBER_SCOPE, NUMBER_PATTERN, school.getCode()));
+                schoolId, NUMBER_SCOPE, staffPattern, school.getCode()));
         staff.setStatus(StaffStatus.ACTIVE);
         apply(staff, request, schoolId);
 

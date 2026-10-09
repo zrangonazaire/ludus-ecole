@@ -166,27 +166,153 @@
         </div>
       </fieldset>
 
+      <!-- Section Génération des Matricules & Séquence d'Attribution -->
       <fieldset class="card" [disabled]="!canManage() || saving()">
         <div class="card__body">
-          <h2 class="section-title">Numérotation</h2>
+          <h2 class="section-title">Génération des matricules & Séquence d'attribution</h2>
           <p class="section-note">
-            Gabarits des numéros attribués automatiquement. Variables
-            disponibles : <code>{{ '{year}' }}</code> (année en cours) et
-            <code>{{ '{seq:n}' }}</code> (séquence sur n chiffres).
+            Configurez le gabarit des matricules et la séquence d'attribution automatique pour les élèves,
+            ainsi que les autres formats de numérotation de l'établissement.
           </p>
-          <div class="grid">
-            <label class="field">
-              <span>Matricule élève *</span>
-              <input class="input mono" formControlName="studentNumberPattern" maxlength="80" />
-            </label>
-            <label class="field">
-              <span>Numéro de reçu *</span>
-              <input class="input mono" formControlName="receiptNumberPattern" maxlength="80" />
-            </label>
-            <label class="field">
-              <span>Numéro de facture *</span>
-              <input class="input mono" formControlName="invoiceNumberPattern" maxlength="80" />
-            </label>
+
+          <!-- Bloc Matricule Élève -->
+          <div class="matricule-box">
+            <h3 class="matricule-box__title">Matricule Élève</h3>
+
+            <div class="grid grid--2">
+              <div>
+                <label class="field">
+                  <span>Format du matricule élève *</span>
+                  <input class="input mono" formControlName="studentNumberPattern" maxlength="80"
+                         placeholder="ex: EDU-{year}-{seq:6}" />
+                  @if (patternError()) {
+                    <span class="field__error">{{ patternError() }}</span>
+                  }
+                  @if (invalid('studentNumberPattern')) {
+                    <span class="field__error">Le format de matricule est obligatoire (max 80 car.).</span>
+                  }
+                </label>
+
+                <div class="variable-tags">
+                  <span class="variable-tags__label">Variables disponibles :</span>
+                  <div class="variable-tags__list">
+                    <button type="button" class="tag-btn" (click)="insertTag('{schoolCode}')" title="Code court de l'établissement">&#123;schoolCode&#125;</button>
+                    <button type="button" class="tag-btn" (click)="insertTag('{year}')" title="Année en cours sur 4 chiffres (ex: 2026)">&#123;year&#125;</button>
+                    <button type="button" class="tag-btn" (click)="insertTag('{yy}')" title="Année sur 2 chiffres (ex: 26)">&#123;yy&#125;</button>
+                    <button type="button" class="tag-btn" (click)="insertTag('{seq:4}')" title="Compteur sur 4 chiffres (ex: 0001)">&#123;seq:4&#125;</button>
+                    <button type="button" class="tag-btn" (click)="insertTag('{seq:5}')" title="Compteur sur 5 chiffres (ex: 00001)">&#123;seq:5&#125;</button>
+                    <button type="button" class="tag-btn" (click)="insertTag('{seq:6}')" title="Compteur sur 6 chiffres (ex: 000001)">&#123;seq:6&#125;</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Live Preview Card -->
+              <div class="preview-card" [class.preview-card--error]="!!patternError()">
+                <div class="preview-card__header">
+                  <span class="preview-card__badge">Aperçu en direct</span>
+                  <span class="preview-card__mode">
+                    {{ form.get('studentSequenceResetPolicy')?.value === 'CONTINUOUS' ? 'Numérotation continue' : 'Réinitialisation annuelle' }}
+                  </span>
+                </div>
+                <div class="preview-card__body">
+                  <div class="preview-card__item">
+                    <span class="preview-card__label">Prochain matricule attribué :</span>
+                    <span class="preview-card__value mono">{{ previewStudent() || '—' }}</span>
+                  </div>
+                  <div class="preview-card__item">
+                    <span class="preview-card__label">Matricule suivant :</span>
+                    <span class="preview-card__subvalue mono">{{ previewNextStudent() || '—' }}</span>
+                  </div>
+                </div>
+                <div class="preview-card__footer">
+                  <span>Dernier numéro attribué : <strong>{{ studentCurrentNumber() }}</strong></span>
+                  @if (studentSequenceUpdatedAt()) {
+                    <span>Dernière attribution : {{ studentSequenceUpdatedAt() | date:'short' }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Configuration de la séquence d'attribution -->
+            <div class="sequence-config">
+              <h4 class="sequence-config__title">Configuration de la séquence d'attribution</h4>
+              <p class="sequence-config__note">
+                Définissez la politique de remise à zéro et ajustez le compteur d'attribution pour calibrer le prochain matricule.
+              </p>
+
+              <div class="grid grid--3">
+                <div class="field">
+                  <span>Politique de réinitialisation *</span>
+                  <div class="policy-radio-group">
+                    <label class="policy-radio">
+                      <input type="radio" formControlName="studentSequenceResetPolicy" value="ANNUAL" />
+                      <div>
+                        <strong>Annuelle</strong>
+                        <small>Remise à zéro chaque nouvelle année</small>
+                      </div>
+                    </label>
+                    <label class="policy-radio">
+                      <input type="radio" formControlName="studentSequenceResetPolicy" value="CONTINUOUS" />
+                      <div>
+                        <strong>Continue</strong>
+                        <small>Numérotation continue sans remise à zéro</small>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <label class="field">
+                  <span>Prochain numéro à attribuer *</span>
+                  <div class="input-with-action">
+                    <input class="input mono" type="number" min="1" formControlName="studentSequenceNextNumber" />
+                    <button type="button" class="btn btn--sm btn--ghost" (click)="setNextNumberTo(1)" title="Remettre à 1">
+                      Remettre à 1
+                    </button>
+                  </div>
+                  <span class="field__hint">Numéro exact qui sera donné au prochain élève créé.</span>
+                  @if (invalid('studentSequenceNextNumber')) {
+                    <span class="field__error">Le prochain numéro doit être supérieur ou égal à 1.</span>
+                  }
+                </label>
+
+                <label class="field">
+                  <span>Valeur de départ pour nouvelles années</span>
+                  <input class="input mono" type="number" min="1" formControlName="studentSequenceStartNumber" />
+                  <span class="field__hint">Valeur par défaut au début d'un nouveau cycle (défaut : 1).</span>
+                  @if (invalid('studentSequenceStartNumber')) {
+                    <span class="field__error">La valeur de départ doit être supérieure ou égale à 1.</span>
+                  }
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Autres gabarits de numérotation -->
+          <div class="other-numberings">
+            <h3 class="other-numberings__title">Autres gabarits de numérotation</h3>
+            <div class="grid">
+              <label class="field">
+                <span>Matricule enseignant</span>
+                <input class="input mono" formControlName="teacherNumberPattern" maxlength="80" />
+                <span class="field__preview">Aperçu : <code class="mono">{{ previewTeacher() }}</code></span>
+              </label>
+
+              <label class="field">
+                <span>Matricule personnel</span>
+                <input class="input mono" formControlName="staffNumberPattern" maxlength="80" />
+                <span class="field__preview">Aperçu : <code class="mono">{{ previewStaff() }}</code></span>
+              </label>
+
+              <label class="field">
+                <span>Numéro de reçu *</span>
+                <input class="input mono" formControlName="receiptNumberPattern" maxlength="80" />
+              </label>
+
+              <label class="field">
+                <span>Numéro de facture *</span>
+                <input class="input mono" formControlName="invoiceNumberPattern" maxlength="80" />
+              </label>
+            </div>
           </div>
         </div>
       </fieldset>

@@ -3,6 +3,7 @@ package ci.company.eduops.school.dto.request;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -92,4 +93,24 @@ public class SchoolSettingsUpdateRequest {
     @NotBlank
     @Size(max = 80)
     private String invoiceNumberPattern;
+
+    /** Mode de réinitialisation de la séquence élève : ANNUAL ou CONTINUOUS. */
+    @Pattern(regexp = "ANNUAL|CONTINUOUS", message = "La politique de réinitialisation doit être ANNUAL ou CONTINUOUS")
+    private String studentSequenceResetPolicy;
+
+    /** Prochain numéro de séquence à attribuer pour les élèves (optionnel). */
+    @Min(value = 1, message = "Le prochain numéro doit être supérieur ou égal à 1")
+    private Long studentSequenceNextNumber;
+
+    /** Numéro de départ pour les nouvelles années (optionnel, défaut 1). */
+    @Min(value = 1, message = "Le numéro de départ doit être supérieur ou égal à 1")
+    private Long studentSequenceStartNumber;
+
+    /** Gabarit optionnel pour le matricule enseignant (défaut ENS-{year}-{seq:4}). */
+    @Size(max = 80)
+    private String teacherNumberPattern;
+
+    /** Gabarit optionnel pour le matricule personnel (défaut STF-{year}-{seq:4}). */
+    @Size(max = 80)
+    private String staffNumberPattern;
 }
