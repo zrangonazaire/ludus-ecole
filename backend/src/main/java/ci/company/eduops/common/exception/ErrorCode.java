@@ -37,6 +37,7 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Invalid username or password."),
     ACCOUNT_LOCKED(HttpStatus.LOCKED, "Account temporarily locked after too many failed attempts."),
     ACCOUNT_DISABLED(HttpStatus.FORBIDDEN, "This account is disabled."),
+    EMAIL_NOT_VERIFIED(HttpStatus.FORBIDDEN, "The email address has not been confirmed yet."),
     USER_LOGIN_ALREADY_USED(HttpStatus.CONFLICT, "This username or email is already used."),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "The token has expired."),
     TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "The token is invalid."),

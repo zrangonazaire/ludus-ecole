@@ -23,14 +23,14 @@ spring:
   mail:
     # Mail desactive pour le demarrage (eduops.mail.enabled=false plus bas).
     # Host local pour ne pas bloquer le demarrage sur un nom non resolvable.
-    host: "localhost"
-    port: 587
-    username: ""
-    password: "A_COMPLETER"
+    host: "mail.soocloo.com"
+    port: 465
+    username: "info-ecole@soocloo.com"
+    password: "Soocloo@2026"
     properties:
-      mail.smtp.auth: false
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
       mail.smtp.starttls.enable: false
-      mail.smtp.starttls.required: false
 
 server:
   forward-headers-strategy: framework
@@ -73,8 +73,8 @@ eduops:
   mail:
     provider: SMTP
     # No SMTP provider configured yet. Enable together with health.mail later.
-    enabled: false
-    from: "no-reply@soocloo.com"
+    enabled: true
+    from: "info-ecole@soocloo.com"
   cors:
     allowed-origins: "https://soocloo.com,https://www.soocloo.com"
   app:

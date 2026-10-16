@@ -1,7 +1,5 @@
 package ci.company.eduops.common.tenant;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -12,9 +10,12 @@ import org.springframework.aop.support.AopUtils;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
+import java.sql.PreparedStatement;
 
 /**
  * Applies the tenant to the database session at the start of every transaction.
@@ -38,8 +39,11 @@ public class TenantTransactionAspect {
 
     private static final Logger log = LoggerFactory.getLogger(TenantTransactionAspect.class);
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final JdbcTemplate jdbcTemplate;
+
+    public TenantTransactionAspect(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     @Around("@annotation(org.springframework.transaction.annotation.Transactional)"
             + " || @within(org.springframework.transaction.annotation.Transactional)")
@@ -60,22 +64,22 @@ public class TenantTransactionAspect {
     private void applyToSession(boolean annotatedBypass) {
         try {
             if (annotatedBypass || TenantContext.isBypassEnabled()) {
-                entityManager
-                        .createNativeQuery("SELECT set_config('app.bypass_rls', 'on', true)")
-                        .getSingleResult();
+                jdbcTemplate.execute("SELECT set_config('app.bypass_rls', 'on', true)");
                 return;
             }
 
             var schoolId = TenantContext.getSchoolId();
             // set_config(..., true) is the function form of SET LOCAL, and unlike
             // SET LOCAL it accepts a bind parameter.
-            entityManager
-                    .createNativeQuery("SELECT set_config('app.current_school_id', :value, true)")
-                    .setParameter("value", schoolId == null ? "" : schoolId.toString())
-                    .getSingleResult();
-            entityManager
-                    .createNativeQuery("SELECT set_config('app.bypass_rls', 'off', true)")
-                    .getSingleResult();
+            ConnectionCallback<Boolean> setSchoolId = conn -> {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT set_config('app.current_school_id', ?, true)")) {
+                    ps.setString(1, schoolId == null ? "" : schoolId.toString());
+                    return ps.execute();
+                }
+            };
+            jdbcTemplate.execute(setSchoolId);
+            jdbcTemplate.execute("SELECT set_config('app.bypass_rls', 'off', true)");
         } catch (RuntimeException ex) {
             // Never let tenant plumbing break a request: RLS still denies by
             // default when the setting is absent, so failing closed is safe.

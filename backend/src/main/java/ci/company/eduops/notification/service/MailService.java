@@ -24,4 +24,12 @@ public interface MailService {
 
     /** Sends an HTML message. */
     void sendHtml(String to, String subject, String htmlBody);
+
+    /**
+     * Sends a multipart message: HTML plus a plain-text alternative. Mail
+     * clients that block HTML, and spam filters, both prefer it.
+     */
+    default void sendHtml(String to, String subject, String htmlBody, String textBody) {
+        sendHtml(to, subject, htmlBody);
+    }
 }

@@ -13,7 +13,7 @@ spring:
     # Overridable via environment variables; the fallbacks match the
     # credentials in docker/docker-compose.yml. Spring does not read .env
     # files, so export the variable (or set it in your IDE) to override.
-    url: "jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:55432}/${POSTGRES_DB:eduops}"
+    url: "jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:55532}/${POSTGRES_DB:eduops}"
     username: "${POSTGRES_USER:eduops}"
     password: "${POSTGRES_PASSWORD:eduops_local_pwd}"
     driver-class-name: org.postgresql.Driver
@@ -69,16 +69,17 @@ spring:
       key-prefix: "eduops:"
 
   mail:
-    host: localhost
-    port: 51025
-    username: "eduops"
-    password: ""
+    host: ${MAIL_HOST:mail.soocloo.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:info-ecole@soocloo.com}
+    password: ${MAIL_PASSWORD:Soocloo@2026}
     properties:
-      mail.smtp.auth: false
-      mail.smtp.starttls.enable: false
-      mail.smtp.connectiontimeout: 5000
-      mail.smtp.timeout: 5000
-      mail.smtp.writetimeout: 5000
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.ssl.enable: ${MAIL_SMTP_SSL_ENABLE:true}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:false}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
 
   servlet:
     multipart:
@@ -186,8 +187,8 @@ eduops:
     login-attempts-per-minute: 10
     payment-requests-per-minute: 60
   mail:
-    from: no-reply@eduops.local
-    enabled: true
+    from: ${MAIL_FROM:info-ecole@soocloo.com}
+    enabled: ${MAIL_ENABLED:true}
   app:
     base-url: http://localhost:4200
     api-url: http://localhost:8080

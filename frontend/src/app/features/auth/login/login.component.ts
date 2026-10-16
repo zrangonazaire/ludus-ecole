@@ -6,6 +6,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 import { environment } from '@env/environment';
 
+import { SignupService } from '@core/services/signup.service';
+import { NotificationService } from '@core/services/notification.service';
+
 @Component({
   selector: 'eduops-login',
   standalone: true,
@@ -19,9 +22,14 @@ export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly signupService = inject(SignupService);
+  private readonly notifications = inject(NotificationService);
 
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly unverifiedEmail = signal<string | null>(null);
+  readonly resending = signal(false);
+  readonly resendCooldown = signal(0);
 
   /**
    * Le mot de passe est-il lisible à l'écran ?
@@ -47,6 +55,7 @@ export class LoginComponent {
     }
     this.submitting.set(true);
     this.errorMessage.set(null);
+    this.unverifiedEmail.set(null);
     this.passwordVisible.set(false);
 
     this.auth.login(this.form.getRawValue()).subscribe({
@@ -87,6 +96,10 @@ export class LoginComponent {
       case 'ACCOUNT_DISABLED':
         return 'Ce compte est désactivé. Contactez la direction de votre '
           + 'établissement pour le réactiver.';
+      case 'EMAIL_NOT_VERIFIED':
+        this.unverifiedEmail.set(this.form.controls.login.value.trim());
+        return failure.message?.trim()
+          || 'Votre adresse e-mail n\'a pas encore été confirmée. Veuillez cliquer sur le lien reçu par e-mail.';
       case 'INVALID_CREDENTIALS':
         return 'Identifiant ou mot de passe incorrect.';
       default:
@@ -116,6 +129,31 @@ export class LoginComponent {
     }
     // Un 401 sans enveloppe reste, de loin, un mot de passe erroné.
     return 'Identifiant ou mot de passe incorrect.';
+  }
+
+  resendVerification(): void {
+    const email = this.unverifiedEmail();
+    if (!email || this.resending() || this.resendCooldown() > 0) {
+      return;
+    }
+    this.resending.set(true);
+    this.signupService.resendVerification(email).subscribe({
+      next: () => {
+        this.resending.set(false);
+        this.notifications.success('Un nouveau lien de confirmation a été envoyé par e-mail.', 'E-mail envoyé');
+        this.resendCooldown.set(60);
+        const timer = setInterval(() => {
+          this.resendCooldown.update((v) => {
+            if (v <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return v - 1;
+          });
+        }, 1000);
+      },
+      error: () => this.resending.set(false)
+    });
   }
 
   /** One-click demo profiles, available only while mock data is on. */

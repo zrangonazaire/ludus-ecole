@@ -85,11 +85,11 @@ public class NumberSequenceService {
         }
         NumberSequence sequence = repository
                 .lockBySchoolIdAndScopeAndYearPart(schoolId, scope, yearPart)
-                .orElseGet(() -> repository.save(
-                        new NumberSequence(schoolId, scope, yearPart) {{
-                            setCurrentValue(Math.max(0L, defaultStartNumber - 1));
-                        }}
-                ));
+                .orElseGet(() -> {
+                    NumberSequence newSeq = new NumberSequence(schoolId, scope, yearPart);
+                    newSeq.setCurrentValue(Math.max(0L, defaultStartNumber - 1));
+                    return repository.save(newSeq);
+                });
         long next = sequence.getCurrentValue() + 1;
         sequence.setCurrentValue(next);
         repository.saveAndFlush(sequence);

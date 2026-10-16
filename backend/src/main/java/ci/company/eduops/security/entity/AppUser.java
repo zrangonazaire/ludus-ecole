@@ -67,6 +67,9 @@ public class AppUser extends BaseEntity {
     @Column(name = "password_changed_at")
     private OffsetDateTime passwordChangedAt;
 
+    @Column(name = "email_verified_at")
+    private OffsetDateTime emailVerifiedAt;
+
     @Column(name = "preferred_locale", nullable = false, length = 10)
     private String preferredLocale = "fr";
 
@@ -217,6 +220,22 @@ public class AppUser extends BaseEntity {
 
     public OffsetDateTime getPasswordChangedAt() {
         return passwordChangedAt;
+    }
+
+    public OffsetDateTime getEmailVerifiedAt() {
+        return emailVerifiedAt;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerifiedAt != null;
+    }
+
+    /** Confirme l'adresse et active un compte en attente. */
+    public void markEmailVerified() {
+        this.emailVerifiedAt = OffsetDateTime.now();
+        if (this.status == UserStatus.PENDING) {
+            this.status = UserStatus.ACTIVE;
+        }
     }
 
     public String getPreferredLocale() {

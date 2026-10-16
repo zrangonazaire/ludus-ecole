@@ -35,8 +35,12 @@ export class SignupComponent {
 
   private readonly demoDraft = this.demoSetup.draft();
 
-  readonly step = signal<1 | 2>(1);
+  readonly step = signal<1 | 2 | 3>(1);
   readonly submitting = signal(false);
+  readonly registeredEmail = signal('');
+  readonly registeredSchool = signal('');
+  readonly resending = signal(false);
+  readonly resendCooldown = signal(0);
 
   /**
    * Le mot de passe est-il lisible à l'écran ?
@@ -191,8 +195,18 @@ export class SignupComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
+          this.submitting.set(false);
+          if (response.emailVerificationRequired) {
+            this.registeredEmail.set(response.email);
+            this.registeredSchool.set(response.schoolName);
+            this.step.set(3);
+            this.notifications.success(
+              `Votre établissement a été créé avec succès ! Un e-mail de confirmation a été envoyé à ${response.email}.`,
+              'Confirmation requise');
+            return;
+          }
           this.notifications.success(
-            `${response.schoolName} est cree. Annee scolaire ${response.academicYearCode} ouverte.`,
+            `${response.schoolName} est créé. Année scolaire ${response.academicYearCode} ouverte.`,
             'Bienvenue sur Soocloo');
           // The API already returns a usable session; go straight to the wizard.
           this.auth.applyExternalSession({
@@ -215,5 +229,30 @@ export class SignupComponent {
         },
         error: () => this.submitting.set(false)
       });
+  }
+
+  resendVerification(): void {
+    const email = this.registeredEmail();
+    if (!email || this.resending() || this.resendCooldown() > 0) {
+      return;
+    }
+    this.resending.set(true);
+    this.signupService.resendVerification(email).subscribe({
+      next: () => {
+        this.resending.set(false);
+        this.notifications.success('Un nouvel e-mail de confirmation a été envoyé.', 'E-mail envoyé');
+        this.resendCooldown.set(60);
+        const interval = setInterval(() => {
+          this.resendCooldown.update((v) => {
+            if (v <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return v - 1;
+          });
+        }, 1000);
+      },
+      error: () => this.resending.set(false)
+    });
   }
 }

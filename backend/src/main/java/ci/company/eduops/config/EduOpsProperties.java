@@ -200,6 +200,46 @@ public class EduOpsProperties {
         private int lockDurationMinutes = 15;
         private int passwordMinLength = 10;
         private boolean requireHttps = false;
+        /** Le premier compte d'un établissement doit confirmer son e-mail. */
+        private boolean emailVerificationRequired = true;
+        /** Durée de validité du lien de confirmation. */
+        private int emailVerificationTtlHours = 24;
+        /** Délai minimal entre deux envois pour un même compte. */
+        private int emailVerificationResendCooldownSeconds = 60;
+        /** Plafond d'envois par compte et par heure. */
+        private int emailVerificationMaxPerHour = 5;
+
+        public boolean isEmailVerificationRequired() {
+            return emailVerificationRequired;
+        }
+
+        public void setEmailVerificationRequired(boolean emailVerificationRequired) {
+            this.emailVerificationRequired = emailVerificationRequired;
+        }
+
+        public int getEmailVerificationTtlHours() {
+            return emailVerificationTtlHours;
+        }
+
+        public void setEmailVerificationTtlHours(int emailVerificationTtlHours) {
+            this.emailVerificationTtlHours = emailVerificationTtlHours;
+        }
+
+        public int getEmailVerificationResendCooldownSeconds() {
+            return emailVerificationResendCooldownSeconds;
+        }
+
+        public void setEmailVerificationResendCooldownSeconds(int value) {
+            this.emailVerificationResendCooldownSeconds = value;
+        }
+
+        public int getEmailVerificationMaxPerHour() {
+            return emailVerificationMaxPerHour;
+        }
+
+        public void setEmailVerificationMaxPerHour(int emailVerificationMaxPerHour) {
+            this.emailVerificationMaxPerHour = emailVerificationMaxPerHour;
+        }
 
         public Jwt getJwt() {
             return jwt;

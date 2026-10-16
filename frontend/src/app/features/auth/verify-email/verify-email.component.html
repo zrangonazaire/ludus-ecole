@@ -1,0 +1,96 @@
+<div class="verify">
+  <div class="verify__card">
+    <div class="verify__brand">
+      <a routerLink="/">
+        <img class="soocloo-logo" src="assets/branding/soocloo-logo.png" alt="Soocloo" width="160" height="60">
+      </a>
+    </div>
+
+    <!-- 1. En cours de vérification -->
+    @if (state() === 'loading') {
+      <div class="verify__content" role="status">
+        <div class="verify__spinner" aria-hidden="true"></div>
+        <h1 class="verify__title">Confirmation en cours…</h1>
+        <p class="verify__text">Veuillez patienter pendant que nous validons votre adresse e-mail.</p>
+      </div>
+    }
+
+    <!-- 2. Succès -->
+    @if (state() === 'success') {
+      <div class="verify__content verify__content--success">
+        <div class="verify__badge verify__badge--success" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h1 class="verify__title">Adresse e-mail confirmée !</h1>
+        <p class="verify__text">
+          Votre compte administrateur est maintenant actif et votre établissement est prêt à l'emploi.
+        </p>
+        <div class="verify__actions">
+          <a routerLink="/login" class="btn btn--primary btn--lg">
+            Accéder à mon espace →
+          </a>
+        </div>
+      </div>
+    }
+
+    <!-- 3. Erreur ou lien expiré -->
+    @if (state() === 'error' || state() === 'missing_token') {
+      <div class="verify__content verify__content--error">
+        <div class="verify__badge verify__badge--error" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </div>
+        <h1 class="verify__title">
+          {{ state() === 'missing_token' ? 'Lien incomplet' : 'Lien invalide ou expiré' }}
+        </h1>
+        <p class="verify__text">
+          {{ errorMessage() || 'Ce lien de confirmation n\'est plus valide ou a déjà été utilisé.' }}
+        </p>
+
+        <div class="verify__resend-box">
+          <h2 class="verify__resend-title">Recevoir un nouveau lien de confirmation</h2>
+          <p class="verify__resend-desc">
+            Indiquez l'adresse e-mail de votre compte pour recevoir immédiatement un nouvel e-mail.
+          </p>
+          <div class="verify__resend-form">
+            <input type="email"
+                   class="input"
+                   placeholder="admin@mon-ecole.ci"
+                   [ngModel]="emailInput()"
+                   (ngModelChange)="emailInput.set($event)"
+                   [disabled]="resending() || resendCooldown() > 0" />
+            <button type="button"
+                    class="btn btn--primary"
+                    (click)="resend()"
+                    [disabled]="!emailInput() || resending() || resendCooldown() > 0">
+              @if (resending()) {
+                Envoi…
+              } @else if (resendCooldown() > 0) {
+                Attente {{ resendCooldown() }}s
+              } @else {
+                Renvoyer le lien
+              }
+            </button>
+          </div>
+          @if (resendSuccess()) {
+            <p class="verify__resend-success">
+              ✓ Si cette adresse est associée à un compte en attente, un nouveau lien vient d'être envoyé.
+            </p>
+          }
+        </div>
+
+        <div class="verify__actions">
+          <a routerLink="/login" class="btn btn--secondary">
+            ← Retour à la connexion
+          </a>
+        </div>
+      </div>
+    }
+
+    <p class="verify__footer">© Soocloo · Espace sécurisé d'administration</p>
+  </div>
+</div>

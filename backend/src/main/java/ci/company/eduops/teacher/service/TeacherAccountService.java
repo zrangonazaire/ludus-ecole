@@ -8,17 +8,21 @@ import ci.company.eduops.security.repository.AppUserRepository;
 import ci.company.eduops.teacher.domain.Teacher;
 import ci.company.eduops.teacher.dto.response.TeacherAccountResponse;
 import ci.company.eduops.teacher.repository.TeacherRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 public class TeacherAccountService {
     private final AppUserRepository users;
     private final TeacherRepository teachers;
     private final AuditService audit;
+
+    public TeacherAccountService(AppUserRepository users, TeacherRepository teachers, AuditService audit) {
+        this.users = users;
+        this.teachers = teachers;
+        this.audit = audit;
+    }
 
     @Transactional(readOnly = true)
     public List<TeacherAccountResponse> available() {

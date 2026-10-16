@@ -78,6 +78,28 @@ public class SmtpMailService implements MailService {
     }
 
     @Override
+    @Async("mailExecutor")
+    public void sendHtml(String to, String subject, String htmlBody, String textBody) {
+        if (!enabled(to)) {
+            return;
+        }
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper =
+                    new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
+            helper.setFrom(properties.getMail().getFrom(), "Soocloo");
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(textBody, htmlBody);
+            mailSender.send(message);
+            log.info("Mail '{}' sent", subject);
+        } catch (Exception ex) {
+            // Never log the body: it may carry a one-time link.
+            log.error("Unable to send the multipart mail '{}': {}", subject, ex.getMessage());
+        }
+    }
+
+    @Override
     public void sendTemplate(String to, String templateCode, Map<String, Object> variables) {
         templateService.render(templateCode, variables)
                 .ifPresentOrElse(

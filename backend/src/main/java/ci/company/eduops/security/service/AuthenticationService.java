@@ -113,11 +113,6 @@ public class AuthenticationService {
                     ErrorCode.ACCOUNT_LOCKED.name());
             throw BusinessException.of(ErrorCode.ACCOUNT_LOCKED);
         }
-        if (user.getStatus() != UserStatus.ACTIVE && user.getStatus() != UserStatus.LOCKED) {
-            auditService.logLogin(user.getId(), user.getSchoolId(), login, false,
-                    ErrorCode.ACCOUNT_DISABLED.name());
-            throw BusinessException.of(ErrorCode.ACCOUNT_DISABLED);
-        }
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             user.registerFailedLogin(
                     properties.getSecurity().getMaxFailedLogins(),
@@ -126,11 +121,21 @@ public class AuthenticationService {
             ErrorCode refusal = user.isCurrentlyLocked()
                     ? ErrorCode.ACCOUNT_LOCKED
                     : ErrorCode.INVALID_CREDENTIALS;
-            // Le mot de passe n'est evidemment pas consigne, ni sa longueur :
-            // seule la tentative l'est.
             auditService.logLogin(user.getId(), user.getSchoolId(), login, false,
                     refusal.name());
             throw BusinessException.of(refusal);
+        }
+
+        if (user.getStatus() == UserStatus.PENDING) {
+            auditService.logLogin(user.getId(), user.getSchoolId(), login, false,
+                    ErrorCode.EMAIL_NOT_VERIFIED.name());
+            throw BusinessException.of(ErrorCode.EMAIL_NOT_VERIFIED,
+                    "Votre adresse e-mail n'a pas encore été confirmée. Veuillez cliquer sur le lien reçu par e-mail.");
+        }
+        if (user.getStatus() != UserStatus.ACTIVE && user.getStatus() != UserStatus.LOCKED) {
+            auditService.logLogin(user.getId(), user.getSchoolId(), login, false,
+                    ErrorCode.ACCOUNT_DISABLED.name());
+            throw BusinessException.of(ErrorCode.ACCOUNT_DISABLED);
         }
 
         auditService.logLogin(user.getId(), user.getSchoolId(), login, true, null);
@@ -251,6 +256,9 @@ public class AuthenticationService {
     private void ensureCanAuthenticate(AppUser user) {
         if (user.isCurrentlyLocked()) {
             throw BusinessException.of(ErrorCode.ACCOUNT_LOCKED);
+        }
+        if (user.getStatus() == UserStatus.PENDING) {
+            throw BusinessException.of(ErrorCode.EMAIL_NOT_VERIFIED);
         }
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw BusinessException.of(ErrorCode.ACCOUNT_DISABLED);

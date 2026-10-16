@@ -114,4 +114,15 @@ public class SignupResponse {
     public void setOnboardingRequired(boolean onboardingRequired) {
         this.onboardingRequired = onboardingRequired;
     }
+
+    /** Vrai : aucune session n'est ouverte, l'e-mail doit d'abord être confirmé. */
+    private boolean emailVerificationRequired;
+
+    public boolean isEmailVerificationRequired() {
+        return emailVerificationRequired;
+    }
+
+    public void setEmailVerificationRequired(boolean emailVerificationRequired) {
+        this.emailVerificationRequired = emailVerificationRequired;
+    }
 }

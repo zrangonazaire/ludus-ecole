@@ -187,7 +187,7 @@ class TenantIsolationIT extends AbstractIntegrationTest {
         request.setEmail(email);
         request.setPassword("MotDePasse2026");
         request.setAcceptedTerms(true);
-        return signupService.signup(request);
+        return signupService.signup(request, "127.0.0.1");
     }
 
     /**

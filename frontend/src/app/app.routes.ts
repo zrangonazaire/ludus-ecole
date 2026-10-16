@@ -35,6 +35,11 @@ export const routes: Routes = [
       .then((m) => m.LoginComponent)
   },
   {
+    path: 'verify-email',
+    loadComponent: () => import('./features/auth/verify-email/verify-email.component')
+      .then((m) => m.VerifyEmailComponent)
+  },
+  {
     path: 'forbidden',
     loadComponent: () => import('./features/auth/forbidden/forbidden.component')
       .then((m) => m.ForbiddenComponent)

@@ -31,14 +31,16 @@
         </div>
       }
 
-      <ol class="steps" aria-label="Étapes">
-        <li class="steps__item" [class.steps__item--active]="step() >= 1">
-          <span class="steps__index">1</span> Établissement
-        </li>
-        <li class="steps__item" [class.steps__item--active]="step() >= 2">
-          <span class="steps__index">2</span> Administrateur
-        </li>
-      </ol>
+      @if (step() < 3) {
+        <ol class="steps" aria-label="Étapes">
+          <li class="steps__item" [class.steps__item--active]="step() >= 1">
+            <span class="steps__index">1</span> Établissement
+          </li>
+          <li class="steps__item" [class.steps__item--active]="step() >= 2">
+            <span class="steps__index">2</span> Administrateur
+          </li>
+        </ol>
+      }
 
       <!-- ═══ Etape 1 : l'etablissement ═══ -->
       @if (step() === 1) {
@@ -237,6 +239,43 @@
             </button>
           </div>
         </form>
+      }
+
+      <!-- ═══ Etape 3 : Confirmation envoyee ═══ -->
+      @if (step() === 3) {
+        <div class="confirmation-card">
+          <div class="confirmation-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+          <h1 class="confirmation-card__title">Vérifiez votre boîte de réception</h1>
+          <p class="confirmation-card__lead">
+            L'établissement <strong>{{ registeredSchool() }}</strong> a été créé avec succès.
+          </p>
+          <div class="confirmation-card__info">
+            <p>Un e-mail de confirmation contenant un lien sécurisé a été envoyé à :</p>
+            <p class="confirmation-card__email"><strong>{{ registeredEmail() }}</strong></p>
+          </div>
+          <p class="confirmation-card__hint">
+            Pour activer votre compte et sécuriser l'accès à votre établissement, cliquez sur le lien présent dans cet e-mail.
+          </p>
+          <div class="confirmation-card__actions">
+            <button type="button" class="btn btn--secondary" (click)="resendVerification()" [disabled]="resending() || resendCooldown() > 0">
+              @if (resending()) {
+                Envoi en cours…
+              } @else if (resendCooldown() > 0) {
+                Renvoyer dans {{ resendCooldown() }}s
+              } @else {
+                Renvoyer l'e-mail
+              }
+            </button>
+            <a routerLink="/login" class="btn btn--primary">
+              Aller à la connexion →
+            </a>
+          </div>
+        </div>
       }
     </div>
   </main>

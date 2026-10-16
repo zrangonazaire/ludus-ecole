@@ -50,10 +50,24 @@ export interface SignupResponse {
   refreshToken: string;
   expiresIn: number;
   onboardingRequired: boolean;
+  emailVerificationRequired?: boolean;
 }
 
 export interface AvailabilityResponse {
   available: boolean;
   code?: string;
   email?: string;
+}
+
+export interface VerifyEmailRequest {
+  token: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
+}
+
+export interface VerifyEmailResponse {
+  success: boolean;
+  message: string;
 }

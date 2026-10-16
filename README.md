@@ -172,7 +172,7 @@ Once healthy:
 | Swagger UI (Docker) | http://localhost:58080/swagger-ui.html |
 | Actuator health (Docker) | http://localhost:58080/actuator/health |
 | Mailpit (captured mail) | http://localhost:58025 |
-| PostgreSQL | localhost:55432 |
+| PostgreSQL | localhost:55532 |
 | Redis | localhost:56379 |
 
 First login uses the bootstrap administrator from `.env`

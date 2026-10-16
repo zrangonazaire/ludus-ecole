@@ -5,6 +5,8 @@ import ci.company.eduops.school.dto.request.SignupRequest;
 import ci.company.eduops.school.dto.response.SignupResponse;
 import ci.company.eduops.school.repository.SchoolRepository;
 import ci.company.eduops.school.service.SignupService;
+import ci.company.eduops.security.dto.ResendVerificationRequest;
+import ci.company.eduops.security.dto.VerifyEmailRequest;
 import ci.company.eduops.security.repository.AppUserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,13 +38,16 @@ public class PublicSignupController {
     private final SignupService signupService;
     private final SchoolRepository schoolRepository;
     private final AppUserRepository userRepository;
+    private final ci.company.eduops.security.service.EmailVerificationService emailVerificationService;
 
     public PublicSignupController(SignupService signupService,
                                   SchoolRepository schoolRepository,
-                                  AppUserRepository userRepository) {
+                                  AppUserRepository userRepository,
+                                  ci.company.eduops.security.service.EmailVerificationService emailVerificationService) {
         this.signupService = signupService;
         this.schoolRepository = schoolRepository;
         this.userRepository = userRepository;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @PostMapping("/signup")
@@ -59,8 +65,10 @@ public class PublicSignupController {
             @ApiResponse(responseCode = "400", description = "Données invalides ou mot de passe trop faible",
                     content = @Content(schema = @Schema(implementation = ApiError.class)))
     })
-    public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(signupService.signup(request));
+    public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest request,
+                                                 HttpServletRequest servletRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(signupService.signup(request, clientIp(servletRequest)));
     }
 
     @GetMapping("/check-school-code")
@@ -83,5 +91,32 @@ public class PublicSignupController {
         return ResponseEntity.ok(Map.of(
                 "email", normalised,
                 "available", available));
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(summary = "Confirmer l'adresse e-mail de l'administrateur")
+    public ResponseEntity<Map<String, Object>> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        emailVerificationService.verify(request.getToken());
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Votre adresse e-mail a été confirmée avec succès. Vous pouvez maintenant vous connecter."));
+    }
+
+    @PostMapping("/resend-verification")
+    @Operation(summary = "Renvoyer le lien de confirmation de l'e-mail")
+    public ResponseEntity<Map<String, Object>> resendVerification(@Valid @RequestBody ResendVerificationRequest request,
+                                                                 HttpServletRequest servletRequest) {
+        emailVerificationService.resend(request.getEmail(), clientIp(servletRequest));
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Si cette adresse correspond à un compte en attente de confirmation, un nouvel e-mail a été envoyé."));
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",", 2)[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

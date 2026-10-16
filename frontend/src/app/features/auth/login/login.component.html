@@ -43,6 +43,24 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
           <span>{{ message }}</span>
         </p>
+        @if (unverifiedEmail(); as email) {
+          <div class="login__unverified">
+            <p class="login__unverified-text">Vous n'avez pas reçu l'e-mail de confirmation ?</p>
+            <button type="button" class="btn btn--secondary btn--sm login__unverified-btn"
+                    (click)="resendVerification()"
+                    [disabled]="resending() || resendCooldown() > 0">
+              @if (resending()) {
+                Envoi en cours…
+              } @else if (resendCooldown() > 0) {
+                Renvoyer dans {{ resendCooldown() }}s
+              } @else {
+                Renvoyer l'e-mail
+              }
+            </button>
+          </div>
+        }
+
+
       }
 
       <div class="field login__field">

@@ -26,6 +26,7 @@ import ci.company.eduops.security.entity.UserStatus;
 import ci.company.eduops.security.jwt.JwtTokenProvider;
 import ci.company.eduops.security.repository.AppRoleRepository;
 import ci.company.eduops.security.repository.AppUserRepository;
+import ci.company.eduops.security.service.EmailVerificationService;
 import ci.company.eduops.security.service.EduOpsUserDetails;
 import ci.company.eduops.term.domain.Term;
 import ci.company.eduops.term.domain.TermStatus;
@@ -70,6 +71,7 @@ public class SignupService {
     private final SignupProvisioningService provisioningService;
     private final FeeCategoryService feeCategoryService;
     private final EduOpsProperties properties;
+    private final EmailVerificationService emailVerificationService;
 
     public SignupService(SchoolRepository schoolRepository,
                          CampusRepository campusRepository,
@@ -83,7 +85,8 @@ public class SignupService {
                          AuditService auditService,
                          SignupProvisioningService provisioningService,
                          FeeCategoryService feeCategoryService,
-                         EduOpsProperties properties) {
+                         EduOpsProperties properties,
+                         EmailVerificationService emailVerificationService) {
         this.schoolRepository = schoolRepository;
         this.campusRepository = campusRepository;
         this.academicYearRepository = academicYearRepository;
@@ -97,15 +100,22 @@ public class SignupService {
         this.provisioningService = provisioningService;
         this.feeCategoryService = feeCategoryService;
         this.properties = properties;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @Transactional
     @TenantBypass
     public SignupResponse signup(SignupRequest request) {
-        return TenantContext.runWithoutTenant(() -> doSignup(request));
+        return signup(request, null);
     }
 
-    private SignupResponse doSignup(SignupRequest request) {
+    @Transactional
+    @TenantBypass
+    public SignupResponse signup(SignupRequest request, String requestIp) {
+        return TenantContext.runWithoutTenant(() -> doSignup(request, requestIp));
+    }
+
+    private SignupResponse doSignup(SignupRequest request, String requestIp) {
         validate(request);
 
         String code = request.getSchoolCode().trim().toUpperCase();
@@ -151,7 +161,14 @@ public class SignupService {
                         "subjects", String.valueOf(provisioned.getSubjects())))
                 .save();
 
-        sendWelcomeEmail(admin, school);
+        // Le compte reste en attente tant que l'adresse n'est pas confirmee :
+        // le mail de confirmation remplace alors le mail de bienvenue (qui
+        // serait prematuré, et qui repetait le mot de passe choisi).
+        if (properties.getSecurity().isEmailVerificationRequired()) {
+            emailVerificationService.issueAndSend(admin, school.getName(), requestIp);
+        } else {
+            sendWelcomeEmail(admin, school);
+        }
 
         log.info("Nouvelle école '{}' ({}) créée par {}", school.getName(), code, email);
         return buildResponse(school, admin, year, provisioned);
@@ -274,7 +291,8 @@ public class SignupService {
         admin.setLastName(request.getLastName().trim());
         admin.setPhone(request.getPhone());
         admin.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        admin.setStatus(UserStatus.ACTIVE);
+        boolean verification = properties.getSecurity().isEmailVerificationRequired();
+        admin.setStatus(verification ? UserStatus.PENDING : UserStatus.ACTIVE);
         admin.setMustChangePassword(false);
         admin.setSchoolId(school.getId());
         admin.addRole(schoolAdmin);
@@ -303,9 +321,14 @@ public class SignupService {
         response.setFullName(admin.fullName());
         response.setAcademicYearId(year.getId());
         response.setAcademicYearCode(year.getCode());
-        response.setAccessToken(tokenProvider.generateAccessToken(principal));
-        response.setRefreshToken(tokenProvider.generateRefreshToken(principal));
-        response.setExpiresIn(tokenProvider.accessTokenValiditySeconds());
+        if (properties.getSecurity().isEmailVerificationRequired()) {
+            // Aucun jeton tant que l'adresse n'est pas confirmee.
+            response.setEmailVerificationRequired(true);
+        } else {
+            response.setAccessToken(tokenProvider.generateAccessToken(principal));
+            response.setRefreshToken(tokenProvider.generateRefreshToken(principal));
+            response.setExpiresIn(tokenProvider.accessTokenValiditySeconds());
+        }
         // L'assistant n'a de sens que s'il reste quelque chose a poser. Quand
         // le parcours « Composer ma demo » a deja cree cycles, niveaux et
         // classes, l'y envoyer le ferait buter sur son propre refus : il

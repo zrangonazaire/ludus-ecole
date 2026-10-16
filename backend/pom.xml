@@ -26,6 +26,7 @@
         <poi.version>5.3.0</poi.version>
         <openhtmltopdf.version>1.0.10</openhtmltopdf.version>
         <zxing.version>3.5.3</zxing.version>
+        <lombok.version>1.18.48</lombok.version>
         <testcontainers.version>1.20.4</testcontainers.version>
     </properties>
 
@@ -161,6 +162,8 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <!-- <version>${lombok.version}</version> -->
+             <scope>provided</scope>
             <optional>true</optional>
         </dependency>
         <dependency>
@@ -199,7 +202,6 @@
         <dependency>
             <groupId>com.redis</groupId>
             <artifactId>testcontainers-redis</artifactId>
-            <version>2.2.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -270,6 +272,7 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

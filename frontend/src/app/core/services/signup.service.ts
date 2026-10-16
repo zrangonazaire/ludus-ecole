@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { delay, map } from 'rxjs/operators';
 import { environment } from '@env/environment';
-import { AvailabilityResponse, SignupRequest, SignupResponse } from '@core/models/signup.models';
+import { AvailabilityResponse, ResendVerificationRequest, SignupRequest, SignupResponse, VerifyEmailRequest, VerifyEmailResponse } from '@core/models/signup.models';
 
 /**
  * Public signup.
@@ -41,6 +41,26 @@ export class SignupService {
     return this.http
       .get<AvailabilityResponse>(`${this.base}/check-email`, { params: { email } })
       .pipe(map((r) => r.available));
+  }
+
+  verifyEmail(token: string): Observable<VerifyEmailResponse> {
+    if (environment.useMockData) {
+      return of({
+        success: true,
+        message: 'Votre adresse e-mail a été confirmée avec succès. Vous pouvez maintenant vous connecter.'
+      }).pipe(delay(500));
+    }
+    return this.http.post<VerifyEmailResponse>(`${this.base}/verify-email`, { token });
+  }
+
+  resendVerification(email: string): Observable<VerifyEmailResponse> {
+    if (environment.useMockData) {
+      return of({
+        success: true,
+        message: 'Si cette adresse correspond à un compte en attente, un nouvel e-mail a été envoyé.'
+      }).pipe(delay(500));
+    }
+    return this.http.post<VerifyEmailResponse>(`${this.base}/resend-verification`, { email });
   }
 
   private mockResponse(request: SignupRequest): SignupResponse {

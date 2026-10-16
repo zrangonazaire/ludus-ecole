@@ -10,13 +10,11 @@ import ci.company.eduops.teacher.domain.Teacher;
 import ci.company.eduops.teacher.dto.TeacherCreateRequest;
 import ci.company.eduops.teacher.dto.response.TeacherResponse;
 import ci.company.eduops.teacher.repository.TeacherRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class TeacherCreateService {
     private final TeacherRepository teachers;
     private final SchoolRepository schools;
@@ -24,6 +22,17 @@ public class TeacherCreateService {
     private final AuditService audit;
     private final TeacherQueryService queries;
     private final TeacherAccountService accounts;
+
+    public TeacherCreateService(TeacherRepository teachers, SchoolRepository schools,
+                                NumberSequenceService numbers, AuditService audit,
+                                TeacherQueryService queries, TeacherAccountService accounts) {
+        this.teachers = teachers;
+        this.schools = schools;
+        this.numbers = numbers;
+        this.audit = audit;
+        this.queries = queries;
+        this.accounts = accounts;
+    }
 
     @Transactional
     public TeacherResponse create(TeacherCreateRequest request) {

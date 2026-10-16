@@ -16,7 +16,7 @@ services:
       TZ: Africa/Abidjan
       PGTZ: Africa/Abidjan
     ports:
-    - 55432:5432
+    - ${POSTGRES_EXPOSED_PORT:-55532}:5432
     volumes:
     - postgres_data:/var/lib/postgresql/data
     - ./postgres/init:/docker-entrypoint-initdb.d:ro

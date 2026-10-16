@@ -7,8 +7,14 @@ spring:
       hibernate:
         format_sql: true
   mail:
-    host: localhost
-    port: 51025
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:51025}
+    username: ""
+    password: ""
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.ssl.enable: false
+      mail.smtp.starttls.enable: false
 
 logging:
   level:
