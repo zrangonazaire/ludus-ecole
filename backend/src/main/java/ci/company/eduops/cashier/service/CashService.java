@@ -2,6 +2,7 @@ package ci.company.eduops.cashier.service;
 
 import ci.company.eduops.cashier.domain.CashSession;
 import ci.company.eduops.cashier.repository.CashSessionRepository;
+import ci.company.eduops.cashier.domain.CashRegister;
 import ci.company.eduops.common.exception.*;
 import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.payment.repository.PaymentRepository;
@@ -11,6 +12,7 @@ import ci.company.eduops.school.repository.SchoolRepository;
 import ci.company.eduops.security.service.CurrentUser;
 import ci.company.eduops.audit.service.AuditService;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -24,12 +26,21 @@ public class CashService {
     private final SchoolRepository schools;
     private final CurrentUser user;
     private final AuditService audit;
-    public CashService(CashSessionRepository sessions, PaymentRepository payments, SchoolRepository schools, CurrentUser user, AuditService audit) {
+    private final CashRegisterService cashRegisters;
+    @Autowired
+    public CashService(CashSessionRepository sessions, PaymentRepository payments, SchoolRepository schools,
+                       CurrentUser user, AuditService audit, CashRegisterService cashRegisters) {
         this.sessions=sessions; this.payments=payments; this.schools=schools; this.user=user; this.audit=audit;
+        this.cashRegisters=cashRegisters;
+    }
+    public CashService(CashSessionRepository sessions, PaymentRepository payments, SchoolRepository schools,
+                       CurrentUser user, AuditService audit) {
+        this(sessions, payments, schools, user, audit, null);
     }
     public record Session(UUID id, String reference, String status, OffsetDateTime openedAt, OffsetDateTime closedAt,
         BigDecimal openingBalance, BigDecimal cashReceived, BigDecimal expectedBalance, BigDecimal actualBalance,
-        BigDecimal difference, String notes) {}
+        BigDecimal difference, String notes, UUID cashRegisterId, String cashRegisterName,
+        UUID openedByUserId) {}
     public record Movement(UUID id, String reference, String studentName, BigDecimal amount, String method, String date) {}
     private UUID school() {
         UUID id=TenantContext.getSchoolId();
@@ -56,9 +67,27 @@ public class CashService {
     public Session open(BigDecimal balance, String notes) {
         UUID schoolId=school(); UUID userId=user.requireId();
         if(sessions.findOpenForCashier(userId).isPresent()) throw BusinessException.of(ErrorCode.CASH_SESSION_ALREADY_OPEN);
+        CashRegister register = cashRegisters.requireAssigned(schoolId, userId);
+        return openForRegister(register, balance, notes, userId);
+    }
+
+    public Session openForRegister(UUID registerId, BigDecimal balance, String notes) {
+        UUID schoolId = school();
+        CashRegister register = cashRegisters.requireRegister(schoolId, registerId);
+        return openForRegister(register, balance, notes, user.requireId());
+    }
+
+    private Session openForRegister(CashRegister register, BigDecimal balance, String notes, UUID openedBy) {
+        UUID schoolId = register.getSchool().getId();
+        UUID cashierId = register.getCashier().getId();
+        if (sessions.findOpenForCashier(cashierId).isPresent()) {
+            throw BusinessException.of(ErrorCode.CASH_SESSION_ALREADY_OPEN);
+        }
         CashSession s=new CashSession();
         s.setSchool(schools.findById(schoolId).orElseThrow(() -> BusinessException.of(ErrorCode.SCHOOL_NOT_FOUND)));
-        s.setCashierUserId(userId); s.setReference("CSH-"+UUID.randomUUID()); s.setOpeningBalance(balance); s.setNotes(notes);
+        s.setCashRegister(register);
+        s.setCashierUserId(cashierId); s.setOpenedByUserId(openedBy);
+        s.setReference("CSH-"+UUID.randomUUID()); s.setOpeningBalance(balance); s.setNotes(notes);
         sessions.saveAndFlush(s);
         audit.logCreate("CashSession", s.getId(), s.getReference(), Map.of("openingBalance",balance));
         return response(s);
@@ -79,6 +108,8 @@ public class CashService {
         BigDecimal cash=s.isOpen()?payments.sumCashForSession(s.getId()):s.getExpectedBalance().subtract(s.getOpeningBalance());
         BigDecimal expected=s.getOpeningBalance().add(cash);
         return new Session(s.getId(),s.getReference(),s.getStatus().name(),s.getOpenedAt(),s.getClosedAt(),s.getOpeningBalance(),cash,
-            expected,s.getActualBalance(),s.getActualBalance()==null?null:s.getActualBalance().subtract(expected),s.getNotes());
+            expected,s.getActualBalance(),s.getActualBalance()==null?null:s.getActualBalance().subtract(expected),s.getNotes(),
+            s.getCashRegister() == null ? null : s.getCashRegister().getId(),
+            s.getCashRegister() == null ? null : s.getCashRegister().getName(), s.getOpenedByUserId());
     }
 }

@@ -73,6 +73,8 @@ export class TransfersComponent implements OnInit {
   readonly search = signal('');
   readonly classroomList = signal<Classroom[]>([]);
   readonly studentList = signal<StudentSummary[]>([]);
+  readonly enrolledStudents = computed(() => this.studentList()
+    .filter((student) => Boolean(student.enrollmentId)));
 
   readonly changeOpen = signal(false);
   readonly departureOpen = signal(false);
@@ -247,9 +249,16 @@ export class TransfersComponent implements OnInit {
     }
     this.saving.set(true);
     const value = this.changeForm.getRawValue();
+    const enrollmentId = this.enrollmentIdFor(value.studentId);
+    if (!enrollmentId) {
+      this.saving.set(false);
+      this.notifications.error(
+        "Cet élève n'a pas d'inscription active pour l'année en cours.",
+        'Inscription introuvable');
+      return;
+    }
     this.dataSource.changeClass({
-      // En démonstration comme au serveur, l'inscription porte l'élève.
-      enrollmentId: `enr-${value.studentId}`,
+      enrollmentId,
       toClassroomId: value.toClassroomId,
       reason: value.reason.trim(),
       overrideCapacity: value.overrideCapacity
@@ -301,8 +310,16 @@ export class TransfersComponent implements OnInit {
       return;
     }
     this.saving.set(true);
+    const enrollmentId = this.enrollmentIdFor(value.studentId);
+    if (!enrollmentId) {
+      this.saving.set(false);
+      this.notifications.error(
+        "Cet élève n'a pas d'inscription active pour l'année en cours.",
+        'Inscription introuvable');
+      return;
+    }
     this.dataSource.recordDeparture({
-      enrollmentId: `enr-${value.studentId}`,
+      enrollmentId,
       reason: value.reason,
       departureDate: value.departureDate,
       destinationSchool: value.destinationSchool.trim() || undefined,
@@ -327,6 +344,10 @@ export class TransfersComponent implements OnInit {
         this.explain(err);
       }
     });
+  }
+
+  private enrollmentIdFor(studentId: string): string | undefined {
+    return this.studentList().find((student) => student.id === studentId)?.enrollmentId;
   }
 
   // ----------------------------------------------------------- les pièces

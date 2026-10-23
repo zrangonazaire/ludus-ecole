@@ -4,8 +4,11 @@ import ci.company.eduops.security.dto.AuthResponse;
 import ci.company.eduops.security.dto.ChangePasswordRequest;
 import ci.company.eduops.security.dto.CurrentUserResponse;
 import ci.company.eduops.security.dto.LoginRequest;
+import ci.company.eduops.security.dto.PasswordResetConfirmRequest;
+import ci.company.eduops.security.dto.PasswordResetRequest;
 import ci.company.eduops.security.dto.RefreshTokenRequest;
 import ci.company.eduops.security.service.AuthenticationService;
+import ci.company.eduops.security.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,15 +20,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Authentication")
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
+    private final PasswordResetService passwordResetService;
 
-    public AuthenticationController(AuthenticationService authenticationService) {
+    public AuthenticationController(AuthenticationService authenticationService,
+                                    PasswordResetService passwordResetService) {
         this.authenticationService = authenticationService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/login")
@@ -34,6 +42,23 @@ public class AuthenticationController {
                                               HttpServletRequest servletRequest) {
         return ResponseEntity.ok(authenticationService.login(
                 request, servletRequest.getHeader("User-Agent"), clientIp(servletRequest)));
+    }
+
+    @PostMapping("/password-reset/request")
+    @Operation(summary = "Demander un lien de réinitialisation du mot de passe")
+    public ResponseEntity<Map<String, String>> requestPasswordReset(
+            @Valid @RequestBody PasswordResetRequest request) {
+        passwordResetService.requestReset(request.getEmail());
+        return ResponseEntity.ok(Map.of("message",
+                "Si un compte correspond à cette adresse, un lien de réinitialisation a été envoyé."));
+    }
+
+    @PostMapping("/password-reset/confirm")
+    @Operation(summary = "Définir un nouveau mot de passe à l'aide du lien reçu")
+    public ResponseEntity<Void> confirmPasswordReset(
+            @Valid @RequestBody PasswordResetConfirmRequest request) {
+        passwordResetService.confirmReset(request);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/refresh")

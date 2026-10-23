@@ -1,0 +1,102 @@
+<main class="page pedagogy-dashboard">
+  <header class="page__header">
+    <div>
+      <p class="page__eyebrow">PÉDAGOGIE · PILOTAGE</p>
+      <h1 class="page__title">Tableau de bord pédagogique</h1>
+      <p class="page__meta">Les classes, les appels et le travail scolaire à suivre cette semaine.</p>
+    </div>
+    <div class="header-actions">
+      @if (lastRefresh(); as refreshed) { <span class="refresh-label">Mis à jour à {{ refreshed | date:'HH:mm' }}</span> }
+      <button class="btn btn--secondary" type="button" [disabled]="loading()" (click)="load()"><span aria-hidden="true">⟳</span> Actualiser</button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement du suivi pédagogique..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    <section class="kpis" aria-label="Indicateurs pédagogiques">
+      <article class="kpi kpi--blue"><span class="kpi__icon">▦</span><div><p>Classes ouvertes</p><strong>{{ classrooms().length }}</strong><small>{{ averageOccupancy === null ? 'Aucune classe configurée' : 'Occupation moyenne : ' + (averageOccupancy | number:'1.0-0') + ' %' }}</small></div></article>
+      <article class="kpi kpi--green"><span class="kpi__icon">👥</span><div><p>Élèves en classe</p><strong>{{ activeEnrollmentCount }}</strong><small>Inscriptions actives dans les classes ouvertes</small></div></article>
+      @if (canViewAttendance) {
+        <article class="kpi" [class.kpi--warning]="!attendance()?.attendanceRate"><span class="kpi__icon">◇</span><div><p>Présence aujourd’hui</p><strong>{{ attendance()?.attendanceRate === undefined ? '—' : (attendance()?.attendanceRate | number:'1.0-0') + ' %' }}</strong><small>{{ attendance() ? attendance()!.sheetsDone + ' / ' + attendance()!.classroomCount + ' classes ont fait l’appel' : 'Données d’appel indisponibles' }}</small></div></article>
+      }
+      @if (canViewAssessments) {
+        <article class="kpi kpi--orange"><span class="kpi__icon">◆</span><div><p>Corrections en retard</p><strong>{{ assessments()?.overdueCount ?? '—' }}</strong><small>Devoirs à reprendre en priorité</small></div></article>
+        <article class="kpi kpi--purple"><span class="kpi__icon">✓</span><div><p>Notes à valider</p><strong>{{ assessments()?.awaitingValidationCount ?? '—' }}</strong><small>En attente de validation pédagogique</small></div></article>
+      }
+      @if (assessmentAverage !== null && canViewAssessments) {
+        <article class="kpi kpi--gold"><span class="kpi__icon">◉</span><div><p>Moyenne des devoirs validés</p><strong>{{ assessmentAverage | number:'1.1-1' }} / 20</strong><small>Moyenne pondérée par les notes saisies</small></div></article>
+      }
+    </section>
+
+    <section class="focus-grid">
+      <article class="card">
+        <header class="card__header"><div><p class="page__eyebrow">CAPACITÉ DES CLASSES</p><h2>Classes à surveiller</h2></div><a routerLink="/classes" class="text-link">Toutes les classes →</a></header>
+        @if (classesToWatch.length) {
+          <div class="class-list">
+            @for (room of classesToWatch; track classroomTrack($index, room)) {
+              <div class="class-row">
+                <div class="class-row__initial">{{ room.name.slice(0, 1) }}</div>
+                <div class="class-row__details"><strong>{{ room.name }}</strong><small>{{ room.levelName }} · {{ room.mainTeacherName || 'Enseignant non affecté' }}</small>
+                  <div class="capacity-track"><span [class.capacity-track__fill--danger]="room.occupancyRate >= 100" [style.width.%]="room.occupancyRate > 100 ? 100 : room.occupancyRate"></span></div>
+                </div>
+                <div class="class-row__capacity"><strong>{{ room.activeEnrollments }} / {{ room.capacityMaximum }}</strong><small>{{ room.occupancyRate | number:'1.0-0' }} %</small></div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state"><span>✓</span><strong>Aucune classe proche de sa capacité maximale</strong><p>Les classes ouvertes disposent encore de places.</p></div>
+        }
+      </article>
+
+      <article class="card attendance-card">
+        <header class="card__header"><div><p class="page__eyebrow">VIE SCOLAIRE · AUJOURD’HUI</p><h2>Suivi des présences</h2></div>@if (canViewAttendance) { <a routerLink="/attendance" class="text-link">Ouvrir l’appel →</a> }</header>
+        @if (canViewAttendance && attendance(); as day) {
+          <div class="attendance-summary">
+            <div class="attendance-rate"><strong>{{ day.attendanceRate === undefined ? '—' : (day.attendanceRate | number:'1.0-0') + '%' }}</strong><span>Taux de présence</span></div>
+            <div class="attendance-counts"><div><span class="dot dot--green"></span><strong>{{ day.presentCount }}</strong><small>présents</small></div><div><span class="dot dot--red"></span><strong>{{ day.absentCount }}</strong><small>absents</small></div><div><span class="dot dot--orange"></span><strong>{{ day.lateCount }}</strong><small>en retard</small></div></div>
+          </div>
+          <div class="call-progress"><div><span>Appels effectués</span><strong>{{ day.sheetsDone }} / {{ day.classroomCount }}</strong></div><div class="capacity-track"><span [style.width.%]="day.classroomCount ? day.sheetsDone / day.classroomCount * 100 : 0"></span></div></div>
+          @if (!day.sheetsDone) { <p class="empty-note">Aucun appel n’a encore été enregistré aujourd’hui.</p> }
+        } @else if (!canViewAttendance) {
+          <div class="empty-state"><span>◇</span><strong>Suivi des appels non accessible avec votre profil</strong><p>Les indicateurs d’assiduité nécessitent le droit de consulter les présences.</p></div>
+        } @else {
+          <div class="empty-state"><span>◇</span><strong>Les données d’appel ne sont pas disponibles</strong><p>Actualisez la page ou consultez le module Présences.</p><a routerLink="/attendance">Ouvrir les présences</a></div>
+        }
+      </article>
+    </section>
+
+    <section class="bottom-grid">
+      <article class="card">
+        <header class="card__header"><div><p class="page__eyebrow">ÉVALUATIONS</p><h2>Prochaines évaluations</h2></div>@if (canViewAssessments) { <a routerLink="/assessments" class="text-link">Tous les devoirs →</a> }</header>
+        @if (!canViewAssessments) {
+          <div class="empty-state"><span>◆</span><strong>Les évaluations ne sont pas accessibles avec votre profil</strong><p>Le droit de consultation des évaluations est requis pour voir le calendrier.</p></div>
+        } @else if (upcomingAssessments.length) {
+          <div class="assessment-list">
+            @for (item of upcomingAssessments; track assessmentTrack($index, item)) {
+              <div class="assessment-row"><div class="assessment-date"><strong>{{ item.assessmentDate | date:'dd' }}</strong><small>{{ item.assessmentDate | date:'MMM' }}</small></div>
+                <div class="assessment-row__main"><strong>{{ item.title }}</strong><small>{{ item.classroomName }} · {{ item.subjectName }}</small></div>
+                <span class="status-pill" [class.status-pill--open]="item.status === 'OPEN' || item.status === 'GRADING'">{{ item.statusLabel }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state"><span>◆</span><strong>Aucune évaluation à venir dans la période</strong><p>Les devoirs planifiés apparaîtront ici.</p><a routerLink="/assessments">Voir les évaluations</a></div>
+        }
+      </article>
+
+      <article class="card quick-card">
+        <header class="card__header"><div><p class="page__eyebrow">ACCÈS RAPIDE</p><h2>Outils pédagogiques</h2></div></header>
+        <nav class="shortcuts" aria-label="Outils pédagogiques">
+          <a routerLink="/classes"><span class="shortcut-icon shortcut-icon--blue">▦</span><span><strong>Classes</strong><small>Effectifs, enseignants et capacités</small></span><b>→</b></a>
+          @if (canViewAttendance) { <a routerLink="/attendance"><span class="shortcut-icon shortcut-icon--green">◇</span><span><strong>Présences</strong><small>Appels et suivi des absences</small></span><b>→</b></a> }
+          @if (canViewAssessments) { <a routerLink="/assessments"><span class="shortcut-icon shortcut-icon--gold">◆</span><span><strong>Évaluations et notes</strong><small>Correction, validation et publication</small></span><b>→</b></a> }
+          <a routerLink="/report-cards"><span class="shortcut-icon shortcut-icon--purple">▣</span><span><strong>Bulletins</strong><small>Préparer et publier les résultats</small></span><b>→</b></a>
+          <a routerLink="/timetable"><span class="shortcut-icon shortcut-icon--red">▥</span><span><strong>Emploi du temps</strong><small>Consulter l’organisation des cours</small></span><b>→</b></a>
+        </nav>
+      </article>
+    </section>
+  }
+</main>

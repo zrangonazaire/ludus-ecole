@@ -8,6 +8,8 @@ import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.exception.ErrorCode;
 import ci.company.eduops.common.tenant.TenantContext;
 import ci.company.eduops.common.util.MoneyUtils;
+import ci.company.eduops.config.EduOpsProperties;
+import ci.company.eduops.approval.domain.ApprovalExecution;
 import ci.company.eduops.finance.domain.DiscountRequest;
 import ci.company.eduops.finance.domain.DiscountRequestLevel;
 import ci.company.eduops.finance.domain.DiscountRequestLevelStatus;
@@ -15,18 +17,26 @@ import ci.company.eduops.finance.domain.DiscountRequestStatus;
 import ci.company.eduops.finance.domain.DiscountType;
 import ci.company.eduops.finance.domain.StudentFee;
 import ci.company.eduops.finance.dto.request.DiscountRequestCreateRequest;
+import ci.company.eduops.finance.dto.request.DiscountRequestCancelRequest;
 import ci.company.eduops.finance.dto.request.DiscountRequestDecisionRequest;
 import ci.company.eduops.finance.dto.response.DiscountRequestResponse;
 import ci.company.eduops.finance.repository.DiscountRequestLevelRepository;
 import ci.company.eduops.finance.repository.DiscountRequestRepository;
 import ci.company.eduops.finance.repository.StudentFeeRepository;
-import ci.company.eduops.security.entity.AppRole;
+import ci.company.eduops.notification.service.MailService;
+import ci.company.eduops.security.entity.AppUser;
+import ci.company.eduops.security.entity.UserStatus;
+import ci.company.eduops.security.repository.AppUserRepository;
 import ci.company.eduops.security.repository.AppRoleRepository;
 import ci.company.eduops.security.service.CurrentUser;
 import ci.company.eduops.student.domain.Student;
 import ci.company.eduops.student.repository.StudentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -36,6 +46,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Les demandes de réduction de scolarité et leur circuit de validation.
@@ -50,6 +61,8 @@ import java.util.UUID;
 @Service
 public class DiscountRequestService {
 
+    private static final Logger log = LoggerFactory.getLogger(DiscountRequestService.class);
+
     private final DiscountRequestRepository requests;
     private final DiscountRequestLevelRepository levels;
     private final StudentRepository students;
@@ -60,6 +73,9 @@ public class DiscountRequestService {
     private final ci.company.eduops.approval.service.ApprovalExecutionService approvals;
     private final com.fasterxml.jackson.databind.ObjectMapper mapper;
     private final ci.company.eduops.finance.repository.FeeTypeRepository feeTypes;
+    private final AppUserRepository users;
+    private final MailService mailService;
+    private final EduOpsProperties properties;
 
     public DiscountRequestService(DiscountRequestRepository requests,
                                   DiscountRequestLevelRepository levels,
@@ -70,7 +86,10 @@ public class DiscountRequestService {
                                   AuditService auditService,
                                   ci.company.eduops.approval.service.ApprovalExecutionService approvals,
                                   com.fasterxml.jackson.databind.ObjectMapper mapper,
-                                  ci.company.eduops.finance.repository.FeeTypeRepository feeTypes) {
+                                  ci.company.eduops.finance.repository.FeeTypeRepository feeTypes,
+                                  AppUserRepository users,
+                                  MailService mailService,
+                                  EduOpsProperties properties) {
         this.requests = requests;
         this.levels = levels;
         this.students = students;
@@ -79,6 +98,9 @@ public class DiscountRequestService {
         this.currentUser = currentUser;
         this.auditService = auditService;
         this.approvals = approvals; this.mapper = mapper; this.feeTypes = feeTypes;
+        this.users = users;
+        this.mailService = mailService;
+        this.properties = properties;
     }
 
     // ------------------------------------------------------------------ lecture
@@ -158,6 +180,12 @@ public class DiscountRequestService {
         auditService.logCreate("DiscountRequest", request.getId(), request.getReference(),
                 Map.of("student", student.getFirstName() + " " + student.getLastName(),
                         "levels", request.getTotalLevels()));
+        scheduleMail(() -> {
+            notifyApprovers(execution, 1, request,
+                    "Une demande de réduction attend votre décision.", "Ouvrir la demande");
+            notifyCreator(request, "Votre demande a été transmise",
+                    "Votre demande est enregistrée. Le premier niveau du circuit a été averti par e-mail.");
+        });
         return get(request.getId());
     }
 
@@ -174,6 +202,7 @@ public class DiscountRequestService {
                 .orElseThrow(() -> BusinessException.of(ErrorCode.DISCOUNT_REQUEST_NOT_FOUND));
         if (request.getStatus() != DiscountRequestStatus.SUBMITTED)
             throw BusinessException.of(ErrorCode.DISCOUNT_REQUEST_ALREADY_DECIDED);
+        int previousLevel = request.getCurrentLevel();
         var execution = approvals.decide(requestId,
                 input.getDecision() == DiscountRequestDecisionRequest.Decision.APPROVE, input.getComment());
         request.setCurrentLevel(execution.getCurrentLevel());
@@ -182,13 +211,62 @@ public class DiscountRequestService {
             request.setRejectionReason(input.getComment());
         } else if ("APPROVED".equals(execution.getStatus())) {
             request.setStatus(DiscountRequestStatus.APPROVED);
-            // Final approval and financial effect commit atomically.
-            apply(requestId);
         }
         if (request.getStatus() != DiscountRequestStatus.SUBMITTED) {
             request.setDecidedAt(OffsetDateTime.now());
             request.setDecidedBy(currentUser.requireId());
         }
+        if ("REJECTED".equals(execution.getStatus())) {
+            scheduleMail(() -> notifyCreator(request, "Votre demande a été refusée",
+                    "La demande a été refusée au niveau « " + stageName(execution, previousLevel)
+                            + " ». Motif : " + nullSafe(input.getComment())));
+        } else if (request.getStatus() == DiscountRequestStatus.APPROVED) {
+            scheduleMail(() -> notifyCreator(request, "Votre réduction est approuvée",
+                    "Toutes les validations sont terminées. La réduction est prête à être rendue effective depuis son suivi."));
+        } else if (execution.getCurrentLevel() > previousLevel) {
+            scheduleMail(() -> {
+                notifyCreator(request, "Une étape de votre demande est validée",
+                        "Le niveau « " + stageName(execution, previousLevel)
+                                + " » a validé la demande. Elle passe maintenant au niveau « "
+                                + stageName(execution, execution.getCurrentLevel()) + " ».");
+                notifyApprovers(execution, execution.getCurrentLevel(), request,
+                        "Une demande de réduction vient d’arriver à votre niveau.", "Examiner la demande");
+            });
+        }
+        return get(requestId);
+    }
+
+    /** Withdraws a pending request; only its creator can do so. */
+    @Transactional
+    public DiscountRequestResponse cancel(UUID requestId, DiscountRequestCancelRequest input) {
+        DiscountRequest request = requests.lockByIdAndSchoolId(requestId, requireSchool())
+                .orElseThrow(() -> BusinessException.of(ErrorCode.DISCOUNT_REQUEST_NOT_FOUND));
+        if (request.getStatus() != DiscountRequestStatus.SUBMITTED) {
+            throw BusinessException.of(ErrorCode.DISCOUNT_REQUEST_ALREADY_DECIDED);
+        }
+        UUID actorId = currentUser.requireId();
+        if (!actorId.equals(request.getCreatedBy())) {
+            throw BusinessException.of(ErrorCode.ACCESS_DENIED,
+                    "Seule la personne qui a créé cette demande peut l’annuler.");
+        }
+        ApprovalExecution execution = approvals.cancel(requestId);
+        String reason = input.getReason() == null ? null : input.getReason().trim();
+        request.setStatus(DiscountRequestStatus.CANCELLED);
+        request.setCancellationReason(reason == null || reason.isBlank() ? null : reason);
+        request.setDecidedAt(OffsetDateTime.now());
+        request.setDecidedBy(actorId);
+        auditService.logCancel("DiscountRequest", request.getId(), request.getReference(),
+                request.getCancellationReason());
+        scheduleMail(() -> {
+            String message = "La demande a été retirée par son créateur. Aucune action n’est requise.";
+            if (request.getCancellationReason() != null) {
+                message += " Motif : " + request.getCancellationReason();
+            }
+            notifyApprovers(execution, execution.getCurrentLevel(), request,
+                    message, "Voir le suivi");
+            notifyCreator(request, "Votre demande a été annulée",
+                    "Votre demande a été retirée du circuit de validation.");
+        });
         return get(requestId);
     }
 
@@ -273,6 +351,93 @@ public class DiscountRequestService {
         return approvals.find(request.getId()).map(approvals::canDecide).orElse(false);
     }
 
+    private void scheduleMail(Runnable action) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    action.run();
+                } catch (RuntimeException exception) {
+                    log.error("Impossible d'envoyer les notifications e-mail d'une demande de remise", exception);
+                }
+            }
+        });
+    }
+
+    private void notifyApprovers(ApprovalExecution execution, int levelNumber,
+                                 DiscountRequest request, String message, String actionLabel) {
+        if (levelNumber < 1 || levelNumber > execution.getStages().size()) return;
+        List<UUID> recipientIds = execution.getStages().get(levelNumber - 1).getMembers().stream()
+                .map(ApprovalExecution.Vote::getUserId).distinct().toList();
+        var recipientSet = new java.util.HashSet<>(recipientIds);
+        Map<UUID, AppUser> recipients = users.findBySchoolIdOrderByLastNameAscFirstNameAsc(
+                        request.getSchoolId()).stream()
+                .filter(user -> recipientSet.contains(user.getId()))
+                .filter(user -> user.getStatus() == UserStatus.ACTIVE)
+                .filter(user -> user.getEmail() != null && !user.getEmail().isBlank())
+                .collect(Collectors.toMap(AppUser::getId, user -> user));
+        for (UUID id : recipientIds) {
+            AppUser recipient = recipients.get(id);
+            if (recipient != null) {
+                sendMail(recipient.getEmail(), "Action requise — remise " + request.getReference(),
+                        recipient.getFirstName(), request, message, actionLabel);
+            }
+        }
+    }
+
+    private void notifyCreator(DiscountRequest request, String subject, String message) {
+        if (request.getCreatedBy() == null) return;
+        users.findById(request.getCreatedBy())
+                .filter(user -> request.getSchoolId().equals(user.getSchoolId()))
+                .filter(user -> user.getEmail() != null && !user.getEmail().isBlank())
+                .ifPresent(user -> sendMail(user.getEmail(), subject + " — " + request.getReference(),
+                        user.getFirstName(), request, message, "Voir le suivi"));
+    }
+
+    private void sendMail(String recipient, String subject, String firstName,
+                          DiscountRequest request, String message, String actionLabel) {
+        String baseUrl = properties.getApp().getBaseUrl();
+        String url = (baseUrl == null ? "http://localhost:4200" : baseUrl.replaceAll("/+$", ""))
+                + "/discounts";
+        String safeName = escapeHtml(firstName);
+        String safeReference = escapeHtml(request.getReference());
+        String safeLabel = escapeHtml(request.getLabel());
+        String safeMessage = escapeHtml(message).replace("\n", "<br>");
+        String html = "<div style=\"font-family:Arial,sans-serif;color:#172033;max-width:600px;margin:auto\">"
+                + "<div style=\"background:#2155cd;padding:22px 28px;color:#fff;border-radius:12px 12px 0 0\">"
+                + "<strong>Soocloo · Demandes de remise</strong></div>"
+                + "<div style=\"padding:28px;border:1px solid #e2e8f0;border-top:0;border-radius:0 0 12px 12px\">"
+                + "<p>Bonjour " + safeName + ",</p><h2 style=\"font-size:20px\">"
+                + escapeHtml(subject) + "</h2><p>" + safeMessage + "</p>"
+                + "<p><strong>" + safeLabel + "</strong><br>Référence : " + safeReference + "</p>"
+                + "<p><a href=\"" + escapeHtml(url) + "\" style=\"display:inline-block;background:#2155cd;"
+                + "color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px\">"
+                + escapeHtml(actionLabel) + "</a></p><p style=\"color:#64748b;font-size:13px\">"
+                + "Connectez-vous pour consulter le détail et l’historique du circuit.</p></div></div>";
+        String text = "Bonjour " + firstName + ",\n\n" + message + "\n\n" + request.getLabel()
+                + " — " + request.getReference() + "\n" + url;
+        mailService.sendHtml(recipient, subject, html, text);
+    }
+
+    private String stageName(ApprovalExecution execution, int levelNumber) {
+        return levelNumber >= 1 && levelNumber <= execution.getStages().size()
+                ? execution.getStages().get(levelNumber - 1).getCode() : "circuit";
+    }
+
+    private String nullSafe(String value) {
+        return value == null || value.isBlank() ? "Aucun motif communiqué." : value;
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) return "";
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#39;");
+    }
+
     private UUID requireSchool() {
         UUID schoolId = TenantContext.getSchoolId();
         if (schoolId == null) {
@@ -302,6 +467,10 @@ public class DiscountRequestService {
         out.setCurrentLevel(request.getCurrentLevel());
         out.setTotalLevels(request.getTotalLevels());
         out.setRejectionReason(request.getRejectionReason());
+        out.setCancellationReason(request.getCancellationReason());
+        out.setCreatedBy(request.getCreatedBy());
+        out.setCanCancel(request.getStatus() == DiscountRequestStatus.SUBMITTED
+                && currentUser.id().filter(id -> id.equals(request.getCreatedBy())).isPresent());
         out.setEffectiveAt(request.getEffectiveAt());
         out.setCreatedAt(request.getCreatedAt());
         out.setAwaitingMyDecision(canDecide(request, chain));

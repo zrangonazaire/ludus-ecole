@@ -29,8 +29,15 @@ public class CashSession extends BaseEntity {
     @JoinColumn(name = "campus_id")
     private Campus campus;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "cash_register_id", nullable = false)
+    private CashRegister cashRegister;
+
     @Column(name = "cashier_user_id", nullable = false)
     private UUID cashierUserId;
+
+    @Column(name = "opened_by_user_id", nullable = false)
+    private UUID openedByUserId;
 
     @Column(name = "reference", nullable = false, length = 40, updatable = false)
     private String reference;

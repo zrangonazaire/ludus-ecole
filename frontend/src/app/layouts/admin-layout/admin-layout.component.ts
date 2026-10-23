@@ -77,7 +77,9 @@ export class AdminLayoutComponent implements OnInit {
     // Le travail réel d'un secrétariat : constituer un dossier, l'inscrire,
     // le suivre, le clore. Chaque entrée correspond à un acte qui laisse
     // une trace administrative.
-    { section: 'Scolarité', label: 'Historique des élèves', route: '/students', icon: '◍',
+    { section: 'Scolarité', label: 'Tableau de bord', route: '/scolarite-dashboard', icon: '◈',
+      permissions: [PERMISSIONS.STUDENT_VIEW], ready: true },
+    { section: 'Scolarité', label: 'Élèves', route: '/students', icon: '◍',
       permissions: [PERMISSIONS.STUDENT_VIEW], ready: true },
     // Les pièces officielles produites par l'établissement : édition,
     // traçabilité, réimpression et révocation au même endroit.
@@ -109,6 +111,8 @@ export class AdminLayoutComponent implements OnInit {
       permissions: [PERMISSIONS.IMPORT_EXECUTE], ready: true },
 
     // ────────────────────────────────────────────────────── Pédagogie
+    { section: 'Pédagogie', label: 'Tableau de bord', route: '/pedagogy-dashboard', icon: '◈',
+      permissions: [PERMISSIONS.CLASS_VIEW], ready: true },
     { section: 'Pédagogie', label: 'Classes', route: '/classes', icon: '▦',
       permissions: [PERMISSIONS.CLASS_VIEW], ready: true },
     { section: 'Pédagogie', label: 'Matières et programme', route: '/subjects', icon: '◈',
@@ -129,6 +133,8 @@ export class AdminLayoutComponent implements OnInit {
       permissions: ['DISCIPLINE_VIEW'], ready: true },
 
     // ──────────────────────────────────────────────────────── Finance
+    { section: 'Finance', label: 'Tableau de bord', route: '/finance-dashboard', icon: '◈',
+      permissions: [PERMISSIONS.FINANCE_VIEW], ready: true },
     { section: 'Finance', label: 'Plan de facturation', route: '/finance', icon: '◫',
       permissions: [PERMISSIONS.FINANCE_VIEW], ready: true },
     { section: 'Finance', label: 'Encaissements', route: '/payments', icon: '◧',
@@ -143,6 +149,8 @@ export class AdminLayoutComponent implements OnInit {
       permissions: [PERMISSIONS.FINANCE_MANAGE] },
 
     // ───────────────────────────────────────────── Personnel et accès
+    { section: 'Personnel et accès', label: 'Tableau de bord', route: '/personnel-dashboard', icon: '◈',
+      permissions: [PERMISSIONS.USER_MANAGE, PERMISSIONS.ROLE_MANAGE, PERMISSIONS.AUDIT_VIEW, PERMISSIONS.TEACHER_VIEW], ready: true },
     { section: 'Personnel et accès', label: 'Enseignants', route: '/teachers', icon: '◍',
       permissions: [PERMISSIONS.TEACHER_VIEW] },
     { section: 'Personnel et accès', label: 'Utilisateurs', route: '/users', icon: '◒',
@@ -157,14 +165,16 @@ export class AdminLayoutComponent implements OnInit {
     // d'administration. L'exiger priverait de leurs propres messages les
     // parents et les élèves, à qui l'on ne donne évidemment aucun droit
     // d'administration — or ce sont eux les premiers destinataires.
+    { section: 'Communication', label: 'Tableau de bord', route: '/communication-dashboard', icon: '◈',
+      ready: true },
     { section: 'Communication', label: 'Messages', route: '/notifications', icon: '✉',
       ready: true },
     { section: 'Communication', label: 'Portail des familles', route: '/portals', icon: '◉',
       permissions: ['SCHOOL_VIEW'] },
 
     // ─────────────────────────────────────────────────── Établissement
-    { section: 'Établissement', label: 'Paramètres', route: '/administration', icon: '◌',
-      permissions: ['SCHOOL_VIEW'] },
+    { section: 'Établissement', label: 'Tableau de bord', route: '/establishment-dashboard', icon: '◈',
+      permissions: [PERMISSIONS.SCHOOL_VIEW, PERMISSIONS.ACADEMIC_YEAR_VIEW, PERMISSIONS.LEVEL_VIEW, PERMISSIONS.CAMPUS_VIEW, PERMISSIONS.ROOM_VIEW], ready: true },
     { section: 'Établissement', label: 'Années et périodes', route: '/academic-years',
       icon: '◷', permissions: [PERMISSIONS.ACADEMIC_YEAR_VIEW], ready: true },
     { section: 'Établissement', label: 'Fournitures scolaires', route: '/supplies', icon: '▤',

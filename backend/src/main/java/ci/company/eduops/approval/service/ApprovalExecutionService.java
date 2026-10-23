@@ -118,6 +118,18 @@ public class ApprovalExecutionService {
         e.setStatus("EFFECTIVE"); e.setEffectiveAt(OffsetDateTime.now());
         audit.logValidate("ApprovalExecution", e.getId(), e.getLabel(), "Validation complète et opération appliquée.");
     }
+
+    /** Closes a submitted execution when its creator withdraws the request. */
+    public ApprovalExecution cancel(UUID resourceId) {
+        ApprovalExecution execution = lock(resourceId);
+        if (!"SUBMITTED".equals(execution.getStatus())) {
+            throw invalid("Cette demande n'est plus en attente de validation.");
+        }
+        execution.setStatus("CANCELLED");
+        audit.logCancel("ApprovalExecution", execution.getId(), execution.getLabel(),
+                "Demande retirée par son créateur.");
+        return execution;
+    }
     public boolean canDecide(ApprovalExecution e) {
         return "SUBMITTED".equals(e.getStatus()) && e.getStages().get(e.getCurrentLevel() - 1)
                 .getMembers().stream().anyMatch(v -> v.getUserId().equals(actor.requireId()) && v.getDecision() == null);

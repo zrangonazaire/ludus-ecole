@@ -22,9 +22,11 @@ public class StudentSummaryResponse {
     private Integer age;
     private String photoUrl;
     private String status;
+    private UUID enrollmentId;
     private UUID classroomId;
     private String classroomName;
     private String levelName;
+    private String mailResponsable;
 
     public UUID getId() {
         return id;
@@ -106,6 +108,14 @@ public class StudentSummaryResponse {
         this.status = status;
     }
 
+    public UUID getEnrollmentId() {
+        return enrollmentId;
+    }
+
+    public void setEnrollmentId(UUID enrollmentId) {
+        this.enrollmentId = enrollmentId;
+    }
+
     public UUID getClassroomId() {
         return classroomId;
     }
@@ -129,4 +139,7 @@ public class StudentSummaryResponse {
     public void setLevelName(String levelName) {
         this.levelName = levelName;
     }
+
+    public String getMailResponsable() { return mailResponsable; }
+    public void setMailResponsable(String mailResponsable) { this.mailResponsable = mailResponsable; }
 }

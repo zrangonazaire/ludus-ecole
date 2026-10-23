@@ -559,6 +559,8 @@ public class StudentImportService {
         student.setBirthPlace(blankToNull(row.getBirthPlace()));
         student.setNationality(blankToNull(row.getNationality()));
         student.setPreviousSchool(blankToNull(row.getPreviousSchool()));
+        String responsibleEmail = blankToNull(row.getGuardianEmail());
+        student.setMailResponsable(responsibleEmail == null ? null : responsibleEmail.toLowerCase(java.util.Locale.ROOT));
         student.setAdmissionDate(LocalDate.now());
         student.setStatus(StudentStatus.ADMITTED);
         return studentRepository.save(student);
@@ -592,6 +594,7 @@ public class StudentImportService {
         link.setRelationship(parseRelationship(row.getRelationship()));
         link.setPrimary(true);
         link.setFinancialResponsibility(true);
+        link.setReceivesFinancialNotifications(true);
         studentGuardianRepository.save(link);
     }
 

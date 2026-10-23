@@ -200,6 +200,10 @@ const MESSAGES: Record<string, string> = {
   CASH_SESSION_NOT_FOUND: 'Aucune caisse ouverte accessible. Ouvrez votre caisse depuis la page Caisse avant d’encaisser des espèces.',
   CASH_SESSION_ALREADY_OPEN: 'Vous avez deja une session de caisse ouverte.',
   CASH_SESSION_CLOSED: 'La session de caisse est fermee.',
+  CASH_REGISTER_NOT_FOUND: 'Aucune caisse ne vous est attribuée. Demandez à l’administrateur de vous affecter une caisse.',
+  CASHIER_PROFILE_REQUIRED: 'Choisissez un utilisateur actif avec le profil Caissier.',
+  CASH_REGISTER_ASSIGNMENT_CONFLICT: 'Cette caisse ou ce caissier est déjà affecté.',
+  CASH_REGISTER_OPEN_SESSION: 'Clôturez la session ouverte avant de modifier cette affectation.',
 
   // portals
   UNAUTHORIZED_STUDENT_ACCESS: "Vous n'êtes pas autorisé à consulter les données de cet élève.",
@@ -229,6 +233,16 @@ export function translateErrorCode(code: string, error?: ApiError): string {
   const details = error?.details;
   if (!details) {
     return base;
+  }
+
+  // L'inscription publique précise quel identifiant est déjà utilisé, mais
+  // le code d'erreur reste volontairement générique (CONFLICT). Sans cette
+  // traduction, le toast masquait l'information utile renvoyée par l'API.
+  if (code === 'CONFLICT' && details['field'] === 'schoolCode') {
+    return 'Ce code établissement est déjà utilisé. Choisissez-en un autre.';
+  }
+  if (code === 'CONFLICT' && details['field'] === 'email') {
+    return 'Un compte existe déjà avec cet e-mail. Utilisez une autre adresse.';
   }
 
   if (code === 'CLASS_CAPACITY_EXCEEDED' && details['capacityMaximum'] !== undefined) {

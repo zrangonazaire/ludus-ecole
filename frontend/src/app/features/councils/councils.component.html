@@ -324,6 +324,7 @@
 
 @if (closeConfirmOpen()) {
   <eduops-confirm-dialog
+    [open]="closeConfirmOpen()"
     title="Clore ce conseil ?"
     [message]="'Les ' + decidedCount() + ' décisions enregistrées, la feuille de présence et le procès-verbal ne pourront plus être modifiés.'"
     confirmLabel="Clore définitivement"

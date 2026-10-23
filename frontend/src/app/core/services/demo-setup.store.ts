@@ -115,8 +115,54 @@ export class DemoSetupStore {
       // que le chiffre soit corrigé avant la création, pas après.
       classesPerLevel: draft.rules.classesPerLevel,
       classCapacity: draft.rules.classCapacity,
-      subjects: [],
-      fees: undefined
+      subjects: cycles.flatMap((cycle) => {
+        const catalog: Record<string, { code: string; name: string; coefficient: number }[]> = {
+          MAT: [
+            { code: 'LANG', name: 'Langage et communication', coefficient: 1 },
+            { code: 'PREMATH', name: 'Pré-mathématiques', coefficient: 1 },
+            { code: 'EVEIL', name: 'Découverte du monde', coefficient: 1 },
+            { code: 'ART', name: 'Éducation artistique', coefficient: 1 },
+            { code: 'MOTRICITE', name: 'Motricité et sport', coefficient: 1 }
+          ],
+          PRI: [
+            { code: 'FR', name: 'Français', coefficient: 3 },
+            { code: 'MATH', name: 'Mathématiques', coefficient: 3 },
+            { code: 'ANG', name: 'Anglais', coefficient: 2 },
+            { code: 'ECM', name: 'Éducation civique et morale', coefficient: 1 },
+            { code: 'SCI', name: 'Sciences et technologie', coefficient: 2 },
+            { code: 'HG', name: 'Histoire-Géographie', coefficient: 2 },
+            { code: 'EPS', name: 'Éducation physique et sportive', coefficient: 1 }
+          ],
+          COL: [
+            { code: 'FR', name: 'Français', coefficient: 3 },
+            { code: 'MATH', name: 'Mathématiques', coefficient: 3 },
+            { code: 'ANG', name: 'Anglais', coefficient: 2 },
+            { code: 'HG', name: 'Histoire-Géographie', coefficient: 2 },
+            { code: 'SVT', name: 'Sciences de la vie et de la terre', coefficient: 2 },
+            { code: 'PC', name: 'Physique-Chimie', coefficient: 2 },
+            { code: 'EPS', name: 'Éducation physique et sportive', coefficient: 1 },
+            { code: 'INFO', name: 'Informatique', coefficient: 1 }
+          ],
+          LYC: [
+            { code: 'FR', name: 'Français', coefficient: 3 },
+            { code: 'MATH', name: 'Mathématiques', coefficient: 3 },
+            { code: 'ANG', name: 'Anglais', coefficient: 2 },
+            { code: 'HG', name: 'Histoire-Géographie', coefficient: 2 },
+            { code: 'PHILO', name: 'Philosophie', coefficient: 2 },
+            { code: 'SVT', name: 'Sciences de la vie et de la terre', coefficient: 2 },
+            { code: 'PC', name: 'Physique-Chimie', coefficient: 2 },
+            { code: 'INFO', name: 'Informatique', coefficient: 1 }
+          ]
+        };
+        return (catalog[cycle.code] ?? []).map((subject) => ({ ...subject, cycleCode: cycle.code }));
+      }),
+      // Tarifs fictifs, clairement présentés comme point de départ à ajuster.
+      fees: {
+        registration: 20000,
+        tuitionTotal: 300000,
+        instalments: 3,
+        currency: draft.rules.currency
+      }
     };
   }
 

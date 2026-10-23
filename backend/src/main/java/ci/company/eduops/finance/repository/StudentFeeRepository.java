@@ -39,6 +39,10 @@ public interface StudentFeeRepository extends JpaRepository<StudentFee, UUID> {
 
     List<StudentFee> findByEnrollmentIdOrderBySequenceAsc(UUID enrollmentId);
 
+    boolean existsByEnrollmentIdAndFeeScheduleIdAndSequence(UUID enrollmentId,
+                                                            UUID feeScheduleId,
+                                                            int sequence);
+
     /**
      * Has this price already produced fees for a family?
      *

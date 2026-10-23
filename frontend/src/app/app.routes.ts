@@ -40,6 +40,16 @@ export const routes: Routes = [
       .then((m) => m.VerifyEmailComponent)
   },
   {
+    path: 'reset-password',
+    loadComponent: () => import('./features/auth/reset-password/reset-password.component')
+      .then((m) => m.ResetPasswordComponent)
+  },
+  {
+    path: 'opinion-response/:token',
+    loadComponent: () => import('./features/notifications/opinion-response.component')
+      .then((m) => m.OpinionResponseComponent)
+  },
+  {
     path: 'forbidden',
     loadComponent: () => import('./features/auth/forbidden/forbidden.component')
       .then((m) => m.ForbiddenComponent)
@@ -69,6 +79,40 @@ export const routes: Routes = [
     loadComponent: () => import('./layouts/admin-layout/admin-layout.component')
       .then((m) => m.AdminLayoutComponent),
     children: [
+      {
+        path: 'personnel-dashboard',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.USER_MANAGE, PERMISSIONS.ROLE_MANAGE, PERMISSIONS.AUDIT_VIEW, PERMISSIONS.TEACHER_VIEW], title: 'Tableau de bord Personnel et accès' },
+        loadComponent: () => import('./features/dashboard/personnel-dashboard.component')
+          .then((m) => m.PersonnelDashboardComponent)
+      },
+      {
+        path: 'communication-dashboard',
+        data: { title: 'Tableau de bord Communication' },
+        loadComponent: () => import('./features/dashboard/communication-dashboard.component')
+          .then((m) => m.CommunicationDashboardComponent)
+      },
+      {
+        path: 'establishment-dashboard',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.SCHOOL_VIEW, PERMISSIONS.ACADEMIC_YEAR_VIEW, PERMISSIONS.LEVEL_VIEW, PERMISSIONS.CAMPUS_VIEW, PERMISSIONS.ROOM_VIEW], title: 'Tableau de bord Établissement' },
+        loadComponent: () => import('./features/dashboard/establishment-dashboard.component')
+          .then((m) => m.EstablishmentDashboardComponent)
+      },
+      {
+        path: 'scolarite-dashboard',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.STUDENT_VIEW], title: 'Tableau de bord Scolarité' },
+        loadComponent: () => import('./features/dashboard/scolarite-dashboard.component')
+          .then((m) => m.ScolariteDashboardComponent)
+      },
+      {
+        path: 'pedagogy-dashboard',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.CLASS_VIEW], title: 'Tableau de bord pédagogique' },
+        loadComponent: () => import('./features/dashboard/pedagogy-dashboard.component')
+          .then((m) => m.PedagogyDashboardComponent)
+      },
       {
         path: 'dashboard',
         canActivate: [permissionGuard],
@@ -198,6 +242,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/discipline/discipline.component')
           .then((m) => m.DisciplineComponent),
         data: { title: 'Discipline', permissions: ['DISCIPLINE_VIEW'] }
+      },
+      {
+        path: 'finance-dashboard',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.FINANCE_VIEW], title: 'Tableau de bord financier' },
+        loadComponent: () => import('./features/finance/finance-dashboard.component')
+          .then((m) => m.FinanceDashboardComponent)
       },
       {
         path: 'finance',

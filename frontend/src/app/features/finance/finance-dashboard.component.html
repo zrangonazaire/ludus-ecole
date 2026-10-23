@@ -1,0 +1,118 @@
+<main class="page finance-dashboard">
+  <header class="page__header">
+    <div>
+      <p class="page__eyebrow">FINANCE · PILOTAGE</p>
+      <h1 class="page__title">Tableau de bord financier</h1>
+      <p class="page__meta">Les soldes à recevoir, les retards et les derniers encaissements au même endroit.</p>
+    </div>
+    <div class="header-actions">
+      @if (lastRefresh(); as refreshed) {
+        <span class="refresh-label">Mis à jour à {{ refreshed | date:'HH:mm' }}</span>
+      }
+      <button class="btn btn--secondary" type="button" [disabled]="loading()" (click)="load()">
+        <span aria-hidden="true">⟳</span> Actualiser
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement de la situation financière..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    @if (board(); as summary) {
+    <section class="kpis" aria-label="Indicateurs financiers">
+      <article class="kpi kpi--main">
+        <span class="kpi__icon" aria-hidden="true">₣</span>
+        <div><p>Solde total à recevoir</p><strong>{{ summary.totalOutstanding | money:summary.currency }}</strong>
+          <small>{{ summary.studentCount }} élèves avec un solde</small></div>
+      </article>
+      <article class="kpi kpi--danger">
+        <span class="kpi__icon" aria-hidden="true">!</span>
+        <div><p>Échéances en retard</p><strong>{{ summary.overdueAmount | money:summary.currency }}</strong>
+          <small>À traiter en priorité</small></div>
+      </article>
+      <article class="kpi kpi--warning">
+        <span class="kpi__icon" aria-hidden="true">⌛</span>
+        <div><p>Retards critiques</p><strong>{{ summary.criticalCount }}</strong>
+          <small>30 jours ou plus</small></div>
+      </article>
+      <article class="kpi">
+        <span class="kpi__icon kpi__icon--blue" aria-hidden="true">◉</span>
+        <div><p>Part déjà en retard</p><strong>{{ overdueShare(summary) | number:'1.0-0' }} %</strong>
+          <small>Du solde total à recevoir</small></div>
+      </article>
+    </section>
+
+    <section class="overview-grid">
+      <article class="card collection-card">
+        <header class="card__header">
+          <div><p class="page__eyebrow">SUIVI DU RECOUVREMENT</p><h2 class="card__title">Où en est le recouvrement ?</h2></div>
+          <a class="text-link" routerLink="/outstanding">Ouvrir les impayés <span aria-hidden="true">→</span></a>
+        </header>
+        <div class="collection-card__body">
+          <div class="collection-total"><span>Reste dû total</span><strong>{{ summary.totalOutstanding | money:summary.currency }}</strong></div>
+          <div class="progress-track" role="img" [attr.aria-label]="(overdueShare(summary) | number:'1.0-0') + '% des soldes sont en retard'">
+            <span [style.width.%]="overdueShare(summary)"></span>
+          </div>
+          <div class="progress-legend">
+            <span><i class="legend-dot legend-dot--danger"></i>{{ summary.overdueAmount | money:summary.currency }} en retard</span>
+            <span><i class="legend-dot legend-dot--brand"></i>{{ (summary.totalOutstanding - summary.overdueAmount) | money:summary.currency }} à venir</span>
+          </div>
+          <div class="action-callout" [class.action-callout--urgent]="summary.criticalCount > 0">
+            <span class="action-callout__icon" aria-hidden="true">{{ summary.criticalCount > 0 ? '!' : '✓' }}</span>
+            <div><strong>{{ summary.criticalCount > 0 ? 'Relances à prioriser' : 'Aucun retard critique' }}</strong>
+              <p>{{ summary.criticalCount > 0 ? summary.criticalCount + ' dossier(s) ont plus de 30 jours de retard.' : 'Les retards les plus anciens sont à jour.' }}</p></div>
+            <a class="btn btn--secondary" routerLink="/outstanding">Voir la liste</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="card shortcuts-card">
+        <header class="card__header"><div><p class="page__eyebrow">ACCÈS RAPIDE</p><h2 class="card__title">Actions financières</h2></div></header>
+        <nav class="shortcuts" aria-label="Actions financières">
+          <a routerLink="/payments" *eduopsHasPermission="'PAYMENT_CREATE'"><span class="shortcut-icon shortcut-icon--green">＋</span><span><strong>Encaisser un paiement</strong><small>Enregistrer un règlement et son reçu</small></span><b aria-hidden="true">→</b></a>
+          <a routerLink="/outstanding"><span class="shortcut-icon shortcut-icon--red">◷</span><span><strong>Suivre les impayés</strong><small>Consulter les soldes et lancer des relances</small></span><b aria-hidden="true">→</b></a>
+          <a routerLink="/finance"><span class="shortcut-icon shortcut-icon--blue">◫</span><span><strong>Plans de facturation</strong><small>Consulter les frais et échéanciers</small></span><b aria-hidden="true">→</b></a>
+          <a routerLink="/discounts" *eduopsHasPermission="'DISCOUNT_REQUEST_VIEW'"><span class="shortcut-icon shortcut-icon--gold">◪</span><span><strong>Remises et bourses</strong><small>Examiner les demandes de réduction</small></span><b aria-hidden="true">→</b></a>
+        </nav>
+      </article>
+    </section>
+
+    <section class="bottom-grid">
+      <article class="card">
+        <header class="card__header"><div><p class="page__eyebrow">À SUIVRE</p><h2 class="card__title">Soldes les plus anciens</h2></div>
+          <a class="text-link" routerLink="/outstanding">Tout voir →</a></header>
+        <div class="table-wrap">
+          <table><thead><tr><th>Élève</th><th>Responsable</th><th>Retard</th><th class="align-right">Solde</th></tr></thead>
+            <tbody>
+              @for (student of summary.students.content; track trackStudent($index, student)) {
+                <tr><td><strong>{{ student.studentName }}</strong><small>{{ student.classroomName || 'Classe non précisée' }}</small></td>
+                  <td>{{ student.guardianName || '—' }}</td>
+                  <td><span class="late-badge" [class.late-badge--critical]="student.daysOverdue >= 30">{{ student.daysOverdue > 0 ? student.daysOverdue + ' j' : 'À venir' }}</span></td>
+                  <td class="align-right amount">{{ student.outstandingAmount | money:student.currency }}</td></tr>
+              } @empty {
+                <tr><td colspan="4" class="empty-row">Aucun solde impayé pour cette année.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card">
+        <header class="card__header"><div><p class="page__eyebrow">ACTIVITÉ</p><h2 class="card__title">Derniers encaissements</h2></div>
+          <a class="text-link" routerLink="/payments" *eduopsHasPermission="'PAYMENT_VIEW'">Registre →</a></header>
+        <div class="payment-list">
+          @for (payment of payments(); track payment.id) {
+            <div class="payment-row"><span class="payment-icon" aria-hidden="true">✓</span><div class="payment-row__info">
+                <strong>{{ payment.studentName }}</strong><small>{{ payment.paymentDate | date:'dd/MM/yyyy' }} · {{ methodLabel(payment.paymentMethod) }}</small>
+              </div><strong class="payment-row__amount">{{ payment.amount | money:payment.currency }}</strong></div>
+          } @empty {
+            <div class="empty-payment"><span aria-hidden="true">₣</span><p>Aucun encaissement récent à afficher.</p><a routerLink="/payments" *eduopsHasPermission="'PAYMENT_VIEW'">Accéder aux paiements</a></div>
+          }
+        </div>
+      </article>
+    </section>
+    }
+  }
+</main>

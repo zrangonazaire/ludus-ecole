@@ -32,15 +32,16 @@ public interface InfirmaryVisitRepository extends JpaRepository<InfirmaryVisit, 
      * <p>The database refuses these outright, so a row here means someone
      * changed the outcome after the fact. It is worth seeing.</p>
      */
-    @Query("""
-            SELECT v FROM InfirmaryVisit v
-            WHERE v.academicYear.id = :yearId
-              AND v.guardianNotifiedAt IS NULL
-              AND v.outcome IN (ci.company.eduops.health.domain.InfirmaryOutcome.SENT_HOME,
-                                ci.company.eduops.health.domain.InfirmaryOutcome.EMERGENCY)
-            ORDER BY v.occurredAt DESC
-            """)
-    List<InfirmaryVisit> findUnnotified(@Param("yearId") UUID yearId);
+    @Query(value = """
+            SELECT v.* FROM infirmary_visit v
+            WHERE v.academic_year_id = :yearId
+              AND v.guardian_notified_at IS NULL
+              AND CAST(v.outcome AS text) IN (:requiringGuardian)
+            ORDER BY v.occurred_at DESC
+            """, nativeQuery = true)
+    List<InfirmaryVisit> findUnnotified(@Param("yearId") UUID yearId,
+                                         @Param("requiringGuardian")
+                                         List<String> requiringGuardian);
 
     @Query("""
             SELECT COUNT(v) FROM InfirmaryVisit v

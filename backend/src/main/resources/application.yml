@@ -98,6 +98,16 @@ spring:
     virtual:
       enabled: true
 
+# WhatsApp Cloud API is optional. Meta's approved template must contain one
+# body variable; the rendered financial reminder is passed as that variable.
+messaging:
+  whatsapp:
+    access-token: ${MESSAGING_WHATSAPP_ACCESS_TOKEN:}
+    phone-number-id: ${MESSAGING_WHATSAPP_PHONE_NUMBER_ID:}
+    template-name: ${MESSAGING_WHATSAPP_TEMPLATE_NAME:}
+    template-language: ${MESSAGING_WHATSAPP_TEMPLATE_LANGUAGE:fr}
+    graph-version: ${MESSAGING_WHATSAPP_GRAPH_VERSION:v23.0}
+
 server:
   port: 8080
   error:

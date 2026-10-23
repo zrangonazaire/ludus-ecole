@@ -191,6 +191,7 @@ export interface FinanceDataSource {
   discountRequest(id: string): Observable<DiscountRequest>;
   createDiscountRequest(payload: DiscountRequestPayload): Observable<DiscountRequest>;
   decideDiscountRequest(id: string, payload: DiscountDecisionPayload): Observable<DiscountRequest>;
+  cancelDiscountRequest(id: string, reason?: string): Observable<DiscountRequest>;
   applyDiscountRequest(id: string): Observable<DiscountRequest>;
 }
 

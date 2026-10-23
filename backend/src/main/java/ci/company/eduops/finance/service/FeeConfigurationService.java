@@ -79,6 +79,7 @@ public class FeeConfigurationService {
     private final FeeScheduleRepository feeScheduleRepository;
     private final FeeCategoryRepository feeCategoryRepository;
     private final StudentFeeRepository studentFeeRepository;
+    private final StudentFeeGenerationService studentFeeGenerationService;
     private final LevelRepository levelRepository;
     private final AcademicYearRepository academicYearRepository;
     private final SchoolRepository schoolRepository;
@@ -88,6 +89,7 @@ public class FeeConfigurationService {
                                    FeeScheduleRepository feeScheduleRepository,
                                    FeeCategoryRepository feeCategoryRepository,
                                    StudentFeeRepository studentFeeRepository,
+                                   StudentFeeGenerationService studentFeeGenerationService,
                                    LevelRepository levelRepository,
                                    AcademicYearRepository academicYearRepository,
                                    SchoolRepository schoolRepository,
@@ -96,6 +98,7 @@ public class FeeConfigurationService {
         this.feeScheduleRepository = feeScheduleRepository;
         this.feeCategoryRepository = feeCategoryRepository;
         this.studentFeeRepository = studentFeeRepository;
+        this.studentFeeGenerationService = studentFeeGenerationService;
         this.levelRepository = levelRepository;
         this.academicYearRepository = academicYearRepository;
         this.schoolRepository = schoolRepository;
@@ -246,6 +249,7 @@ public class FeeConfigurationService {
         Level level = request.getLevelId() == null ? null : requireLevel(request.getLevelId());
 
         FeeSchedule schedule = write(year, type, level, request);
+        studentFeeGenerationService.generateForExistingEnrollments(schedule);
         auditService.logCreate("FeeSchedule", schedule.getId(), schedule.getLabel(),
                 Map.<String, Object>of(
                         "level", level == null ? "tous les niveaux" : level.getName(),
@@ -294,7 +298,8 @@ public class FeeConfigurationService {
             if (exists && !request.isReplaceExisting()) {
                 continue;
             }
-            write(year, type, level, request.getSchedule());
+            FeeSchedule schedule = write(year, type, level, request.getSchedule());
+            studentFeeGenerationService.generateForExistingEnrollments(schedule);
             touched.add(forLevel(levelId, year.getId()));
         }
 

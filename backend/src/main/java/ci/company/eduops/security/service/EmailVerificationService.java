@@ -26,6 +26,7 @@ import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Confirmation de l'adresse e-mail d'un compte.
@@ -96,6 +97,16 @@ public class EmailVerificationService {
                 EmailVerificationMail.text(user.getFirstName(), schoolName, link, ttlHours));
         // Le lien n'est volontairement jamais journalisé.
         log.info("Verification email queued for user {}", user.getId());
+    }
+
+    /** Crée et envoie le jeton dans une transaction ouverte après le commit de l'inscription. */
+    @TenantBypass
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void issueAndSendAfterCommit(UUID userId, String schoolName, String requestIp) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Signup administrator disappeared before email verification was queued"));
+        issueAndSend(user, schoolName, requestIp);
     }
 
     /** Consomme le jeton et active le compte. */

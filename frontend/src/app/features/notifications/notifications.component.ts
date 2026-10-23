@@ -2,14 +2,26 @@ import {
   ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin, of } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
+import { environment } from '@env/environment';
+import { StudentSummary } from '@core/models/domain.models';
+import { PageResponse } from '@core/models/common.models';
+import {
+  AnnouncementChannel, AnnouncementPreview, AnnouncementSendResult,
+  ReceivedOpinionResponse
+} from '@core/models/announcement.models';
 import { INBOX_CATEGORIES, InboxMessage } from '@core/models/inbox.models';
+import { AnnouncementService } from '@core/services/announcement.service';
 import { InboxService } from '@core/services/inbox.service';
 import { NotificationService } from '@core/services/notification.service';
 import { ErrorStateComponent } from '@shared/ui/error-state/error-state.component';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
 import { StepCoachmarkComponent } from '@shared/ui/step-coachmark/step-coachmark.component';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 /**
  * Ma boîte de réception.
@@ -23,13 +35,15 @@ import { StepCoachmarkComponent } from '@shared/ui/step-coachmark/step-coachmark
   selector: 'eduops-notifications',
   standalone: true,
   imports: [CommonModule, LoadingStateComponent, ErrorStateComponent,
-    StepCoachmarkComponent],
+    StepCoachmarkComponent, HasPermissionDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './notifications.component.html',
   styleUrl: './notifications.component.scss'
 })
 export class NotificationsComponent implements OnInit {
   private readonly inbox = inject(InboxService);
+  private readonly http = inject(HttpClient);
+  private readonly announcements = inject(AnnouncementService);
   private readonly toasts = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -48,6 +62,43 @@ export class NotificationsComponent implements OnInit {
 
   readonly categoryFilter = signal('');
   readonly unreadOnly = signal(false);
+
+  readonly composerOpen = signal(false);
+  readonly studentsLoading = signal(false);
+  readonly students = signal<StudentSummary[]>([]);
+  readonly studentSearch = signal('');
+  readonly classFilter = signal('');
+  readonly selectedStudentIds = signal<Set<string>>(new Set());
+  readonly channel = signal<AnnouncementChannel>('EMAIL');
+  readonly title = signal('Demande d’avis');
+  readonly subject = signal('Votre avis compte pour notre école');
+  readonly body = signal('Bonjour {tuteur},\n\nNous aimerions connaître votre avis. Votre retour nous aidera à améliorer la vie de l’école.\nCliquez sur le lien sécurisé ci-dessous pour répondre.\n\nCordialement,\n{ecole}');
+  readonly collectResponses = signal(true);
+  readonly responseQuestion = signal('Quel est votre avis ?');
+  readonly composeStep = signal<'compose' | 'preview' | 'result'>('compose');
+  readonly preview = signal<AnnouncementPreview | null>(null);
+  readonly sendResult = signal<AnnouncementSendResult | null>(null);
+  readonly composing = signal(false);
+  readonly sendingAnnouncement = signal(false);
+  readonly composeError = signal('');
+  readonly responsesOpen = signal(false);
+  readonly responsesLoading = signal(false);
+  readonly receivedResponses = signal<ReceivedOpinionResponse[]>([]);
+  readonly responsesFailed = signal(false);
+  readonly visibleStudents = computed(() => {
+    const query = this.studentSearch().trim().toLocaleLowerCase('fr');
+    return this.students().filter((student) => {
+      const matchesClass = !this.classFilter() || student.classroomName === this.classFilter();
+      const haystack = `${student.fullName} ${student.studentNumber} ${student.classroomName ?? ''}`
+        .toLocaleLowerCase('fr');
+      return matchesClass && (!query || haystack.includes(query));
+    });
+  });
+  readonly classrooms = computed(() => [...new Set(this.students()
+    .map((student) => student.classroomName).filter((name): name is string => Boolean(name)))].sort());
+  readonly selectedCount = computed(() => this.selectedStudentIds().size);
+  readonly allVisibleSelected = computed(() => this.visibleStudents().length > 0
+    && this.visibleStudents().every((student) => this.selectedStudentIds().has(student.id)));
 
   readonly hasFilters = computed(() =>
     Boolean(this.categoryFilter()) || this.unreadOnly());
@@ -205,5 +256,142 @@ export class NotificationsComponent implements OnInit {
       this.page.update((value) => value + 1);
       this.load();
     }
+  }
+
+  openComposer(): void {
+    this.composerOpen.set(true);
+    this.composeStep.set('compose');
+    this.composeError.set('');
+    if (this.students().length || this.studentsLoading()) return;
+    this.loadStudents();
+  }
+
+  toggleResponses(): void {
+    this.responsesOpen.update((open) => !open);
+    if (this.responsesOpen() && this.receivedResponses().length === 0) this.loadResponses();
+  }
+
+  loadResponses(): void {
+    this.responsesLoading.set(true);
+    this.responsesFailed.set(false);
+    this.announcements.responses().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (items) => {
+        this.receivedResponses.set(items);
+        this.responsesLoading.set(false);
+      },
+      error: () => {
+        this.responsesLoading.set(false);
+        this.responsesFailed.set(true);
+      }
+    });
+  }
+
+  closeComposer(): void {
+    this.composerOpen.set(false);
+    this.preview.set(null);
+    this.sendResult.set(null);
+    this.composeStep.set('compose');
+  }
+
+  private loadStudents(): void {
+    this.studentsLoading.set(true);
+    const page = (number: number) => {
+      const params = new HttpParams().set('page', String(number)).set('size', '200').set('status', 'ACTIVE');
+      return this.http.get<PageResponse<StudentSummary>>(`${environment.apiBaseUrl}/students`, { params });
+    };
+    page(0).pipe(
+      switchMap((first) => first.totalPages > 1
+        ? forkJoin(Array.from({ length: first.totalPages - 1 }, (_, index) => page(index + 1)))
+            .pipe(map((rest) => [first, ...rest]))
+        : of([first])),
+      map((pages) => pages.flatMap((result) => result.content)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (students) => {
+        this.students.set(students.filter((student) => student.enrollmentId));
+        this.studentsLoading.set(false);
+      },
+      error: () => {
+        this.studentsLoading.set(false);
+        this.composeError.set('La liste des élèves n’a pas pu être chargée. Vérifiez vos droits puis réessayez.');
+      }
+    });
+  }
+
+  toggleStudent(studentId: string, checked: boolean): void {
+    this.selectedStudentIds.update((current) => {
+      const next = new Set(current);
+      if (checked && next.size >= 500 && !next.has(studentId)) {
+        this.toasts.error('Une campagne peut cibler au maximum 500 élèves. Envoyez plusieurs avis pour une liste plus large.');
+        return current;
+      }
+      if (checked) next.add(studentId); else next.delete(studentId);
+      return next;
+    });
+  }
+
+  clearSelectedStudents(): void {
+    this.selectedStudentIds.set(new Set<string>());
+  }
+
+  toggleVisibleStudents(checked: boolean): void {
+    this.selectedStudentIds.update((current) => {
+      const next = new Set(current);
+      for (const student of this.visibleStudents()) {
+        if (checked && !next.has(student.id) && next.size >= 500) break;
+        if (checked) next.add(student.id); else next.delete(student.id);
+      }
+      if (checked && next.size === 500 && current.size < 500) {
+        this.toasts.error('La sélection est limitée à 500 élèves par envoi. Le reste peut faire l’objet d’un autre avis.');
+      }
+      return next;
+    });
+  }
+
+  prepareAnnouncement(): void {
+    if (!this.selectedCount() || this.composing()) return;
+    this.composing.set(true);
+    this.composeError.set('');
+    this.announcements.prepare({
+      studentIds: [...this.selectedStudentIds()],
+      channel: this.channel(), title: this.title(),
+      subject: this.channel() === 'EMAIL' ? this.subject() : undefined,
+      bodyTemplate: this.body(),
+      collectResponses: this.collectResponses(),
+      responseQuestion: this.collectResponses() ? this.responseQuestion() : undefined
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (preview) => {
+        this.preview.set(preview);
+        this.composeStep.set('preview');
+        this.composing.set(false);
+      },
+      error: (error) => {
+        this.composing.set(false);
+        this.composeError.set(error?.error?.message ?? 'L’aperçu n’a pas pu être préparé. Vérifiez le message et les destinataires.');
+      }
+    });
+  }
+
+  sendAnnouncement(): void {
+    const campaignId = this.preview()?.campaignId;
+    if (!campaignId || this.sendingAnnouncement()) return;
+    this.sendingAnnouncement.set(true);
+    this.composeError.set('');
+    this.announcements.send(campaignId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (result) => {
+        this.sendResult.set(result);
+        this.composeStep.set('result');
+        this.sendingAnnouncement.set(false);
+      },
+      error: (error) => {
+        this.sendingAnnouncement.set(false);
+        this.composeError.set(error?.error?.message ?? 'L’envoi a échoué. Aucun résultat n’a été confirmé.');
+      }
+    });
+  }
+
+  backToCompose(): void {
+    this.composeStep.set('compose');
+    this.preview.set(null);
   }
 }

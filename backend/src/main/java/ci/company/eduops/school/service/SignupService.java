@@ -37,11 +37,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.Month;
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Public self-service signup.
@@ -145,7 +148,7 @@ public class SignupService {
         // difficile a reparer qu'une ecole vide, parce que personne ne sait
         // ce qui manque.
         SignupProvisioningService.Provisioned provisioned =
-                provisioningService.provision(school, year, request.getOperations());
+                provisioningService.provision(school, campus, year, request.getOperations());
 
         auditService.record(AuditAction.CREATE, "School", school.getId())
                 .label(school.getName())
@@ -165,13 +168,50 @@ public class SignupService {
         // le mail de confirmation remplace alors le mail de bienvenue (qui
         // serait prematuré, et qui repetait le mot de passe choisi).
         if (properties.getSecurity().isEmailVerificationRequired()) {
-            emailVerificationService.issueAndSend(admin, school.getName(), requestIp);
+            scheduleVerificationEmail(admin.getId(), school.getName(), requestIp);
         } else {
-            sendWelcomeEmail(admin, school);
+            scheduleWelcomeEmail(admin, school);
         }
 
         log.info("Nouvelle école '{}' ({}) créée par {}", school.getName(), code, email);
         return buildResponse(school, admin, year, provisioned);
+    }
+
+    /** Envoie le mail seulement si toutes les écritures de l'inscription sont validées. */
+    private void scheduleVerificationEmail(UUID userId, String schoolName, String requestIp) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    emailVerificationService.issueAndSendAfterCommit(userId, schoolName, requestIp);
+                } catch (RuntimeException exception) {
+                    // L'école est déjà créée : un problème SMTP ne doit pas
+                    // transformer le succès de la transaction en faux échec.
+                    log.error("Could not send signup verification email for user {}", userId,
+                            exception);
+                }
+            }
+        });
+    }
+
+    private void scheduleWelcomeEmail(AppUser admin, School school) {
+        Map<String, Object> variables = Map.of(
+                "firstName", admin.getFirstName(),
+                "schoolName", school.getName(),
+                "username", admin.getUsername(),
+                "temporaryPassword", "(celui que vous avez choisi)",
+                "appBaseUrl", properties.getApp().getBaseUrl());
+        UUID userId = admin.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    mailService.sendTemplate(admin.getEmail(), "ACCOUNT_CREATED", variables);
+                } catch (RuntimeException exception) {
+                    log.error("Could not send signup welcome email for user {}", userId, exception);
+                }
+            }
+        });
     }
 
     private void validate(SignupRequest request) {
@@ -297,15 +337,6 @@ public class SignupService {
         admin.setSchoolId(school.getId());
         admin.addRole(schoolAdmin);
         return userRepository.save(admin);
-    }
-
-    private void sendWelcomeEmail(AppUser admin, School school) {
-        mailService.sendTemplate(admin.getEmail(), "ACCOUNT_CREATED", Map.<String, Object>of(
-                "firstName", admin.getFirstName(),
-                "schoolName", school.getName(),
-                "username", admin.getUsername(),
-                "temporaryPassword", "(celui que vous avez choisi)",
-                "appBaseUrl", properties.getApp().getBaseUrl()));
     }
 
     private SignupResponse buildResponse(School school, AppUser admin, AcademicYear year,

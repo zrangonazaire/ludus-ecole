@@ -137,6 +137,7 @@ public class StudentQueryService {
         detail.setBirthPlace(student.getBirthPlace());
         detail.setNationality(student.getNationality());
         detail.setEmail(student.getEmail());
+        detail.setMailResponsable(student.getMailResponsable());
         detail.setPhone(student.getPhone());
         detail.setAddressLine1(student.getAddressLine1());
         detail.setCity(student.getCity());
@@ -302,7 +303,11 @@ public class StudentQueryService {
             row.setAge(Period.between(student.getBirthDate(), LocalDate.now()).getYears());
         }
         row.setPhotoUrl(student.getPhotoUrl());
+        row.setMailResponsable(student.getMailResponsable());
         row.setStatus(student.getStatus() != null ? student.getStatus().name() : null);
+        if (enrollment != null) {
+            row.setEnrollmentId(enrollment.getId());
+        }
         if (enrollment != null && enrollment.getClassroom() != null) {
             row.setClassroomId(enrollment.getClassroom().getId());
             row.setClassroomName(enrollment.getClassroom().getName());

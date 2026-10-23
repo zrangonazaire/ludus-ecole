@@ -6,6 +6,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -46,7 +48,8 @@ public class DiscountRequest extends BaseEntity {
     private String reason;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "discount_type", nullable = false, length = 20)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "discount_type", nullable = false, columnDefinition = "discount_type")
     private DiscountType discountType = DiscountType.PERCENTAGE;
 
     @Column(name = "value", nullable = false, precision = 15, scale = 2)
@@ -57,7 +60,8 @@ public class DiscountRequest extends BaseEntity {
     private BigDecimal computedAmount;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", nullable = false, columnDefinition = "discount_request_status")
     private DiscountRequestStatus status = DiscountRequestStatus.SUBMITTED;
 
     @Column(name = "current_level", nullable = false)
@@ -74,6 +78,9 @@ public class DiscountRequest extends BaseEntity {
 
     @Column(name = "rejection_reason")
     private String rejectionReason;
+
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
 
     @Column(name = "effective_at")
     private OffsetDateTime effectiveAt;

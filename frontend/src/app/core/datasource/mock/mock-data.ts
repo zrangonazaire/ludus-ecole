@@ -91,6 +91,7 @@ export function buildMockStudents(count = 120): StudentSummary[] {
       birthDate: `${birthYear}-0${(i % 9) + 1}-1${i % 9}`,
       age: 2026 - birthYear,
       status: i % 23 === 0 ? 'SUSPENDED' : 'ACTIVE',
+      enrollmentId: `enr-st-${i + 1}`,
       classroomId: classroom.id,
       classroomName: classroom.name,
       levelName: classroom.levelName

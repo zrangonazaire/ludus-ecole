@@ -29,4 +29,6 @@ public interface CashSessionRepository extends JpaRepository<CashSession, UUID> 
     Page<CashSession> findBySchoolIdAndStatus(UUID schoolId, CashSessionStatus status, Pageable pageable);
 
     Optional<CashSession> findByReference(String reference);
+
+    boolean existsByCashRegisterIdAndStatus(UUID cashRegisterId, CashSessionStatus status);
 }

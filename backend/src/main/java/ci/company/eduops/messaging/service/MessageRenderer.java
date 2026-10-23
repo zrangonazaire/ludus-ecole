@@ -36,9 +36,11 @@ public class MessageRenderer {
         AVAILABLE.put("tuteur", "Nom du parent ou tuteur destinataire");
         AVAILABLE.put("ecole", "Nom de l'établissement");
         AVAILABLE.put("montant", "Montant dû, pour une relance de scolarité");
+        AVAILABLE.put("devise", "Devise du montant, par exemple XOF");
         AVAILABLE.put("nombre", "Nombre en cause : absences, vaccins manquants…");
         AVAILABLE.put("detail", "Précision propre à la relance");
         AVAILABLE.put("date", "Date du jour");
+        AVAILABLE.put("lien_reponse", "Lien individuel pour répondre à un avis");
     }
 
     /** Renders one message for one recipient. */

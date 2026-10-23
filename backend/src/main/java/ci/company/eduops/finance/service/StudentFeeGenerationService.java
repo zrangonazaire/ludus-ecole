@@ -3,6 +3,7 @@ package ci.company.eduops.finance.service;
 import ci.company.eduops.common.util.MoneyUtils;
 import ci.company.eduops.enrollment.domain.Enrollment;
 import ci.company.eduops.enrollment.domain.EnrollmentKind;
+import ci.company.eduops.enrollment.repository.EnrollmentRepository;
 import ci.company.eduops.finance.domain.FeeSchedule;
 import ci.company.eduops.finance.domain.FeeScheduleInstalment;
 import ci.company.eduops.finance.domain.StudentFee;
@@ -31,11 +32,14 @@ public class StudentFeeGenerationService {
 
     private final FeeScheduleRepository feeScheduleRepository;
     private final StudentFeeRepository studentFeeRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     public StudentFeeGenerationService(FeeScheduleRepository feeScheduleRepository,
-                                       StudentFeeRepository studentFeeRepository) {
+                                       StudentFeeRepository studentFeeRepository,
+                                       EnrollmentRepository enrollmentRepository) {
         this.feeScheduleRepository = feeScheduleRepository;
         this.studentFeeRepository = studentFeeRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     /**
@@ -74,21 +78,60 @@ public class StudentFeeGenerationService {
         return created;
     }
 
+    /**
+     * Applies a newly saved price to pupils already enrolled in that year.
+     * Existing fee lines are left untouched; only missing sequence lines are
+     * created, so repeating this operation cannot bill the same instalment twice.
+     */
+    @Transactional
+    public List<StudentFee> generateForExistingEnrollments(FeeSchedule schedule) {
+        List<StudentFee> created = new ArrayList<>();
+        for (Enrollment enrollment : enrollmentRepository.findActiveByYear(
+                schedule.getAcademicYear().getId())) {
+            if (enrollment.getClassroom() == null
+                    || (schedule.getLevel() != null
+                        && !schedule.getLevel().getId().equals(
+                                enrollment.getClassroom().getLevel().getId()))
+                    || (schedule.getCampus() != null
+                        && !schedule.getCampus().getId().equals(
+                                enrollment.getClassroom().getCampus().getId()))) {
+                continue;
+            }
+
+            boolean returning = enrollment.getEnrollmentKind() == EnrollmentKind.RE_ENROLLMENT;
+            if (returning ? !schedule.isAppliesToReturningStudents()
+                    : !schedule.isAppliesToNewStudents()) {
+                continue;
+            }
+
+            created.addAll(createLines(enrollment, schedule));
+        }
+        log.info("{} fee lines generated from schedule {} for existing enrollments",
+                created.size(), schedule.getLabel());
+        return created;
+    }
+
     private List<StudentFee> createLines(Enrollment enrollment, FeeSchedule schedule) {
         List<StudentFee> lines = new ArrayList<>();
 
         if (schedule.getInstalments().isEmpty()) {
             // Single payment due at enrollment date.
-            lines.add(persist(enrollment, schedule, null, 1,
-                    schedule.getLabel(), schedule.getTotalAmount(),
-                    enrollment.getEnrollmentDate()));
+            if (!studentFeeRepository.existsByEnrollmentIdAndFeeScheduleIdAndSequence(
+                    enrollment.getId(), schedule.getId(), 1)) {
+                lines.add(persist(enrollment, schedule, null, 1,
+                        schedule.getLabel(), schedule.getTotalAmount(),
+                        enrollment.getEnrollmentDate()));
+            }
         } else {
             for (FeeScheduleInstalment instalment : schedule.getInstalments()) {
-                lines.add(persist(enrollment, schedule, instalment,
-                        instalment.getSequence(),
-                        schedule.getLabel() + " - " + instalment.getLabel(),
-                        instalment.getAmount(),
-                        instalment.getDueDate()));
+                if (!studentFeeRepository.existsByEnrollmentIdAndFeeScheduleIdAndSequence(
+                        enrollment.getId(), schedule.getId(), instalment.getSequence())) {
+                    lines.add(persist(enrollment, schedule, instalment,
+                            instalment.getSequence(),
+                            schedule.getLabel() + " - " + instalment.getLabel(),
+                            instalment.getAmount(),
+                            instalment.getDueDate()));
+                }
             }
         }
         return lines;

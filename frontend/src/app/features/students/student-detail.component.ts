@@ -10,7 +10,7 @@ import { StudentStatement, StudentStatementService } from '@core/services/studen
 import { renderStudentStatement } from './student-statement-print';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { STUDENT_DATA_SOURCE } from '@core/datasource/data-source';
-import { Enrollment, StudentDetail } from '@core/models/domain.models';
+import { Enrollment, StudentDetail, StudentUpdatePayload } from '@core/models/domain.models';
 import { AvatarComponent } from '@shared/ui/avatar/avatar.component';
 import { StatusBadgeComponent } from '@shared/ui/status-badge/status-badge.component';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
@@ -61,7 +61,9 @@ export class StudentDetailComponent implements OnInit {
     gender: ['MALE' as StudentDetail['gender'], Validators.required],
     birthDate: ['', [Validators.required, (control: AbstractControl) => control.value && control.value > this.maxBirthDate ? { past: true } : null]],
     birthPlace: ['', Validators.maxLength(120)], nationality: ['', Validators.maxLength(80)],
-    email: ['', [Validators.email, Validators.maxLength(160)]], phone: ['', Validators.maxLength(40)],
+    email: ['', [Validators.email, Validators.maxLength(160)]],
+    mailResponsable: ['', [Validators.email, Validators.maxLength(180)]],
+    phone: ['', Validators.maxLength(40)],
     address: ['', Validators.maxLength(200)], city: ['', Validators.maxLength(120)],
     previousSchool: ['', Validators.maxLength(160)]
   });
@@ -72,7 +74,8 @@ export class StudentDetailComponent implements OnInit {
     this.editForm.reset({ firstName: student.firstName, lastName: student.lastName,
       middleName: student.middleName ?? '', gender: student.gender, birthDate: student.birthDate,
       birthPlace: student.birthPlace ?? '', nationality: student.nationality ?? '',
-      email: student.email ?? '', phone: student.phone ?? '', address: student.addressLine1 ?? '',
+      email: student.email ?? '', mailResponsable: student.mailResponsable ?? '',
+      phone: student.phone ?? '', address: student.addressLine1 ?? '',
       city: student.city ?? '', previousSchool: student.previousSchool ?? '' });
     this.editing.set(true);
   }
@@ -87,15 +90,51 @@ export class StudentDetailComponent implements OnInit {
     if (!this.canEdit() || this.saving()) return;
     if (this.editForm.invalid) { this.editForm.markAllAsTouched(); return; }
     const value = this.editForm.getRawValue();
+    // Send only fields the user actually changed. The backend loads the latest
+    // row before applying this partial patch and its JPA @Version still guards
+    // a write that races with another update during the request.
+    const payload: StudentUpdatePayload = {};
+    const controls = this.editForm.controls;
+    if (controls.firstName.dirty) payload.firstName = value.firstName.trim();
+    if (controls.lastName.dirty) payload.lastName = value.lastName.trim();
+    if (controls.middleName.dirty) payload.middleName = value.middleName.trim();
+    if (controls.gender.dirty) payload.gender = value.gender;
+    if (controls.birthDate.dirty) payload.birthDate = value.birthDate;
+    if (controls.birthPlace.dirty) payload.birthPlace = value.birthPlace.trim();
+    if (controls.nationality.dirty) payload.nationality = value.nationality.trim();
+    if (controls.email.dirty) payload.email = value.email.trim();
+    if (controls.mailResponsable.dirty) payload.mailResponsable = value.mailResponsable.trim().toLowerCase();
+    if (controls.phone.dirty) payload.phone = value.phone.trim();
+    if (controls.address.dirty) payload.address = value.address.trim();
+    if (controls.city.dirty) payload.city = value.city.trim();
+    if (controls.previousSchool.dirty) payload.previousSchool = value.previousSchool.trim();
     this.saving.set(true);
-    this.dataSource.update(this.id, { ...value, version: this.student()?.version,
-      firstName: value.firstName.trim(), lastName: value.lastName.trim(), email: value.email.trim()
-    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.dataSource.update(this.id, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: student => {
         this.student.set(student); this.saving.set(false); this.editing.set(false);
         this.editForm.markAsPristine(); this.statement.set(null);
         this.notifications.success('Les informations de l’élève ont été mises à jour.');
       }, error: err => {
+        const conflict = err?.status === 409
+          || err?.error?.code === 'CONCURRENT_MODIFICATION';
+        if (conflict) {
+          // Keep the user's unsaved form values, but refresh the version token
+          // so a deliberate retry can be based on the latest server record.
+          this.dataSource.getById(this.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+            next: latest => {
+              this.student.set(latest);
+              this.saving.set(false);
+              this.notifications.warning(
+                'La fiche a changé entre-temps. Vos saisies sont conservées ; vérifiez-les puis réessayez d’enregistrer.'
+              );
+            },
+            error: () => {
+              this.saving.set(false);
+              this.notifications.error(translateErrorCode(err?.error?.code ?? 'INTERNAL_ERROR'));
+            }
+          });
+          return;
+        }
         this.saving.set(false);
         this.notifications.error(translateErrorCode(err?.error?.code ?? 'INTERNAL_ERROR'));
       }

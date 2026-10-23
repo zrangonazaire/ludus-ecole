@@ -1,0 +1,38 @@
+<main class="page section-dashboard">
+  <header class="page__header"><div><p class="page__eyebrow">PERSONNEL ET ACCÈS · PILOTAGE</p><h1 class="page__title">Tableau de bord Personnel et accès</h1><p class="page__meta">Comptes, profils, enseignants et activité sensible de l’établissement.</p></div>
+    <div class="header-actions">@if (lastRefresh(); as refreshed) { <span class="refresh-label">Mis à jour à {{ refreshed | date:'HH:mm' }}</span> }<button class="btn btn--secondary" type="button" [disabled]="loading()" (click)="load()">⟳ Actualiser</button></div>
+  </header>
+  @if (loading()) { <eduops-loading-state message="Chargement du personnel et des accès..." /> }
+  @else if (error()) { <eduops-error-state (retry)="load()" /> }
+  @else {
+    <section class="kpis" aria-label="Indicateurs personnel et accès">
+      @if (canManageUsers) { <article class="kpi kpi--blue"><span class="kpi__icon">◒</span><div><p>Comptes utilisateurs</p><strong>{{ users()?.length ?? '—' }}</strong><small>{{ activeUserCount ?? 0 }} actifs · {{ disabledUserCount ?? 0 }} inactifs ou bloqués</small></div></article> }
+      @if (canManageProfiles) { <article class="kpi kpi--purple"><span class="kpi__icon">◎</span><div><p>Profils d’accès</p><strong>{{ profileOverview()?.profiles?.length ?? '—' }}</strong><small>{{ profileOverview()?.permissions?.length ?? 0 }} droits disponibles</small></div></article> }
+      @if (canViewTeachers) { <article class="kpi kpi--green"><span class="kpi__icon">◍</span><div><p>Enseignants recensés</p><strong>{{ teachers()?.totalElements ?? '—' }}</strong><small>Fiches et comptes enseignants liés à l’école</small></div></article> }
+      @if (canViewAudit) { <article class="kpi kpi--gold"><span class="kpi__icon">▨</span><div><p>Événements du journal</p><strong>{{ auditPage()?.totalElements ?? '—' }}</strong><small>Traces consultables selon vos droits</small></div></article> }
+    </section>
+
+    <section class="content-grid">
+      @if (canManageProfiles) {
+        <article class="card"><header class="card__header"><div><p class="page__eyebrow">RÉPARTITION DES DROITS</p><h2>Profils d’accès</h2></div><a routerLink="/access-profiles" class="text-link">Gérer les profils →</a></header>
+          @if (profileOverview()?.profiles?.length) { <div class="profile-list">@for (profile of profileOverview()!.profiles; track profile.id) { <div class="profile-row"><span class="profile-icon">◎</span><span class="profile-row__main"><strong>{{ profile.label }}</strong><small>{{ profile.permissionCount }} droits{{ profile.systemProfile ? ' · système' : '' }}</small></span><span class="profile-users"><strong>{{ profile.userCount }}</strong><small>comptes</small></span></div> }</div> }
+          @else { <div class="empty-state"><strong>Aucun profil à afficher</strong><p>Les profils créés apparaîtront ici.</p></div> }
+        </article>
+      }
+
+      @if (canViewAudit) {
+        <article class="card"><header class="card__header"><div><p class="page__eyebrow">TRAÇABILITÉ</p><h2>Activité récente</h2></div><a routerLink="/audit" class="text-link">Ouvrir le journal →</a></header>
+          @if (auditPage()?.content?.length) { <div class="activity-list">@for (entry of auditPage()!.content; track auditTrack($index, entry)) { <div class="activity-row"><span class="activity-dot" [class.activity-dot--failed]="!entry.success"></span><span class="activity-row__main"><strong>{{ entry.actionLabel }} · {{ entry.entityTypeLabel }}</strong><small>{{ entry.username || 'Utilisateur' }} · {{ entry.occurredAt | date:'dd/MM/yyyy HH:mm' }}</small></span>@if (!entry.success) { <span class="failed-badge">Échec</span> }</div> }</div> }
+          @else { <div class="empty-state"><strong>Aucun événement récent</strong><p>Le journal d’audit est vide pour le moment.</p></div> }
+        </article>
+      }
+    </section>
+
+    <section class="card quick-card"><header class="card__header"><div><p class="page__eyebrow">ACCÈS RAPIDE</p><h2>Gérer les équipes et la sécurité</h2></div></header><nav class="shortcuts" aria-label="Gestion du personnel et des accès">
+      @if (canManageUsers) { <a routerLink="/users"><span class="shortcut-icon shortcut-icon--blue">◒</span><span><strong>Comptes utilisateurs</strong><small>Créer, rattacher et gérer les accès</small></span><b>→</b></a> }
+      @if (canViewTeachers) { <a routerLink="/teachers"><span class="shortcut-icon shortcut-icon--green">◍</span><span><strong>Enseignants</strong><small>Fiches, matières et classes</small></span><b>→</b></a> }
+      @if (canManageProfiles) { <a routerLink="/access-profiles"><span class="shortcut-icon shortcut-icon--purple">◎</span><span><strong>Profils d’accès</strong><small>Attribuer uniquement les droits nécessaires</small></span><b>→</b></a> }
+      @if (canViewAudit) { <a routerLink="/audit"><span class="shortcut-icon shortcut-icon--gold">▨</span><span><strong>Journal d’audit</strong><small>Examiner les opérations sensibles</small></span><b>→</b></a> }
+    </nav></section>
+  }
+</main>

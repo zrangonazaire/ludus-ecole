@@ -35,6 +35,7 @@ const PERMISSIONS: AccessPermission[] = [
   permission('FINANCE_MANAGE', 'Gérer les frais et échéanciers', 'Finance'),
   permission('PAYMENT_VIEW', 'Consulter les paiements', 'Finance'),
   permission('PAYMENT_CREATE', 'Encaisser des paiements', 'Finance'),
+  permission('CASH_SESSION_MANAGE', 'Ouvrir et clôturer une caisse', 'Finance'),
   permission('DOCUMENT_VIEW', 'Consulter les documents', 'Documents'),
   permission('DOCUMENT_GENERATE', 'Générer des documents officiels', 'Documents'),
   permission('REPORT_VIEW', 'Consulter les rapports', 'Pilotage'),
@@ -71,6 +72,11 @@ let profiles: AccessProfile[] = [
       'DASHBOARD_VIEW', 'STUDENT_VIEW', 'FINANCE_VIEW', 'FINANCE_MANAGE',
       'PAYMENT_VIEW', 'REPORT_VIEW', 'REPORT_EXPORT', 'DOCUMENT_VIEW'
     ], 2),
+  profile('role-cashier', 'CASHIER', 'Caissier',
+    'Encaissements, reçus et sessions de caisse.', [
+      'DASHBOARD_VIEW', 'FINANCE_VIEW', 'PAYMENT_VIEW', 'PAYMENT_CREATE',
+      'CASH_SESSION_MANAGE', 'STUDENT_VIEW', 'GUARDIAN_VIEW', 'DOCUMENT_VIEW', 'DOCUMENT_GENERATE'
+    ], 1),
   profile('role-parent', 'PARENT', 'Parent',
     'Portail parent, ses enfants uniquement.', ['PORTAL_PARENT'], 326),
   profile('role-student', 'STUDENT', 'Élève',

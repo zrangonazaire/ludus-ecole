@@ -44,6 +44,12 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
 
     java.util.List<AppUser> findBySchoolIdOrderByLastNameAscFirstNameAsc(UUID schoolId);
 
+    @Query("SELECT DISTINCT u FROM AppUser u JOIN u.roles r WHERE u.schoolId = :schoolId "
+            + "AND r.code = 'CASHIER' AND u.status = 'ACTIVE' ORDER BY u.lastName, u.firstName")
+    java.util.List<AppUser> findCashierAccounts(@Param("schoolId") UUID schoolId);
+
+    Optional<AppUser> findByIdAndSchoolId(UUID id, UUID schoolId);
+
     @Query("""
            SELECT u FROM AppUser u
            WHERE lower(u.username) = lower(:login) OR lower(u.email) = lower(:login)

@@ -120,6 +120,9 @@ export class DiscountsComponent implements OnInit {
   readonly decisionComment = signal('');
   readonly savingDecision = signal(false);
   readonly applying = signal<string | null>(null);
+  readonly cancelling = signal<DiscountRequest | null>(null);
+  readonly cancellationReason = signal('');
+  readonly savingCancellation = signal(false);
 
   ngOnInit(): void {
     this.circuitsService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -238,8 +241,8 @@ export class DiscountsComponent implements OnInit {
         this.submitting.set(false);
         this.formOpen.set(false);
         this.notifications.success(
-          `Demande ${created.reference} envoyée à « ${this.formLevels()[0]?.name ?? '…'} ».`,
-          'Demande enregistrée');
+          `Demande ${created.reference} envoyée au premier niveau. Les valideurs sont avertis par e-mail et vous recevrez les mises à jour.`,
+          'Demande transmise');
         this.load();
       },
       error: (err) => {
@@ -281,7 +284,9 @@ export class DiscountsComponent implements OnInit {
             decision === 'APPROVE'
               ? (updated.status === 'SUBMITTED'
                   ? `Palier validé. En attente de « ${this.currentLevelLabel(updated)} ».`
-                  : 'Tous les paliers sont validés : la réduction est appliquée.')
+                  : updated.status === 'APPROVED'
+                    ? 'Tous les paliers sont validés. La remise peut maintenant être rendue effective.'
+                    : 'Tous les paliers sont validés : la réduction est appliquée.')
               : `Demande ${updated.reference} refusée.`,
             decision === 'APPROVE' ? 'Validation enregistrée' : 'Demande refusée');
           this.load();
@@ -289,7 +294,7 @@ export class DiscountsComponent implements OnInit {
         error: (err) => {
           this.savingDecision.set(false);
           this.notifications.error(
-            err?.error?.message ?? 'Décision impossible.', 'Refusé');
+            err?.error?.message ?? 'Décision impossible.', 'Décision impossible');
         }
       });
   }
@@ -309,6 +314,36 @@ export class DiscountsComponent implements OnInit {
           this.applying.set(null);
           this.notifications.error(
             err?.error?.message ?? 'Application impossible.', 'Refusé');
+        }
+      });
+  }
+
+  askCancellation(request: DiscountRequest): void {
+    this.cancelling.set(request);
+    this.cancellationReason.set('');
+  }
+
+  closeCancellation(): void {
+    if (!this.savingCancellation()) this.cancelling.set(null);
+  }
+
+  confirmCancellation(): void {
+    const request = this.cancelling();
+    if (!request) return;
+    this.savingCancellation.set(true);
+    this.finance.cancelDiscountRequest(request.id, this.cancellationReason().trim() || undefined)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: () => {
+          this.savingCancellation.set(false);
+          this.cancelling.set(null);
+          this.notifications.success(
+            `La demande ${request.reference} a été retirée. Les valideurs ont été avertis par e-mail.`,
+            'Demande annulée');
+          this.load();
+        },
+        error: (err) => {
+          this.savingCancellation.set(false);
+          this.notifications.error(err?.error?.message ?? 'Annulation impossible.', 'Action refusée');
         }
       });
   }

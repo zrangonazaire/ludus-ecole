@@ -8,6 +8,7 @@ import { forkJoin } from 'rxjs';
 import { HEALTH_DATA_SOURCE, STUDENT_DATA_SOURCE } from '@core/datasource/data-source';
 import { AuthService } from '@core/auth/auth.service';
 import { PERMISSIONS } from '@core/models/auth.models';
+import { ApiError } from '@core/models/common.models';
 import { StudentSummary } from '@core/models/domain.models';
 import {
   ExaminationKind, ExaminationOutcome, HealthBoard, HealthConditionKind, HealthRecord,
@@ -640,9 +641,10 @@ export class HealthComponent implements OnInit {
 
   private fail(err: unknown): void {
     this.saving.set(false);
-    const code = (err as { error?: { code?: string } })?.error?.code
+    const apiError = (err as { error?: ApiError })?.error;
+    const code = apiError?.code
       ?? (err as { message?: string })?.message
       ?? 'UNKNOWN';
-    this.notifications.error(translateErrorCode(code));
+    this.notifications.error(translateErrorCode(code, apiError));
   }
 }

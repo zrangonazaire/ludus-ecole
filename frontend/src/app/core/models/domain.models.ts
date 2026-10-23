@@ -103,9 +103,12 @@ export interface StudentSummary {
   age?: number;
   photoUrl?: string;
   status: StudentStatus;
+  /** Identifiant de l'inscription active, utilisé par les mouvements de classe. */
+  enrollmentId?: string;
   classroomId?: string;
   classroomName?: string;
   levelName?: string;
+  mailResponsable?: string;
 }
 
 export interface StudentDetail extends StudentSummary {
@@ -114,6 +117,7 @@ export interface StudentDetail extends StudentSummary {
   birthPlace?: string;
   nationality?: string;
   email?: string;
+  mailResponsable?: string;
   phone?: string;
   addressLine1?: string;
   city?: string;
@@ -140,6 +144,7 @@ export interface StudentUpdatePayload {
   birthPlace?: string;
   nationality?: string;
   email?: string;
+  mailResponsable?: string;
   phone?: string;
   /** Colonne `address` côté backend ; la fiche affiche `addressLine1`. */
   address?: string;

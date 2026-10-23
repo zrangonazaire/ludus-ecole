@@ -79,7 +79,7 @@ export class EnrollmentWizardComponent implements OnInit {
     lastName: ['', [Validators.required, Validators.maxLength(120)]],
     firstName: ['', [Validators.required, Validators.maxLength(120)]],
     phone: ['', [Validators.required]],
-    email: ['', [Validators.email]],
+    email: ['', [Validators.email, Validators.maxLength(180)]],
     relationship: ['MOTHER', [Validators.required]],
     financialResponsibility: [true]
   });

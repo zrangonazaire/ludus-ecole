@@ -29,7 +29,7 @@
            [queryParams]="{ studentId: student.id, type: 'SCHOOL_CERTIFICATE' }">Certificat de scolarité</a>
         @if (canStatement()) {
           <button type="button" class="btn btn--secondary" [disabled]="printing() || editing()"
-                  (click)="printStatement()">{{ printing() ? 'Préparation…' : 'Imprimer la fiche / paiements' }}</button>
+                  (click)="printStatement()">{{ printing() ? 'Préparation…' : 'Imprimer la fiche élève' }}</button>
         }
         @if (canEdit()) {
           <button type="button" class="btn btn--primary" [disabled]="editing()" (click)="openEdit()">Modifier</button>
@@ -52,6 +52,7 @@
               <label>Nationalité<input class="input" formControlName="nationality" maxlength="80" /></label>
               <label>Téléphone<input class="input" type="tel" formControlName="phone" maxlength="40" /></label>
               <label>Courriel<input class="input" type="email" formControlName="email" maxlength="160" /></label>
+              <label>Courriel du responsable<input class="input" type="email" formControlName="mailResponsable" maxlength="180" autocomplete="email" /></label>
               <label>Adresse<input class="input" formControlName="address" maxlength="200" /></label>
               <label>Ville<input class="input" formControlName="city" maxlength="120" /></label>
               <label>Établissement précédent<input class="input" formControlName="previousSchool" maxlength="160" /></label>
@@ -99,6 +100,7 @@
               <div><dt>Nationalite</dt><dd>{{ student.nationality ?? '-' }}</dd></div>
               <div><dt>Téléphone</dt><dd>{{ student.phone || '—' }}</dd></div>
               <div><dt>Courriel</dt><dd>{{ student.email || '—' }}</dd></div>
+              <div><dt>Courriel du responsable</dt><dd>{{ student.mailResponsable || '—' }}</dd></div>
               <div><dt>Adresse</dt><dd>{{ student.addressLine1 || '—' }}</dd></div>
               <div><dt>Ville</dt><dd>{{ student.city || '—' }}</dd></div>
               <div><dt>Date d'admission</dt><dd>{{ student.admissionDate | date:'dd/MM/yyyy' }}</dd></div>

@@ -183,9 +183,10 @@
                          placeholder="+225 07 11 22 33" />
                 </div>
                 <div class="field">
-                  <label class="field__label" for="gEmail">Email</label>
-                  <input id="gEmail" class="input" type="email" formControlName="email" />
-                  <span class="field__hint">Nécessaire pour ouvrir le portail parent.</span>
+                  <label class="field__label" for="gEmail">Courriel du responsable</label>
+                  <input id="gEmail" class="input" type="email" formControlName="email"
+                         autocomplete="email" maxlength="180" />
+                  <span class="field__hint">Utilisé pour les notifications et les relances par e-mail.</span>
                 </div>
               </div>
 

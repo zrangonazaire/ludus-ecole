@@ -143,8 +143,8 @@
         <select class="input" [value]="subjectFilter()"
                 (change)="changeSubject($any($event.target).value)">
           <option value="">Toutes les matières</option>
-          @for (subject of subjectList(); track subject.id) {
-            <option [value]="subject.id">{{ subject.name }}</option>
+          @for (subject of filterSubjectList(); track subject.value) {
+            <option [value]="subject.value">{{ subject.label }}</option>
           }
         </select>
       </label>
@@ -268,7 +268,8 @@
         <div class="grid2">
           <div class="field">
             <label class="field__label field__label--required" for="paper-class">Classe</label>
-            <select id="paper-class" class="input" formControlName="classroomId">
+            <select id="paper-class" class="input" formControlName="classroomId"
+                    (change)="onAssessmentClassroomChange($any($event.target).value)">
               <option value="">Choisir…</option>
               @for (classroom of classroomList(); track classroom.id) {
                 <option [value]="classroom.id">{{ classroom.name }}</option>
@@ -279,13 +280,15 @@
             <label class="field__label field__label--required" for="paper-subject">Matière</label>
             <select id="paper-subject" class="input" formControlName="subjectId">
               <option value="">Choisir…</option>
-              @for (subject of subjectList(); track subject.id) {
+              @for (subject of formSubjectList(); track subject.id) {
                 <option [value]="subject.id">{{ subject.name }}</option>
               }
             </select>
             <span class="field__hint">
-              Elle doit figurer au programme du niveau : sans coefficient, la note
-              n'entrerait dans aucune moyenne.
+              La liste suit le programme du niveau de la classe sélectionnée.
+              @if (selectedClassroomId() && formSubjectList().length === 0) {
+                Aucune matière n'est définie pour ce niveau.
+              }
             </span>
           </div>
         </div>

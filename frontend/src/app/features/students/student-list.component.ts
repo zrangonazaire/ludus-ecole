@@ -72,6 +72,8 @@ export class StudentListComponent implements OnInit {
   identityTpl!: TemplateRef<{ $implicit: StudentSummary }>;
   @ViewChild('statusTpl', { static: true })
   statusTpl!: TemplateRef<{ $implicit: StudentSummary }>;
+  @ViewChild('responsibleEmailTpl', { static: true })
+  responsibleEmailTpl!: TemplateRef<{ $implicit: StudentSummary }>;
 
   columns: TableColumn<StudentSummary>[] = [];
   @ViewChild('actionsTpl', { static: true }) actionsTpl!: TemplateRef<{ $implicit: StudentSummary }>;
@@ -89,13 +91,14 @@ export class StudentListComponent implements OnInit {
 
   ngOnInit(): void {
     this.columns = [
-      { key: 'fullName', label: 'Élève', template: this.identityTpl, width: '25%' },
-      { key: 'studentNumber', label: 'Matricule', numeric: true, width: '15%' },
-      { key: 'classroomName', label: 'Classe', width: '12%' },
-      { key: 'levelName', label: 'Niveau', width: '11%' },
-      { key: 'age', label: 'Âge', numeric: true, width: '7%' },
-      { key: 'status', label: 'Statut', template: this.statusTpl, width: '10%' },
-      { key: 'actions', label: 'Actions', template: this.actionsTpl, width: '20%' }
+      { key: 'fullName', label: 'Élève', template: this.identityTpl, width: '22%' },
+      { key: 'studentNumber', label: 'Matricule', numeric: true, width: '13%' },
+      { key: 'classroomName', label: 'Classe', width: '10%' },
+      { key: 'levelName', label: 'Niveau', width: '9%' },
+      { key: 'age', label: 'Âge', numeric: true, width: '6%' },
+      { key: 'mailResponsable', label: 'Courriel du responsable', template: this.responsibleEmailTpl, width: '17%' },
+      { key: 'status', label: 'Statut', template: this.statusTpl, width: '9%' },
+      { key: 'actions', label: 'Actions', template: this.actionsTpl, width: '14%' }
     ];
 
     this.query$

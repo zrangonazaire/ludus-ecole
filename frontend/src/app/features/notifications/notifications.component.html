@@ -13,6 +13,7 @@
   <header class="page-head">
     <div>
       <h1>Messages</h1>
+      <p>Votre boîte de réception et les avis envoyés aux familles.</p>
       <p>
         @if (unread() > 0) {
           {{ unread() }} message(s) non lu(s).
@@ -21,6 +22,14 @@
         }
       </p>
     </div>
+    <button type="button" class="btn btn--primary"
+            *eduopsHasPermission="'MESSAGE_COMPOSE'"
+            (click)="openComposer()">Écrire aux familles</button>
+    <button type="button" class="btn btn--secondary"
+            *eduopsHasPermission="'MESSAGE_VIEW'"
+            [attr.aria-expanded]="responsesOpen()" (click)="toggleResponses()">
+      Réponses reçues
+    </button>
     @if (unread() > 0) {
       <button type="button" class="btn btn--ghost"
               [disabled]="working()" (click)="markAllRead()">
@@ -28,6 +37,154 @@
       </button>
     }
   </header>
+
+  @if (responsesOpen()) {
+    <section class="responses-panel" aria-labelledby="responses-title">
+      <header><div><h2 id="responses-title">Réponses des familles</h2><p>Les nouvelles réponses apparaissent ici automatiquement après actualisation.</p></div>
+        <button type="button" class="btn btn--ghost btn--sm" [disabled]="responsesLoading()" (click)="loadResponses()">Actualiser</button>
+      </header>
+      @if (responsesLoading()) { <eduops-loading-state message="Chargement des réponses…" /> }
+      @else if (responsesFailed()) { <p role="alert">Les réponses n’ont pas pu être chargées.</p> }
+      @else if (!receivedResponses().length) { <p class="responses-panel__empty">Aucune réponse reçue pour le moment.</p> }
+      @else {
+        <ul>@for (response of receivedResponses(); track response.id) {
+          <li><div class="responses-panel__meta"><strong>{{ response.recipientName }}</strong><span>{{ response.recipientAddress }} · {{ response.answeredAt | date:'dd/MM/yyyy à HH:mm' }}</span></div>
+            <small>{{ response.campaignTitle }}</small><p>{{ response.answer }}</p>
+          </li>
+        }</ul>
+      }
+    </section>
+  }
+
+  @if (composerOpen()) {
+    <section class="composer" aria-labelledby="composer-title">
+      <header class="composer__head">
+        <div>
+          <p class="composer__eyebrow">Communication aux familles</p>
+          <h2 id="composer-title">
+            @if (composeStep() === 'compose') { Rédiger un avis ou demander un retour }
+            @else if (composeStep() === 'preview') { Vérifier avant l’envoi }
+            @else { Résultat de l’envoi }
+          </h2>
+          <p>Seuls les responsables ayant accepté les notifications générales seront contactés.</p>
+        </div>
+        @if (composeStep() !== 'result') {
+          <button type="button" class="btn btn--ghost" (click)="closeComposer()">Fermer</button>
+        }
+      </header>
+
+      @if (composeError()) { <div class="composer__error" role="alert">{{ composeError() }}</div> }
+
+      @if (composeStep() === 'compose') {
+        @if (studentsLoading()) {
+          <eduops-loading-state message="Chargement des élèves inscrits…" />
+        } @else {
+          <div class="composer__grid">
+            <section class="composer__audience" aria-labelledby="audience-title">
+              <div class="composer__section-title">
+                <div><h3 id="audience-title">1. Choisir les familles</h3><p>{{ selectedCount() }} élève(s) sélectionné(s) · 500 maximum par envoi</p></div>
+                @if (selectedCount()) { <button type="button" class="btn btn--ghost btn--sm" (click)="clearSelectedStudents()">Tout effacer</button> }
+              </div>
+              <div class="composer__filters">
+                <label class="visually-hidden" for="announcement-search">Rechercher un élève</label>
+                <input id="announcement-search" class="input" type="search" placeholder="Nom ou matricule"
+                       [value]="studentSearch()" (input)="studentSearch.set($any($event.target).value)" />
+                <label class="visually-hidden" for="announcement-class">Filtrer par classe</label>
+                <select id="announcement-class" class="input" [value]="classFilter()" (change)="classFilter.set($any($event.target).value)">
+                  <option value="">Toutes les classes</option>
+                  @for (classroom of classrooms(); track classroom) { <option [value]="classroom">{{ classroom }}</option> }
+                </select>
+              </div>
+              <label class="composer__select-all"><input type="checkbox" [checked]="allVisibleSelected()"
+                (change)="toggleVisibleStudents($any($event.target).checked)" /> Sélectionner les {{ visibleStudents().length }} résultats affichés</label>
+              <div class="composer__students">
+                @for (student of visibleStudents(); track student.id) {
+                  <label class="composer__student">
+                    <input type="checkbox" [checked]="selectedStudentIds().has(student.id)"
+                           (change)="toggleStudent(student.id, $any($event.target).checked)" />
+                    <span><strong>{{ student.fullName }}</strong><small>{{ student.classroomName || 'Classe non renseignée' }} · {{ student.studentNumber }}</small></span>
+                  </label>
+                } @empty { <p class="composer__empty">Aucun élève ne correspond. Essayez une autre recherche.</p> }
+              </div>
+            </section>
+
+            <section class="composer__message" aria-labelledby="message-title">
+              <h3 id="message-title">2. Écrire le message</h3>
+              <label class="composer__checkbox"><input type="checkbox" [checked]="collectResponses()" (change)="collectResponses.set($any($event.target).checked)" /> Collecter les réponses dans l’application</label>
+              @if (collectResponses()) {
+                <label>Question affichée au parent
+                  <textarea class="input" rows="2" maxlength="500" [value]="responseQuestion()" (input)="responseQuestion.set($any($event.target).value)"></textarea>
+                  <small>Chaque responsable recevra un lien individuel, valable 30 jours et utilisable une seule fois. Sa réponse apparaîtra dans « Réponses reçues ».</small>
+                </label>
+              } @else {
+                <p class="composer__hint">Sans collecte activée, le message demande une réponse libre, mais l’application ne pourra pas la rattacher à cet avis.</p>
+              }
+              <label>Canal d’envoi
+                <select class="input" [value]="channel()" (change)="channel.set($any($event.target).value)">
+                  <option value="EMAIL">E-mail</option><option value="SMS">SMS</option><option value="WHATSAPP">WhatsApp</option>
+                </select>
+              </label>
+              <label>Titre de l’avis
+                <input class="input" maxlength="200" [value]="title()" (input)="title.set($any($event.target).value)" />
+              </label>
+              @if (channel() === 'EMAIL') {
+                <label>Objet de l’e-mail
+                  <input class="input" maxlength="200" [value]="subject()" (input)="subject.set($any($event.target).value)" />
+                </label>
+              }
+              <label>Message
+                <textarea class="input" rows="8" maxlength="4000" [value]="body()" (input)="body.set($any($event.target).value)"></textarea>
+                <small>Variables : &#123;tuteur&#125;, &#123;eleve&#125;, &#123;classe&#125;, &#123;ecole&#125;, &#123;date&#125;</small>
+              </label>
+            </section>
+          </div>
+          <footer class="composer__footer">
+            <span>Un aperçu des coordonnées et du message sera affiché avant l’envoi.</span>
+          <button type="button" class="btn btn--primary" [disabled]="composing() || !selectedCount() || !body().trim() || (collectResponses() && !responseQuestion().trim())"
+                    (click)="prepareAnnouncement()">{{ composing() ? 'Préparation…' : 'Voir l’aperçu' }}</button>
+          </footer>
+        }
+      }
+
+      @if (composeStep() === 'preview') {
+        @if (preview(); as data) {
+          <div class="composer__preview">
+            <div class="composer__stats">
+              <div><strong>{{ data.recipientCount }}</strong><small>destinataire(s) prêt(s)</small></div>
+              <div><strong>{{ data.unreachableCount }}</strong><small>sans adresse utilisable</small></div>
+              <div><strong>{{ data.withoutConsent }}</strong><small>sans accord de notification</small></div>
+              @if (data.channel === 'SMS') { <div><strong>{{ data.smsSegments }}</strong><small>segment(s) SMS estimé(s)</small></div> }
+            </div>
+            @if (data.sample) { <article class="composer__sample"><h3>{{ data.sampleIsExample ? 'Exemple du message' : 'Message personnalisé' }}</h3><p>{{ data.sample }}</p></article> }
+            <details class="composer__recipients" open>
+              <summary>Destinataires inclus ({{ data.recipientCount }})</summary>
+              <div>@for (recipient of data.recipients; track recipient.address) { <p><strong>{{ recipient.name }}</strong><span>{{ recipient.address }}</span></p> }</div>
+            </details>
+            @if (data.unreachable.length) { <details class="composer__excluded"><summary>{{ data.unreachable.length }} élève(s) sans coordonnées</summary><p>{{ data.unreachable.join(', ') }}</p></details> }
+            @if (!data.gatewayLive) { <div class="composer__error" role="status">{{ data.channel }} est en simulation ({{ data.gatewayName }}). L’aperçu est disponible, mais l’envoi réel doit être configuré.</div> }
+            <footer class="composer__footer">
+              <button type="button" class="btn" (click)="backToCompose()">Modifier</button>
+              <button type="button" class="btn btn--primary" [disabled]="sendingAnnouncement() || !data.recipientCount || !data.gatewayLive"
+                      (click)="sendAnnouncement()">{{ sendingAnnouncement() ? 'Envoi…' : 'Confirmer et envoyer' }}</button>
+            </footer>
+          </div>
+        }
+      }
+
+      @if (composeStep() === 'result') {
+        @if (sendResult(); as result) {
+          <div class="composer__result"><strong>{{ result.sentCount }} message(s) envoyé(s)</strong><span>{{ result.failedCount }} échec(s)</span></div>
+          <div class="composer__recipients">
+            @for (recipient of result.recipients; track recipient.address) {
+              <p><strong>{{ recipient.name }}</strong><span>{{ recipient.address }} · {{ recipient.status === 'SENT' ? 'Envoyé' : 'Échec' }}</span>
+                @if (recipient.failureReason) { <small>{{ recipient.failureReason }}</small> }</p>
+            }
+          </div>
+          <footer class="composer__footer"><button type="button" class="btn btn--primary" (click)="closeComposer()">Terminé</button></footer>
+        }
+      }
+    </section>
+  }
 
   <div class="filters" role="group" aria-label="Filtrer les messages">
     <button type="button" [class.is-active]="categoryFilter() === ''"

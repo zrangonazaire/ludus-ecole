@@ -44,6 +44,136 @@
     </section>
   }
 
+  @if (reminderStep() !== 'closed') {
+    <section class="reminder-workspace" aria-labelledby="reminder-title">
+      <header class="reminder-workspace__header">
+        <div>
+          <p class="page__eyebrow">Relance groupée</p>
+          <h2 id="reminder-title">
+            @if (reminderStep() === 'compose') { Préparer un rappel }
+            @else if (reminderStep() === 'preview') { Vérifier avant l’envoi }
+            @else { Résultat de la relance }
+          </h2>
+          <p>Les familles sans coordonnées ou sans accord de contact financier sont écartées et signalées.</p>
+        </div>
+        @if (reminderStep() !== 'result') {
+          <button type="button" class="btn" (click)="closeReminder()">Fermer</button>
+        }
+      </header>
+
+      @if (reminderError()) {
+        <div class="reminder-alert" role="alert">{{ reminderError() }}</div>
+      }
+
+      @if (reminderStep() === 'compose') {
+        <div class="reminder-workspace__body">
+          <div class="reminder-summary">
+            <span class="reminder-summary__icon" aria-hidden="true">✉</span>
+            <div><strong>{{ selectedIds().size }} élève(s) sélectionné(s)</strong>
+              <small>Les messages seront adressés au responsable ayant accepté les relances financières.</small></div>
+          </div>
+          <div class="channel-picker" role="group" aria-label="Canal de relance">
+            <button type="button" class="channel-option" [class.channel-option--active]="reminderChannel() === 'EMAIL'"
+                    (click)="reminderChannel.set('EMAIL')"><strong>✉ E-mail</strong><small>Message détaillé, sans coût SMS estimé</small></button>
+            <button type="button" class="channel-option" [class.channel-option--active]="reminderChannel() === 'SMS'"
+                    (click)="reminderChannel.set('SMS')"><strong>▣ SMS</strong><small>Rappel court · coût estimé avant envoi</small></button>
+            <button type="button" class="channel-option" [class.channel-option--active]="reminderChannel() === 'WHATSAPP'"
+                    (click)="reminderChannel.set('WHATSAPP')"><strong>◉ WhatsApp</strong><small>Cloud API Meta · modèle de relance approuvé à un paramètre requis</small></button>
+          </div>
+          @if (reminderChannel() === 'SMS') {
+            <p class="channel-note">Le SMS est en mode simulation. Tu peux tout de même afficher et vérifier le texte et les destinataires avant de configurer un opérateur.</p>
+          }
+          <div class="reminder-fields">
+            <label>Titre de la campagne<input class="input" [value]="reminderTitle()" (input)="reminderTitle.set($any($event.target).value)" /></label>
+            @if (reminderChannel() === 'EMAIL') {
+              <label>Objet de l’e-mail<input class="input" [value]="reminderSubject()" (input)="reminderSubject.set($any($event.target).value)" /></label>
+            }
+            <label class="reminder-fields__message">Message
+              <textarea class="input" rows="7" [value]="reminderBody()" (input)="reminderBody.set($any($event.target).value)"></textarea>
+              <small>Variables disponibles : tuteur · eleve · montant · devise · ecole · classe · date</small>
+            </label>
+          </div>
+          <footer class="reminder-workspace__footer">
+            <button type="button" class="btn" (click)="closeReminder()">Annuler</button>
+            <button type="button" class="btn btn--primary" [disabled]="preparing() || selectedIds().size === 0" (click)="prepareReminder()">
+              {{ preparing() ? 'Préparation…' : 'Voir l’aperçu et les destinataires' }}
+            </button>
+          </footer>
+        </div>
+      }
+
+      @if (reminderStep() === 'preview') {
+        @if (reminderPreview(); as preview) {
+          <div class="reminder-workspace__body">
+            <div class="preview-stats">
+              <div><strong>{{ preview.recipientCount }}</strong><small>destinataire(s) prêt(s)</small></div>
+              <div><strong>{{ preview.unreachableCount }}</strong><small>sans adresse utilisable</small></div>
+              <div><strong>{{ preview.withoutConsent }}</strong><small>sans accord financier</small></div>
+              @if (preview.channel === 'SMS') { <div><strong>{{ preview.smsSegments }}</strong><small>segment(s) · coût {{ preview.estimatedCost | money:preview.currency }}</small></div> }
+            </div>
+            @if (preview.sample) {
+              <article class="message-sample">
+                <h3>{{ preview.sampleIsExample ? 'Exemple du message' : 'Aperçu du message personnalisé' }}</h3>
+                @if (preview.sampleIsExample) { <small>Aucun destinataire ne peut recevoir ce canal pour le moment; cet exemple montre le texte avec les données du premier élève sélectionné.</small> }
+                <p>{{ preview.sample }}</p>
+              </article>
+            }
+            <details class="recipient-preview" open>
+              <summary>{{ preview.recipientCount }} destinataire(s) inclus dans cette relance</summary>
+              <div class="recipient-preview__list">
+                @for (recipient of preview.recipients; track recipient.address) {
+                  <div><strong>{{ recipient.name }}</strong><span>{{ recipient.address }}</span></div>
+                } @empty {
+                  <p>Aucun destinataire joignable pour ce canal avec les consentements actuels.</p>
+                }
+              </div>
+            </details>
+            @if (preview.channel !== 'EMAIL' && !preview.gatewayLive) {
+              <div class="reminder-alert" role="status">
+                @if (preview.channel === 'SMS') {
+                  Le SMS est en simulation ({{ preview.gatewayName }}). L’aperçu et les destinataires ci-dessus restent consultables, mais aucun SMS ne sera envoyé.
+                } @else {
+                  WhatsApp Business n’est pas configuré ({{ preview.gatewayName }}). L’aperçu reste consultable, mais l’envoi sera disponible après configuration du canal.
+                }
+              </div>
+            }
+            @if (preview.unreachable.length) {
+              <details class="excluded-list"><summary>{{ preview.unreachable.length }} famille(s) sans coordonnées</summary><p>{{ preview.unreachable.join(', ') }}</p></details>
+            }
+            <footer class="reminder-workspace__footer">
+              <button type="button" class="btn" (click)="reminderStep.set('compose')">Modifier</button>
+              <button type="button" class="btn btn--primary" [disabled]="sending() || preview.recipientCount === 0 || !preview.gatewayLive" (click)="sendReminder()">
+                {{ sending() ? 'Envoi en cours…' : 'Confirmer et envoyer à ' + preview.recipientCount + ' destinataire(s)' }}
+              </button>
+            </footer>
+          </div>
+        }
+      }
+
+      @if (reminderStep() === 'result') {
+        @if (reminderResult(); as result) {
+          <div class="reminder-workspace__body">
+            <div class="send-result" [class.send-result--partial]="result.failedCount > 0">
+              <strong>{{ result.sentCount }} message(s) envoyé(s)</strong>
+              <span>{{ result.failedCount }} échec(s) · chaque destinataire est enregistré dans le journal de campagne.</span>
+            </div>
+            <div class="recipient-results">
+              @for (recipient of result.recipients; track recipient.address) {
+                <div><span>{{ recipient.name }}</span><small>{{ recipient.address }}</small>
+                  <strong [class.recipient-results__failed]="recipient.status === 'FAILED'">
+                    {{ recipient.status === 'FAILED' ? 'Échec' : 'Envoyé' }}
+                  </strong>
+                  @if (recipient.failureReason) { <small class="recipient-results__reason">{{ recipient.failureReason }}</small> }
+                </div>
+              }
+            </div>
+            <footer class="reminder-workspace__footer"><button type="button" class="btn btn--primary" (click)="closeReminder()">Terminé</button></footer>
+          </div>
+        }
+      }
+    </section>
+  }
+
   @for (student of selectedStudent() ? [selectedStudent()!] : []; track student.studentId) {
     <section class="card" aria-label="Dossier de recouvrement">
       <button type="button" class="btn" (click)="selectedStudent.set(null)">Fermer le dossier</button>
@@ -66,6 +196,14 @@
                  placeholder="Élève, matricule, classe ou responsable"
                  [value]="search()" (input)="onSearch($any($event.target).value)" />
         </div>
+      </div>
+      <div class="selection-bar">
+        <label><input type="checkbox" [checked]="currentPageSelected()" (change)="toggleCurrentPage($any($event.target).checked)" /> Sélectionner cette page</label>
+        <span>{{ selectedIds().size }} sélectionné(s)</span>
+        @if (selectedIds().size > 0) { <button type="button" class="btn btn--sm" (click)="clearSelection()">Tout désélectionner</button> }
+        <button type="button" class="btn btn--primary btn--sm" [disabled]="selectedIds().size === 0" (click)="openReminder()">
+          Relancer les familles sélectionnées
+        </button>
       </div>
       <div class="buckets" role="group" aria-label="Filtrer les impayés">
         @for (choice of buckets; track choice.value) {
@@ -107,6 +245,11 @@
       <small class="numeric">{{ row.studentNumber }} · {{ row.classroomName ?? 'Sans classe' }}</small>
     </span>
   </div>
+</ng-template>
+
+<ng-template #selectTpl let-row>
+  <input type="checkbox" [attr.aria-label]="'Sélectionner la famille de ' + row.studentName"
+         [checked]="isSelected(row.studentId)" (change)="toggleStudent(row.studentId, $any($event.target).checked)" />
 </ng-template>
 
 <ng-template #guardianTpl let-row>

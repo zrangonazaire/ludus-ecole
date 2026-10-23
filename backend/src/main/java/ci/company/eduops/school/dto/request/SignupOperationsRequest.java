@@ -83,6 +83,10 @@ public class SignupOperationsRequest {
     /** Une matière et son coefficient. */
     public static class SubjectSpec {
 
+        /** Cycle concerné ; null signifie tous les cycles. */
+        @Size(max = 40)
+        private String cycleCode;
+
         @Size(max = 40)
         private String code;
 
@@ -96,6 +100,14 @@ public class SignupOperationsRequest {
 
         public String getCode() {
             return code;
+        }
+
+        public String getCycleCode() {
+            return cycleCode;
+        }
+
+        public void setCycleCode(String cycleCode) {
+            this.cycleCode = cycleCode;
         }
 
         public void setCode(String code) {

@@ -2,6 +2,8 @@ package ci.company.eduops.messaging.repository;
 
 import ci.company.eduops.messaging.domain.CampaignStatus;
 import ci.company.eduops.messaging.domain.MessageCampaign;
+import ci.company.eduops.notification.domain.NotificationChannel;
+import ci.company.eduops.notification.domain.NotificationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -39,11 +41,12 @@ public interface MessageCampaignRepository extends JpaRepository<MessageCampaign
     @Query("""
             SELECT COALESCE(SUM(r.segments), 0) FROM MessageRecipient r
             WHERE r.campaign.school.id = :schoolId
-              AND r.channel = ci.company.eduops.notification.domain.NotificationChannel.SMS
-              AND r.status IN (ci.company.eduops.notification.domain.NotificationStatus.SENT,
-                               ci.company.eduops.notification.domain.NotificationStatus.DELIVERED)
+              AND r.channel = :channel
+              AND r.status IN :statuses
               AND r.sentAt >= :since
             """)
     long countSmsSegmentsSince(@Param("schoolId") UUID schoolId,
-                               @Param("since") OffsetDateTime since);
+                               @Param("since") OffsetDateTime since,
+                               @Param("channel") NotificationChannel channel,
+                               @Param("statuses") List<NotificationStatus> statuses);
 }

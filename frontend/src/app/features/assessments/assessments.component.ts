@@ -13,7 +13,7 @@ import {
 } from '@core/models/assessment.models';
 import { GradeSheetFileService } from '@core/services/grade-sheet-file.service';
 import { Classroom, Teacher } from '@core/models/domain.models';
-import { SubjectItem } from '@core/models/curriculum.models';
+import { LevelCurriculum, SubjectItem } from '@core/models/curriculum.models';
 import { NotificationService } from '@core/services/notification.service';
 import { translateErrorCode } from '@core/services/error-messages';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
@@ -30,6 +30,11 @@ interface HelpCopy {
   description: string;
   points: readonly string[];
   ctaLabel: string;
+}
+
+interface SubjectFilterOption {
+  value: string;
+  label: string;
 }
 
 /**
@@ -87,7 +92,23 @@ export class AssessmentsComponent implements OnInit {
   readonly board = signal<AssessmentBoard | null>(null);
   readonly classroomList = signal<Classroom[]>([]);
   readonly subjectList = signal<SubjectItem[]>([]);
+  readonly levelCurricula = signal<LevelCurriculum[]>([]);
   readonly teacherList = signal<Teacher[]>([]);
+  readonly selectedClassroomId = signal('');
+
+  /** Les matières du programme de la classe choisie, sans doublons de libellé. */
+  readonly formSubjectList = computed(() =>
+    this.subjectsForClassroom(this.selectedClassroomId()));
+  readonly filterSubjectList = computed<SubjectFilterOption[]>(() => {
+    const classroomId = this.classroomFilter();
+    const subjects = classroomId
+      ? this.subjectsForClassroom(classroomId)
+      : this.uniqueSubjects(this.subjectList());
+    return subjects.map((subject) => ({
+      value: classroomId ? subject.id : `name:${this.normalizeSubjectName(subject.name)}`,
+      label: subject.name
+    }));
+  });
 
   readonly classroomFilter = signal('');
   readonly subjectFilter = signal('');
@@ -216,6 +237,42 @@ export class AssessmentsComponent implements OnInit {
       // Les listes de choix manquantes ne doivent pas vider le tableau.
       error: () => undefined
     });
+
+    this.curriculum.levels().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (levels) => this.levelCurricula.set(levels),
+      error: () => this.levelCurricula.set([])
+    });
+  }
+
+  private subjectsForClassroom(classroomId: string): SubjectItem[] {
+    const classroom = this.classroomList().find((item) => item.id === classroomId);
+    const curriculum = this.levelCurricula().find(
+      (item) => item.levelId === classroom?.levelId);
+    if (!curriculum) {
+      return [];
+    }
+
+    const subjectsById = new Map(this.subjectList().map((subject) => [subject.id, subject]));
+    return this.uniqueSubjects(curriculum.subjects.flatMap((entry) => {
+      const subject = subjectsById.get(entry.subjectId);
+      return subject ? [subject] : [];
+    }));
+  }
+
+  private uniqueSubjects(subjects: SubjectItem[]): SubjectItem[] {
+    const seenNames = new Set<string>();
+    return subjects.filter((subject) => {
+      const name = this.normalizeSubjectName(subject.name);
+      if (seenNames.has(name)) {
+        return false;
+      }
+      seenNames.add(name);
+      return true;
+    });
+  }
+
+  private normalizeSubjectName(name: string): string {
+    return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase();
   }
 
   load(): void {
@@ -223,7 +280,8 @@ export class AssessmentsComponent implements OnInit {
     this.error.set(false);
     this.dataSource.board({
       classroomId: this.classroomFilter() || undefined,
-      subjectId: this.subjectFilter() || undefined
+      subjectId: this.subjectFilter() && !this.subjectFilter().startsWith('name:')
+        ? this.subjectFilter() : undefined
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (board) => {
         this.board.set(board);
@@ -239,6 +297,7 @@ export class AssessmentsComponent implements OnInit {
 
   changeClassroom(classroomId: string): void {
     this.classroomFilter.set(classroomId);
+    this.subjectFilter.set('');
     this.load();
   }
 
@@ -251,7 +310,10 @@ export class AssessmentsComponent implements OnInit {
 
   /** Ce que montre l'onglet courant. Les compteurs, eux, ne bougent jamais. */
   readonly visible = computed<AssessmentItem[]>(() => {
-    const all = this.board()?.assessments ?? [];
+    const selectedSubject = this.subjectFilter();
+    const all = (this.board()?.assessments ?? []).filter((assessment) =>
+      !selectedSubject.startsWith('name:')
+      || this.normalizeSubjectName(assessment.subjectName) === selectedSubject.slice(5));
     switch (this.tab()) {
       case 'CORRECTION':
         return all.filter((a) => a.status === 'OPEN' || a.status === 'GRADING'
@@ -286,8 +348,10 @@ export class AssessmentsComponent implements OnInit {
 
   openForm(item?: AssessmentItem): void {
     this.editing.set(item ?? null);
+    const classroomId = item?.classroomId ?? this.classroomFilter() ?? '';
+    this.selectedClassroomId.set(classroomId);
     this.assessmentForm.reset({
-      classroomId: item?.classroomId ?? this.classroomFilter() ?? '',
+      classroomId,
       subjectId: item?.subjectId ?? '',
       teacherId: item?.teacherId ?? '',
       title: item?.title ?? '',
@@ -299,6 +363,15 @@ export class AssessmentsComponent implements OnInit {
       countsForAverage: item?.countsForAverage ?? true
     });
     this.formOpen.set(true);
+  }
+
+  onAssessmentClassroomChange(classroomId: string): void {
+    this.selectedClassroomId.set(classroomId);
+    const subjectControl = this.assessmentForm.controls.subjectId;
+    if (subjectControl.value
+      && !this.formSubjectList().some((subject) => subject.id === subjectControl.value)) {
+      subjectControl.setValue('');
+    }
   }
 
   closeForm(): void {

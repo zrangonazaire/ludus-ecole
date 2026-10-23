@@ -56,6 +56,10 @@ public class StudentUpdateRequest {
     @Size(max = 160)
     private String email;
 
+    @Email
+    @Size(max = 180)
+    private String mailResponsable;
+
     @Size(max = 40)
     private String phone;
 
@@ -112,6 +116,9 @@ public class StudentUpdateRequest {
     public void setEmail(String email) {
         this.email = email;
     }
+
+    public String getMailResponsable() { return mailResponsable; }
+    public void setMailResponsable(String mailResponsable) { this.mailResponsable = mailResponsable; }
 
     public String getPhone() {
         return phone;

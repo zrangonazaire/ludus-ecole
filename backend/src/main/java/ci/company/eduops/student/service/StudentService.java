@@ -148,6 +148,10 @@ public class StudentService {
         if (request.getEmail() != null) {
             student.setEmail(request.getEmail().trim());
         }
+        if (request.getMailResponsable() != null) {
+            String mail = request.getMailResponsable().trim();
+            student.setMailResponsable(mail.isEmpty() ? null : mail.toLowerCase(java.util.Locale.ROOT));
+        }
         if (request.getPhone() != null) {
             student.setPhone(request.getPhone().trim());
         }
@@ -176,6 +180,7 @@ public class StudentService {
         values.put("birthPlace", student.getBirthPlace());
         values.put("nationality", student.getNationality());
         values.put("email", student.getEmail());
+        values.put("mailResponsable", student.getMailResponsable());
         values.put("phone", student.getPhone());
         values.put("address", student.getAddressLine1());
         values.put("city", student.getCity());

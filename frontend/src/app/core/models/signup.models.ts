@@ -12,7 +12,7 @@ export interface SignupOperations {
   cycles: { code: string; name: string; levels: string[] }[];
   classesPerLevel: number;
   classCapacity: number;
-  subjects: { code: string; name: string; coefficient: number }[];
+  subjects: { code: string; name: string; coefficient: number; cycleCode?: string }[];
   fees?: {
     registration: number;
     tuitionTotal: number;

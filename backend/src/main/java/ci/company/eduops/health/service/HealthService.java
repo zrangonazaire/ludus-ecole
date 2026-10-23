@@ -12,6 +12,7 @@ import ci.company.eduops.enrollment.repository.EnrollmentRepository;
 import ci.company.eduops.health.domain.ExaminationOutcome;
 import ci.company.eduops.health.domain.HealthCondition;
 import ci.company.eduops.health.domain.HealthSeverity;
+import ci.company.eduops.health.domain.InfirmaryOutcome;
 import ci.company.eduops.health.domain.InfirmaryVisit;
 import ci.company.eduops.health.domain.MedicalExamination;
 import ci.company.eduops.health.domain.StudentHealthRecord;
@@ -151,7 +152,8 @@ public class HealthService {
         Map<UUID, Enrollment> enrollments = enrollmentsByStudent(year.getId());
 
         // Les alertes vont a tout le monde : c'est leur raison d'etre.
-        List<StudentHealthRecord> flagged = recordRepository.findWithAlerts(year.getId());
+        List<StudentHealthRecord> flagged = recordRepository.findWithAlerts(year.getId(),
+                List.of(HealthSeverity.HIGH.name(), HealthSeverity.CRITICAL.name()));
         List<HealthAlertResponse> alerts = new ArrayList<>();
         for (StudentHealthRecord record : flagged) {
             for (HealthCondition condition : record.alerts()) {
@@ -181,7 +183,8 @@ public class HealthService {
         }
         board.setVisits(visitRows);
         board.setVisitCountThisWeek(visitRows.size());
-        board.setAwaitingGuardianCount(visitRepository.findUnnotified(year.getId()).size());
+        board.setAwaitingGuardianCount(visitRepository.findUnnotified(year.getId(),
+                List.of(InfirmaryOutcome.SENT_HOME.name(), InfirmaryOutcome.EMERGENCY.name())).size());
 
         Map<UUID, List<StudentVaccination>> vaccinations = vaccinationsByRecord(year.getId());
         List<StudentHealthRecord> records = recordRepository.findForYear(year.getId(), term);

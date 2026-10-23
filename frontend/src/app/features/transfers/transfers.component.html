@@ -13,18 +13,13 @@
     [points]="helpCopy().points"
     [ctaLabel]="helpCopy().ctaLabel" />
 
-  <header class="page__header">
-    <div>
+  <header class="page__header page__header--transfers">
+    <div class="title-block">
+      <p class="page__eyebrow">VIE SCOLAIRE <span>·</span> MOUVEMENTS</p>
       <h1 class="page__title">Transferts et départs</h1>
-      <p class="page__meta numeric">
-        @if (board(); as b) {
-          {{ b.classChangeCount }} changement(s) de classe ·
-          {{ b.pendingDepartureCount }} sortie(s) à traiter ·
-          {{ b.clearedDepartureCount }} dossier(s) soldé(s)
-          @if (b.upcomingDepartureCount > 0) {
-            · {{ b.upcomingDepartureCount }} départ(s) annoncé(s)
-          }
-        }
+      <p class="page__description">
+        Suivez les changements de classe et accompagnez chaque départ jusqu'à la remise
+        complète du dossier.
       </p>
     </div>
     <div class="page__actions">
@@ -40,28 +35,65 @@
     </div>
   </header>
 
-  <nav class="tabs" role="tablist">
+  @if (board(); as b) {
+    <section class="overview" aria-label="Résumé des mouvements">
+      <article class="overview__card overview__card--blue">
+        <span class="overview__icon" aria-hidden="true">⇄</span>
+        <div><span class="overview__label">Changements de classe</span>
+          <strong class="overview__value numeric">{{ b.classChangeCount }}</strong></div>
+      </article>
+      <article class="overview__card overview__card--amber">
+        <span class="overview__icon" aria-hidden="true">◷</span>
+        <div><span class="overview__label">Départs à traiter</span>
+          <strong class="overview__value numeric">{{ b.pendingDepartureCount }}</strong></div>
+      </article>
+      <article class="overview__card overview__card--green">
+        <span class="overview__icon" aria-hidden="true">✓</span>
+        <div><span class="overview__label">Dossiers soldés</span>
+          <strong class="overview__value numeric">{{ b.clearedDepartureCount }}</strong></div>
+      </article>
+      <article class="overview__card overview__card--violet">
+        <span class="overview__icon" aria-hidden="true">→</span>
+        <div><span class="overview__label">Départs annoncés</span>
+          <strong class="overview__value numeric">{{ b.upcomingDepartureCount }}</strong></div>
+      </article>
+    </section>
+  }
+
+  <nav class="tabs" role="tablist" aria-label="Type de mouvement">
     <button type="button" class="tabs__item" role="tab"
             [class.tabs__item--on]="tab() === 'CHANGEMENTS'"
             [attr.aria-selected]="tab() === 'CHANGEMENTS'"
             (click)="changeTab('CHANGEMENTS')">
-      Changements de classe
+      <span class="tabs__icon" aria-hidden="true">⇄</span>
+      <span class="tabs__copy"><strong>Changements de classe</strong>
+        <small>Mobilité interne</small></span>
     </button>
     <button type="button" class="tabs__item" role="tab"
             [class.tabs__item--on]="tab() === 'DEPARTS'"
             [attr.aria-selected]="tab() === 'DEPARTS'"
             (click)="changeTab('DEPARTS')">
-      Départs et radiations
+      <span class="tabs__icon" aria-hidden="true">↗</span>
+      <span class="tabs__copy"><strong>Départs et radiations</strong>
+        <small>Suivi des dossiers</small></span>
       @if (pendingDepartures().length > 0) {
         <span class="tabs__badge numeric">{{ pendingDepartures().length }}</span>
       }
     </button>
   </nav>
 
-  <section class="filters">
+  <section class="filters card">
+    <div class="filters__context">
+      <span class="filters__context-icon" aria-hidden="true">⌕</span>
+      <div><strong>{{ tab() === 'CHANGEMENTS' ? 'Historique des changements' : 'Dossiers de sortie' }}</strong>
+        <small>{{ tab() === 'CHANGEMENTS'
+          ? classChanges().length + ' mouvement(s) enregistré(s)'
+          : departures().length + ' dossier(s) de départ' }}</small></div>
+    </div>
     <label class="filters__search">
       <span class="visually-hidden">Rechercher un élève</span>
-      <input type="search" class="input" placeholder="Nom ou matricule"
+      <span class="filters__search-icon" aria-hidden="true">⌕</span>
+      <input type="search" class="input" placeholder="Rechercher par nom ou matricule…"
              [value]="search()"
              (change)="changeSearch($any($event.target).value)" />
     </label>
@@ -75,12 +107,14 @@
 
     <!-- ═══════════════ Changements de classe ═══════════════ -->
     @if (tab() === 'CHANGEMENTS') {
-      <p class="lead">
-        L'élève change de groupe, sa scolarité continue. Le motif reste au dossier :
-        au conseil de classe, personne ne se souvient plus de la raison.
-      </p>
+      <div class="section-intro section-intro--blue">
+        <span class="section-intro__icon" aria-hidden="true">⇄</span>
+        <div><h2>Mouvements internes</h2>
+          <p>L'élève change de groupe, sa scolarité continue. Le motif reste au dossier
+            pour garder une trace claire de la décision.</p></div>
+      </div>
 
-      <div class="table-wrapper card">
+      <div class="table-wrapper card table-card">
         <table class="table">
           <caption class="visually-hidden">Changements de classe de l'année</caption>
           <thead>
@@ -133,6 +167,13 @@
     <!-- ═══════════════ Départs et radiations ═══════════════ -->
     @if (tab() === 'DEPARTS') {
 
+      <div class="section-intro section-intro--amber">
+        <span class="section-intro__icon" aria-hidden="true">↗</span>
+        <div><h2>Départs et dossiers de radiation</h2>
+          <p>Préparez les documents, suivez leur remise et clôturez chaque dossier
+            lorsque la famille a tout reçu.</p></div>
+      </div>
+
       @if (board(); as b) {
         @if (b.outstandingTotal > 0) {
           <section class="alert-block alert-block--soft" role="status">
@@ -184,7 +225,7 @@
         }
       }
 
-      <div class="table-wrapper card">
+      <div class="table-wrapper card table-card">
         <table class="table">
           <caption class="visually-hidden">Départs de l'année</caption>
           <thead>
@@ -287,7 +328,7 @@
           <label class="field__label field__label--required" for="change-student">Élève</label>
           <select id="change-student" class="input" formControlName="studentId">
             <option value="">Choisir…</option>
-            @for (student of studentList(); track student.id) {
+            @for (student of enrolledStudents(); track student.id) {
               <option [value]="student.id">
                 {{ student.fullName }} — {{ student.classroomName }}
               </option>
@@ -369,7 +410,7 @@
           <label class="field__label field__label--required" for="dep-student">Élève</label>
           <select id="dep-student" class="input" formControlName="studentId">
             <option value="">Choisir…</option>
-            @for (student of studentList(); track student.id) {
+            @for (student of enrolledStudents(); track student.id) {
               <option [value]="student.id">
                 {{ student.fullName }} — {{ student.classroomName }}
               </option>

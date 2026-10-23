@@ -35,6 +35,10 @@ export interface DiscountRequest {
   currentLevel: number;
   totalLevels: number;
   rejectionReason?: string;
+  cancellationReason?: string;
+  createdBy?: string;
+  /** Le créateur peut retirer une demande tant qu'elle attend une décision. */
+  canCancel?: boolean;
   effectiveAt?: string;
   createdAt?: string;
   /** Vrai quand le palier en attente appartient au profil du lecteur. */

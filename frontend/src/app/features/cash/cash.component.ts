@@ -4,8 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, finalize } from 'rxjs';
-import { CashService, CashSession, CashMovement } from '@core/services/cash.service';
+import { CashService, CashSession, CashMovement, CashRegister, CashRegisterOverview } from '@core/services/cash.service';
 import { NotificationService } from '@core/services/notification.service';
+import { translateErrorCode } from '@core/services/error-messages';
 import { AuthService } from '@core/auth/auth.service';
 import { MoneyPipe } from '@shared/pipes/money.pipe';
 
@@ -17,6 +18,12 @@ export class CashComponent {
   private readonly destroyRef = inject(DestroyRef);
   readonly auth = inject(AuthService);
   readonly sessions = signal<CashSession[]>([]);
+  readonly registerOverview = signal<CashRegisterOverview>({ registers: [], cashiers: [] });
+  readonly registersLoading = signal(false);
+  readonly registerSaving = signal(false);
+  readonly registerName = signal('');
+  readonly registerCashierId = signal('');
+  readonly editingRegisterId = signal<string | null>(null);
   readonly loading = signal(true);
   readonly error = signal(false);
   readonly saving = signal(false);
@@ -39,29 +46,81 @@ export class CashComponent {
   amount: number | null = null;
   notes = '';
   closing: CashSession | null = null;
+  openingRegister: CashRegister | null = null;
   constructor() { this.load(); }
   load() {
     this.loading.set(true); this.error.set(false);
     this.service.list().pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.loading.set(false))).subscribe({
       next: data => { this.sessions.set(data); this.page.set(Math.min(this.page(), this.pages())); }, error: () => this.error.set(true)
     });
+    this.loadRegisters();
   }
-  startOpen() { this.amount = null; this.notes = ''; this.modal.set('open'); }
-  startClose(s: CashSession) { this.closing = s; this.amount = null; this.notes = ''; this.modal.set('close'); }
-  validAmount() { return this.amount !== null && Number.isFinite(this.amount) && this.amount >= 0 && this.amount <= 9999999999999 && Number.isInteger(this.amount); }
-  difference() { return this.amount === null || !this.closing ? null : this.amount - this.closing.expectedBalance; }
+  private loadRegisters() {
+    if (!this.auth.has('USER_MANAGE')) return;
+    this.registersLoading.set(true);
+    this.service.listRegisters().pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.registersLoading.set(false)))
+      .subscribe({ next: value => this.registerOverview.set(value), error: () => this.notifications.error('Impossible de charger les affectations de caisse.') });
+  }
+  editRegister(register: CashRegisterOverview['registers'][number]) {
+    this.editingRegisterId.set(register.id);
+    this.registerName.set(register.name);
+    this.registerCashierId.set(register.cashierUserId);
+  }
+  cancelRegisterEdit() {
+    this.editingRegisterId.set(null);
+    this.registerName.set('');
+    this.registerCashierId.set('');
+  }
+  saveRegister() {
+    const name = this.registerName().trim();
+    const cashierId = this.registerCashierId();
+    if (!name || !cashierId || this.registerSaving()) return;
+    const editingId = this.editingRegisterId();
+    const request = editingId
+      ? this.service.updateRegister(editingId, name, cashierId)
+      : this.service.createRegister(name, cashierId);
+    this.registerSaving.set(true);
+    request.pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.registerSaving.set(false)))
+      .subscribe({
+        next: () => {
+          this.notifications.success(editingId ? 'Affectation de caisse mise à jour.' : 'Caisse attribuée au caissier.');
+          this.cancelRegisterEdit();
+          this.loadRegisters();
+        },
+        error: error => this.notifications.error(error.status === 409
+          ? 'Ce caissier ou ce nom de caisse est déjà utilisé, ou une session est encore ouverte.'
+          : 'Impossible d’enregistrer cette affectation. Vérifiez que le compte possède le profil Caissier.')
+      });
+  }
+  startOpen(register: CashRegister) {
+    this.openingRegister = register;
+    this.closing = null;
+    this.amount = null;
+    this.notes = '';
+    this.modal.set('open');
+  }
+  startClose(s: CashSession) { this.closing = s; this.openingRegister = null; this.amount = null; this.notes = ''; this.modal.set('close'); }
+  validAmount() {
+    if (this.amount === null || String(this.amount).trim() === '') return false;
+    const value = Number(this.amount);
+    return Number.isFinite(value) && value >= 0 && value <= 9999999999999 && Number.isInteger(value);
+  }
+  difference() { return this.amount === null || !this.closing ? null : Number(this.amount) - this.closing.expectedBalance; }
   submit() {
     if (!this.validAmount() || this.saving()) return;
     if (this.modal() === 'close' && this.difference() !== 0 && !this.notes.trim()) return;
+    const amount = Number(this.amount);
     let request: Observable<CashSession>;
-    if (this.modal() === 'open') request = this.service.open(this.amount!, this.notes.trim());
-    else if (this.closing) request = this.service.close(this.closing, this.amount!, this.notes.trim());
+    if (this.modal() === 'open' && this.openingRegister) request = this.service.openRegister(this.openingRegister.id, amount, this.notes.trim());
+    else if (this.closing) request = this.service.close(this.closing, amount, this.notes.trim());
     else return;
     this.saving.set(true);
     request.pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.saving.set(false))).subscribe({
-      next: () => { this.notifications.success(this.modal() === 'open' ? 'La caisse est ouverte.' : 'La caisse est clôturée.'); this.modal.set(null); this.load(); },
+      next: () => { this.notifications.success(this.modal() === 'open' ? 'La caisse est ouverte et attribuée au caissier.' : 'La caisse est clôturée.'); this.modal.set(null); this.load(); },
       error: err => {
-        this.notifications.error(err.status === 409 ? 'La session ou son solde a changé. Actualisez la caisse avant de recommencer.' : 'Opération impossible. Vérifiez les montants puis réessayez.');
+        const apiError = err?.error;
+        const code = apiError?.code ?? (err?.status === 0 ? 'BACKEND_UNREACHABLE' : err?.status === 409 ? 'CONFLICT' : 'INTERNAL_ERROR');
+        this.notifications.error(translateErrorCode(code, apiError), 'Opération impossible');
         if (err.status === 409) { this.modal.set(null); this.load(); }
       }
     });

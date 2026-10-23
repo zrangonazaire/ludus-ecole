@@ -1,6 +1,7 @@
 package ci.company.eduops.finance.controller;
 
 import ci.company.eduops.finance.dto.request.DiscountRequestCreateRequest;
+import ci.company.eduops.finance.dto.request.DiscountRequestCancelRequest;
 import ci.company.eduops.finance.dto.request.DiscountRequestDecisionRequest;
 import ci.company.eduops.finance.dto.response.DiscountRequestResponse;
 import ci.company.eduops.finance.service.DiscountRequestService;
@@ -79,6 +80,16 @@ public class DiscountRequestController {
             @PathVariable UUID id,
             @Valid @RequestBody DiscountRequestDecisionRequest request) {
         return ResponseEntity.ok(service.decide(id, request));
+    }
+
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('" + Permissions.DISCOUNT_REQUEST_MANAGE + "')")
+    @Operation(summary = "Annuler une demande en attente",
+            description = "Seule la personne qui a créé la demande peut la retirer avant décision.")
+    public ResponseEntity<DiscountRequestResponse> cancel(
+            @PathVariable UUID id,
+            @Valid @RequestBody DiscountRequestCancelRequest request) {
+        return ResponseEntity.ok(service.cancel(id, request));
     }
 
     @PostMapping("/{id}/apply")

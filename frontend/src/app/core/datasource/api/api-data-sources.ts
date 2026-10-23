@@ -366,6 +366,11 @@ export class ApiFinanceDataSource implements FinanceDataSource {
       `${API}/finance/discount-requests/${id}/decision`, payload);
   }
 
+  cancelDiscountRequest(id: string, reason?: string): Observable<DiscountRequest> {
+    return this.http.post<DiscountRequest>(
+      `${API}/finance/discount-requests/${id}/cancel`, { reason });
+  }
+
   applyDiscountRequest(id: string): Observable<DiscountRequest> {
     return this.http.post<DiscountRequest>(
       `${API}/finance/discount-requests/${id}/apply`, {});

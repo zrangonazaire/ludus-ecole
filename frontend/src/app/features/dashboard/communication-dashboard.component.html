@@ -1,0 +1,42 @@
+<main class="page section-dashboard">
+  <header class="page__header"><div><p class="page__eyebrow">COMMUNICATION · PILOTAGE</p><h1 class="page__title">Tableau de bord Communication</h1><p class="page__meta">Vos messages récents et, selon votre profil, les accès aux portails des familles.</p></div>
+    <div class="header-actions">@if (lastRefresh(); as refreshed) { <span class="refresh-label">Mis à jour à {{ refreshed | date:'HH:mm' }}</span> }<button class="btn btn--secondary" type="button" [disabled]="loading()" (click)="load()">⟳ Actualiser</button></div>
+  </header>
+  @if (loading()) { <eduops-loading-state message="Chargement des communications..." /> }
+  @else if (error()) { <eduops-error-state (retry)="load()" /> }
+  @else {
+    <section class="kpis" aria-label="Indicateurs de communication">
+      <article class="kpi kpi--blue"><span class="kpi__icon">✉</span><div><p>Messages non lus</p><strong>{{ unread() }}</strong><small>Dans votre boîte de réception</small></div></article>
+      <article class="kpi kpi--green"><span class="kpi__icon">▣</span><div><p>Messages reçus</p><strong>{{ inboxTotal() }}</strong><small>Dans votre boîte personnelle</small></div></article>
+      @if (canManagePortals && portals()) {
+        <article class="kpi kpi--purple"><span class="kpi__icon">◉</span><div><p>Accès portail disponibles</p><strong>{{ readyPortalCount }}</strong><small>Comptes actifs et autorisés</small></div></article>
+        <article class="kpi kpi--gold"><span class="kpi__icon">⌁</span><div><p>Accès à préparer</p><strong>{{ blockedPortalCount }}</strong><small>Responsables ou élèves à accompagner</small></div></article>
+      }
+    </section>
+
+    <section class="content-grid">
+      <article class="card"><header class="card__header"><div><p class="page__eyebrow">BOÎTE PERSONNELLE</p><h2>Messages récents</h2></div><a routerLink="/notifications" class="text-link">Ouvrir les messages →</a></header>
+        <p class="privacy-note">Cette liste ne montre que les messages adressés à votre compte.</p>
+        @if (messages().length) { <div class="message-list">@for (message of messages(); track messageTrack($index, message)) { <a class="message-row" [class.message-row--unread]="message.unread" [routerLink]="message.actionUrl || '/notifications'"><span class="message-icon" aria-hidden="true">✉</span><span class="message-row__main"><strong>{{ message.title }}</strong><small>{{ message.categoryLabel }} · {{ message.createdAt | date:'dd/MM/yyyy HH:mm' }}</small><span>{{ message.body }}</span></span>@if (message.unread) { <i class="unread-dot" aria-label="Non lu"></i> }</a> }</div> }
+        @else { <div class="empty-state"><span>✉</span><strong>Votre boîte est à jour</strong><p>Les prochains messages adressés à votre compte apparaîtront ici.</p></div> }
+      </article>
+
+      @if (canManagePortals) {
+        <article class="card"><header class="card__header"><div><p class="page__eyebrow">PORTAIL FAMILLES</p><h2>État des accès</h2></div><a routerLink="/portals" class="text-link">Gérer les accès →</a></header>
+          @if (portals(); as people) {
+            <div class="portal-total"><strong>{{ people.length }}</strong><span>responsables et élèves recensés</span></div>
+            <div class="portal-bar" role="img" [attr.aria-label]="readyPortalCount + ' accès disponibles sur ' + people.length"><span [style.width.%]="people.length ? readyPortalCount / people.length * 100 : 0"></span></div>
+            <div class="portal-legend"><span><i class="dot dot--green"></i>{{ readyPortalCount }} disponible(s)</span><span><i class="dot dot--orange"></i>{{ blockedPortalCount }} à préparer</span></div>
+            @if (blockedPortalCount) { <div class="portal-action"><span aria-hidden="true">⌁</span><div><strong>Des accès demandent une action</strong><p>Vérifiez le compte, son état et l’autorisation d’accès au portail.</p></div><a routerLink="/portals">Examiner</a></div> }
+            @else { <div class="all-clear">Tous les accès recensés sont opérationnels.</div> }
+          } @else { <div class="empty-state"><strong>État des portails indisponible</strong><p>Actualisez la page ou ouvrez le suivi des accès.</p><a routerLink="/portals">Ouvrir les portails</a></div> }
+        </article>
+      }
+    </section>
+
+    <section class="card quick-card"><header class="card__header"><div><p class="page__eyebrow">ACCÈS RAPIDE</p><h2>Outils de communication</h2></div></header><nav class="shortcuts" aria-label="Outils de communication">
+      <a routerLink="/notifications"><span class="shortcut-icon shortcut-icon--blue">✉</span><span><strong>Messages</strong><small>Lire et suivre les notifications qui vous sont adressées</small></span><b>→</b></a>
+      @if (canManagePortals) { <a routerLink="/portals"><span class="shortcut-icon shortcut-icon--purple">◉</span><span><strong>Portail des familles</strong><small>Préparer et vérifier les comptes d’accès</small></span><b>→</b></a> }
+    </nav></section>
+  }
+</main>

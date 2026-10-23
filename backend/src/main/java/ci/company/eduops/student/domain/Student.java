@@ -76,6 +76,10 @@ public class Student extends AuditableEntity {
     @Column(name = "email", length = 180)
     private String email;
 
+    /** Courriel à utiliser pour joindre le responsable de l'élève. */
+    @Column(name = "mail_responsable", length = 180)
+    private String mailResponsable;
+
     @Column(name = "phone", length = 40)
     private String phone;
 

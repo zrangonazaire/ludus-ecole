@@ -204,6 +204,12 @@ public class EduOpsProperties {
         private boolean emailVerificationRequired = true;
         /** Durée de validité du lien de confirmation. */
         private int emailVerificationTtlHours = 24;
+        /** Durée de validité du lien de réinitialisation du mot de passe. */
+        private int passwordResetTtlMinutes = 30;
+        /** Délai minimal entre deux demandes de réinitialisation. */
+        private int passwordResetResendCooldownSeconds = 60;
+        /** Nombre maximal de liens de réinitialisation par heure et par compte. */
+        private int passwordResetMaxPerHour = 5;
         /** Délai minimal entre deux envois pour un même compte. */
         private int emailVerificationResendCooldownSeconds = 60;
         /** Plafond d'envois par compte et par heure. */
@@ -223,6 +229,30 @@ public class EduOpsProperties {
 
         public void setEmailVerificationTtlHours(int emailVerificationTtlHours) {
             this.emailVerificationTtlHours = emailVerificationTtlHours;
+        }
+
+        public int getPasswordResetTtlMinutes() {
+            return passwordResetTtlMinutes;
+        }
+
+        public void setPasswordResetTtlMinutes(int passwordResetTtlMinutes) {
+            this.passwordResetTtlMinutes = passwordResetTtlMinutes;
+        }
+
+        public int getPasswordResetResendCooldownSeconds() {
+            return passwordResetResendCooldownSeconds;
+        }
+
+        public void setPasswordResetResendCooldownSeconds(int passwordResetResendCooldownSeconds) {
+            this.passwordResetResendCooldownSeconds = passwordResetResendCooldownSeconds;
+        }
+
+        public int getPasswordResetMaxPerHour() {
+            return passwordResetMaxPerHour;
+        }
+
+        public void setPasswordResetMaxPerHour(int passwordResetMaxPerHour) {
+            this.passwordResetMaxPerHour = passwordResetMaxPerHour;
         }
 
         public int getEmailVerificationResendCooldownSeconds() {

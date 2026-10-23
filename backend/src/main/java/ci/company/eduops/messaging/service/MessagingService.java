@@ -18,8 +18,10 @@ import ci.company.eduops.messaging.domain.MessageRecipient;
 import ci.company.eduops.messaging.domain.MessagingSettings;
 import ci.company.eduops.messaging.domain.ReminderType;
 import ci.company.eduops.messaging.repository.MessageCampaignRepository;
+import ci.company.eduops.messaging.repository.MessageRecipientRepository;
 import ci.company.eduops.messaging.repository.MessagingSettingsRepository;
 import ci.company.eduops.notification.domain.NotificationChannel;
+import ci.company.eduops.notification.domain.NotificationStatus;
 import ci.company.eduops.notification.service.MailService;
 import ci.company.eduops.school.domain.School;
 import ci.company.eduops.school.repository.SchoolRepository;
@@ -84,6 +86,7 @@ public class MessagingService {
     private static final int ABSENCE_THRESHOLD = 3;
 
     private final MessageCampaignRepository campaignRepository;
+    private final MessageRecipientRepository recipientRepository;
     private final MessagingSettingsRepository settingsRepository;
     private final AcademicYearRepository academicYearRepository;
     private final EnrollmentRepository enrollmentRepository;
@@ -93,11 +96,14 @@ public class MessagingService {
     private final MessageRenderer renderer;
     private final SmsSegmentCounter segmentCounter;
     private final SmsGateway smsGateway;
+    private final WhatsAppGateway whatsAppGateway;
     private final MailService mailService;
     private final AuditService auditService;
     private final CurrentUser currentUser;
+    private final MessageResponseService messageResponseService;
 
     public MessagingService(MessageCampaignRepository campaignRepository,
+                            MessageRecipientRepository recipientRepository,
                             MessagingSettingsRepository settingsRepository,
                             AcademicYearRepository academicYearRepository,
                             EnrollmentRepository enrollmentRepository,
@@ -107,10 +113,13 @@ public class MessagingService {
                             MessageRenderer renderer,
                             SmsSegmentCounter segmentCounter,
                             SmsGateway smsGateway,
+                            WhatsAppGateway whatsAppGateway,
                             MailService mailService,
                             AuditService auditService,
-                            CurrentUser currentUser) {
+                            CurrentUser currentUser,
+                            MessageResponseService messageResponseService) {
         this.campaignRepository = campaignRepository;
+        this.recipientRepository = recipientRepository;
         this.settingsRepository = settingsRepository;
         this.academicYearRepository = academicYearRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -120,9 +129,11 @@ public class MessagingService {
         this.renderer = renderer;
         this.segmentCounter = segmentCounter;
         this.smsGateway = smsGateway;
+        this.whatsAppGateway = whatsAppGateway;
         this.mailService = mailService;
         this.auditService = auditService;
         this.currentUser = currentUser;
+        this.messageResponseService = messageResponseService;
     }
 
     // ------------------------------------------------------- listes calculées
@@ -215,6 +226,7 @@ public class MessagingService {
         private List<String> unreachable = new ArrayList<>();
         private int withoutConsent;
         private String sample;
+        private boolean sampleIsExample;
         private boolean unicode;
         private List<String> offenders = new ArrayList<>();
         private String suggestion;
@@ -237,6 +249,10 @@ public class MessagingService {
         /** Le message rendu pour un destinataire réel, pas un exemple inventé. */
         public String getSample() {
             return sample;
+        }
+
+        public boolean isSampleIsExample() {
+            return sampleIsExample;
         }
 
         public boolean isUnicode() {
@@ -269,7 +285,7 @@ public class MessagingService {
      *
      * @param kind      reminder or free announcement
      * @param reminder  the list to draw from, when this is a reminder
-     * @param channel   EMAIL or SMS
+     * @param channel   EMAIL, SMS or WHATSAPP
      * @param title     what the log will call it
      * @param subject   the e-mail subject; ignored for SMS
      * @param template  the body, with its placeholders
@@ -279,11 +295,31 @@ public class MessagingService {
     public Preview prepare(CampaignKind kind, ReminderType reminder,
                            NotificationChannel channel, String title, String subject,
                            String template, List<UUID> studentIds, UUID academicYearId) {
+        return prepare(kind, reminder, channel, title, subject, template, studentIds,
+                academicYearId, null);
+    }
+
+    @Transactional
+    public Preview prepare(CampaignKind kind, ReminderType reminder,
+                           NotificationChannel channel, String title, String subject,
+                           String template, List<UUID> studentIds, UUID academicYearId,
+                           String responseQuestion) {
         currentUser.requirePermission("MESSAGE_COMPOSE");
 
-        if (channel != NotificationChannel.EMAIL && channel != NotificationChannel.SMS) {
+        boolean collectResponses = responseQuestion != null && !responseQuestion.isBlank();
+        if (collectResponses && kind != CampaignKind.ANNOUNCEMENT) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR,
-                    "Seuls le courriel et le SMS sont gérés par cet écran.");
+                    "La collecte de réponses est réservée aux avis libres.");
+        }
+        if (collectResponses && responseQuestion.trim().length() > 500) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "La question doit contenir au maximum 500 caractères.");
+        }
+
+        if (channel != NotificationChannel.EMAIL && channel != NotificationChannel.SMS
+                && channel != NotificationChannel.WHATSAPP) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Seuls le courriel, le SMS et WhatsApp sont gérés par cet écran.");
         }
         List<String> unknown = renderer.unknownPlaceholders(template);
         if (!unknown.isEmpty()) {
@@ -299,6 +335,14 @@ public class MessagingService {
         List<ReminderRow> rows = kind.isReminder()
                 ? reminderList(reminder, year.getId())
                 : explicitRows(studentIds, year);
+        if (studentIds != null && !studentIds.isEmpty()) {
+            java.util.Set<UUID> selected = java.util.Set.copyOf(studentIds);
+            rows = rows.stream().filter(row -> selected.contains(row.getStudent().getId())).toList();
+        }
+        if (rows.isEmpty()) {
+            throw new BusinessException(ErrorCode.MESSAGE_NO_RECIPIENT,
+                    "Aucun élève sélectionné avec un solde impayé pour cette année scolaire.");
+        }
 
         List<Student> students = rows.stream().map(ReminderRow::getStudent).toList();
         RecipientResolver.Resolution resolution =
@@ -314,6 +358,8 @@ public class MessagingService {
                 : (reminder != null ? reminder.defaultTitle() : "Message aux familles"));
         campaign.setSubject(channel == NotificationChannel.EMAIL ? subject : null);
         campaign.setBodyTemplate(template);
+        campaign.setCollectResponses(collectResponses);
+        campaign.setResponseQuestion(collectResponses ? responseQuestion.trim() : null);
         campaign.setAudienceLabel(describeAudience(kind, reminder, rows.size()));
         campaign.setCurrency(settings.getCurrency());
         campaign.setStatus(CampaignStatus.DRAFT);
@@ -326,17 +372,47 @@ public class MessagingService {
             rowByStudent.put(row.getStudent().getId(), row);
         }
 
-        int segments = 0;
+        // Persist the parent first. Response tokens refer to individual
+        // message_recipient rows and must not be created for transient objects.
+        campaign = campaignRepository.save(campaign);
+
+        // Une famille avec plusieurs enfants sélectionnés reçoit un seul
+        // rappel financier, avec tous les noms et le montant cumulé pour les
+        // enfants auxquels ce responsable est autorisé à être notifié.
+        Map<String, List<RecipientResolver.Target>> targetGroups = new LinkedHashMap<>();
         for (RecipientResolver.Target target : resolution.getTargets()) {
+            String groupKey = channel.name() + '|' + target.getAddress().toLowerCase();
+            targetGroups.computeIfAbsent(groupKey, ignored -> new ArrayList<>()).add(target);
+        }
+
+        int segments = 0;
+        for (List<RecipientResolver.Target> group : targetGroups.values()) {
+            RecipientResolver.Target target = group.get(0);
             ReminderRow row = rowByStudent.get(target.getStudent().getId());
             Map<String, String> variables = row != null
                     ? new LinkedHashMap<>(row.getVariables())
                     : baseVariables(target.getStudent(), "");
+            if (reminder != null && reminder.isFinancial() && group.size() > 1) {
+                java.util.Set<UUID> includedStudents = new java.util.LinkedHashSet<>();
+                List<String> names = new ArrayList<>();
+                BigDecimal familyBalance = BigDecimal.ZERO;
+                for (RecipientResolver.Target groupedTarget : group) {
+                    UUID studentId = groupedTarget.getStudent().getId();
+                    ReminderRow groupedRow = rowByStudent.get(studentId);
+                    if (groupedRow == null || !includedStudents.add(studentId)) continue;
+                    names.add(groupedTarget.getStudent().fullName());
+                    familyBalance = familyBalance.add(new BigDecimal(
+                            groupedRow.getVariables().getOrDefault("montant", "0")));
+                }
+                variables.put("eleve", String.join(" et ", names));
+                variables.put("montant", familyBalance.toPlainString());
+                variables.put("nombre", String.valueOf(names.size()));
+                variables.put("detail", "scolarité de " + names.size() + " enfant(s)");
+            }
             variables.put("tuteur", target.getGuardian().fullName());
             variables.put("ecole", school.getName());
             variables.put("date", LocalDate.now().format(DAY));
-
-            String body = renderer.render(template, variables);
+            variables.put("devise", settings.getCurrency());
 
             MessageRecipient recipient = new MessageRecipient();
             recipient.setCampaign(campaign);
@@ -346,15 +422,32 @@ public class MessagingService {
             recipient.setAddress(target.getAddress());
             recipient.setChannel(channel);
             recipient.setRenderedSubject(campaign.getSubject());
-            recipient.setRenderedBody(body);
+            // The response link is bound to the persisted recipient ID. Save
+            // a temporary non-null body first, then replace it below in this
+            // same transaction before the campaign can be sent.
+            recipient.setRenderedBody("");
+            campaign.getRecipients().add(recipient);
+            recipient = recipientRepository.save(recipient);
+            String renderedBody;
+            if (collectResponses) {
+                String responseLink = messageResponseService.createLink(campaign, recipient);
+                variables.put("lien_reponse", responseLink);
+                renderedBody = renderer.render(template, variables);
+                if (!template.contains("{lien_reponse}")) {
+                    renderedBody += "\n\nPour répondre à cet avis, ouvrez ce lien sécurisé :\n" + responseLink;
+                }
+            } else {
+                variables.put("lien_reponse", "");
+                renderedBody = renderer.render(template, variables);
+            }
+            recipient.setRenderedBody(renderedBody);
 
             short count = channel == NotificationChannel.SMS
-                    ? (short) segmentCounter.estimate(body).getSegments() : 1;
+                    ? (short) segmentCounter.estimate(renderedBody).getSegments() : 1;
             recipient.setSegments(count);
             if (channel == NotificationChannel.SMS) {
                 segments += count;
             }
-            campaign.getRecipients().add(recipient);
         }
 
         campaign.setRecipientCount(campaign.getRecipients().size());
@@ -372,8 +465,16 @@ public class MessagingService {
         preview.campaign = saved;
         preview.unreachable = resolution.getUnreachable();
         preview.withoutConsent = resolution.getWithoutConsent();
-        preview.gatewayLive = smsGateway.isLive();
-        preview.gatewayName = smsGateway.describe();
+        preview.gatewayLive = switch (channel) {
+            case SMS -> smsGateway.isLive();
+            case WHATSAPP -> whatsAppGateway.isLive();
+            default -> true;
+        };
+        preview.gatewayName = switch (channel) {
+            case SMS -> smsGateway.describe();
+            case WHATSAPP -> whatsAppGateway.describe();
+            default -> "Courriel";
+        };
 
         if (!saved.getRecipients().isEmpty()) {
             String sample = saved.getRecipients().get(0).getRenderedBody();
@@ -382,9 +483,19 @@ public class MessagingService {
             preview.unicode = estimate.isUnicode();
             preview.offenders = estimate.getOffenders();
             preview.suggestion = estimate.getSuggestion();
+        } else if (!rows.isEmpty()) {
+            ReminderRow example = rows.get(0);
+            Map<String, String> variables = new LinkedHashMap<>(example.getVariables());
+            variables.put("tuteur", "Responsable financier");
+            variables.put("ecole", school.getName());
+            variables.put("date", LocalDate.now().format(DAY));
+            variables.put("devise", settings.getCurrency());
+            preview.sample = renderer.render(template, variables);
+            preview.sampleIsExample = true;
         }
         long usedToday = campaignRepository.countSmsSegmentsSince(
-                school.getId(), OffsetDateTime.now().minusDays(1));
+                school.getId(), OffsetDateTime.now().minusDays(1), NotificationChannel.SMS,
+                List.of(NotificationStatus.SENT, NotificationStatus.DELIVERED));
         preview.capRemaining = Math.max(0, settings.getDailySmsCap() - usedToday);
         return preview;
     }
@@ -416,9 +527,19 @@ public class MessagingService {
         }
 
         MessagingSettings settings = settingsFor(campaign.getSchool());
+        if (campaign.getChannel() == NotificationChannel.SMS && !smsGateway.isLive()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Le SMS est en mode simulation : configurez un opérateur avant tout envoi réel.");
+        }
+        if (campaign.getChannel() == NotificationChannel.WHATSAPP && !whatsAppGateway.isLive()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "WhatsApp Business n'est pas configuré : aucun message n'a été envoyé.");
+        }
         if (campaign.getChannel() == NotificationChannel.SMS) {
             long usedToday = campaignRepository.countSmsSegmentsSince(
-                    campaign.getSchool().getId(), OffsetDateTime.now().minusDays(1));
+                    campaign.getSchool().getId(), OffsetDateTime.now().minusDays(1),
+                    NotificationChannel.SMS,
+                    List.of(NotificationStatus.SENT, NotificationStatus.DELIVERED));
             if (!settings.allows((int) usedToday, campaign.getSegmentCount())) {
                 // On refuse, on ne tronque pas : une relance partiellement
                 // partie est pire qu'une relance refusée, parce que personne
@@ -469,6 +590,9 @@ public class MessagingService {
         if (recipient.getChannel() == NotificationChannel.SMS) {
             return smsGateway.send(recipient.getAddress(), recipient.getRenderedBody(),
                     settings.getSmsSenderName());
+        }
+        if (recipient.getChannel() == NotificationChannel.WHATSAPP) {
+            return whatsAppGateway.send(recipient.getAddress(), recipient.getRenderedBody());
         }
         mailService.send(recipient.getAddress(),
                 recipient.getRenderedSubject() != null

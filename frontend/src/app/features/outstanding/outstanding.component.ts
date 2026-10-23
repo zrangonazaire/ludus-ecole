@@ -16,6 +16,10 @@ import { ErrorStateComponent } from '@shared/ui/error-state/error-state.componen
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { MoneyPipe } from '@shared/pipes/money.pipe';
 import { PERMISSIONS } from '@core/models/auth.models';
+import { OutstandingReminderService } from '@core/services/outstanding-reminder.service';
+import {
+  OutstandingReminderPreview, OutstandingReminderSendResult, ReminderChannel
+} from '@core/models/outstanding-reminder.models';
 
 import { CollectionPanelComponent } from './collection-panel.component';
 
@@ -39,6 +43,7 @@ interface BucketChoice {
 export class OutstandingComponent implements OnInit {
   private readonly dataSource = inject(FINANCE_DATA_SOURCE);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reminderService = inject(OutstandingReminderService);
 
   readonly selectedStudent = signal<OutstandingStudent | null>(null);
   readonly board = signal<OutstandingBoard | null>(null);
@@ -48,6 +53,17 @@ export class OutstandingComponent implements OnInit {
   readonly bucket = signal<OutstandingBucket>('ALL');
   readonly currentPage = signal(0);
   readonly createPaymentPermission = PERMISSIONS.PAYMENT_CREATE;
+  readonly selectedIds = signal<Set<string>>(new Set());
+  readonly reminderStep = signal<'closed' | 'compose' | 'preview' | 'result'>('closed');
+  readonly reminderChannel = signal<ReminderChannel>('EMAIL');
+  readonly reminderTitle = signal('Rappel de scolarité');
+  readonly reminderSubject = signal('Rappel de scolarité · solde à régulariser');
+  readonly reminderBody = signal('Bonjour {tuteur},\n\nNous vous contactons au sujet du solde de scolarité de {eleve}, actuellement de {montant} {devise}.\n\nNous vous invitons à régulariser la situation ou à contacter l’établissement pour en discuter.\n\nMerci de votre confiance.');
+  readonly preparing = signal(false);
+  readonly sending = signal(false);
+  readonly reminderError = signal('');
+  readonly reminderPreview = signal<OutstandingReminderPreview | null>(null);
+  readonly reminderResult = signal<OutstandingReminderSendResult | null>(null);
 
   readonly buckets: readonly BucketChoice[] = [
     { value: 'FOLLOW_UP', label: 'À relancer' },
@@ -61,6 +77,8 @@ export class OutstandingComponent implements OnInit {
 
   @ViewChild('studentTpl', { static: true })
   studentTpl!: TemplateRef<{ $implicit: OutstandingStudent }>;
+  @ViewChild('selectTpl', { static: true })
+  selectTpl!: TemplateRef<{ $implicit: OutstandingStudent }>;
   @ViewChild('guardianTpl', { static: true })
   guardianTpl!: TemplateRef<{ $implicit: OutstandingStudent }>;
   @ViewChild('dueTpl', { static: true })
@@ -76,6 +94,7 @@ export class OutstandingComponent implements OnInit {
 
   ngOnInit(): void {
     this.columns = [
+      { key: 'select', label: '', template: this.selectTpl, width: '4%' },
       { key: 'studentName', label: 'Élève', template: this.studentTpl, width: '25%' },
       { key: 'guardianName', label: 'Responsable financier', template: this.guardianTpl, width: '22%' },
       { key: 'oldestDueDate', label: 'Plus ancienne échéance', template: this.dueTpl, width: '15%' },
@@ -125,6 +144,84 @@ export class OutstandingComponent implements OnInit {
   onPageChange(page: number): void {
     this.currentPage.set(page);
     this.reload();
+  }
+
+  isSelected(studentId: string): boolean { return this.selectedIds().has(studentId); }
+
+  toggleStudent(studentId: string, checked: boolean): void {
+    const next = new Set(this.selectedIds());
+    checked ? next.add(studentId) : next.delete(studentId);
+    this.selectedIds.set(next);
+  }
+
+  toggleCurrentPage(checked: boolean): void {
+    const next = new Set(this.selectedIds());
+    for (const row of this.board()?.students.content ?? []) {
+      checked ? next.add(row.studentId) : next.delete(row.studentId);
+    }
+    this.selectedIds.set(next);
+  }
+
+  clearSelection(): void { this.selectedIds.set(new Set()); }
+
+  currentPageSelected(): boolean {
+    const rows = this.board()?.students.content ?? [];
+    return rows.length > 0 && rows.every(row => this.selectedIds().has(row.studentId));
+  }
+
+  openReminder(): void {
+    this.reminderError.set('');
+    this.reminderPreview.set(null);
+    this.reminderResult.set(null);
+    this.reminderStep.set('compose');
+  }
+
+  prepareReminder(): void {
+    this.preparing.set(true);
+    this.reminderError.set('');
+    this.reminderService.prepare({
+      studentIds: [...this.selectedIds()],
+      channel: this.reminderChannel(),
+      title: this.reminderTitle(),
+      subject: this.reminderChannel() === 'EMAIL' ? this.reminderSubject() : undefined,
+      bodyTemplate: this.reminderBody()
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: preview => {
+        this.reminderPreview.set(preview);
+        this.reminderStep.set('preview');
+        this.preparing.set(false);
+      },
+      error: error => {
+        this.reminderError.set(this.errorMessage(error));
+        this.preparing.set(false);
+      }
+    });
+  }
+
+  sendReminder(): void {
+    const campaignId = this.reminderPreview()?.campaignId;
+    if (!campaignId) return;
+    this.sending.set(true);
+    this.reminderError.set('');
+    this.reminderService.send(campaignId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: result => {
+        this.reminderResult.set(result);
+        this.reminderStep.set('result');
+        this.sending.set(false);
+        this.selectedIds.set(new Set());
+        this.reload();
+      },
+      error: error => {
+        this.reminderError.set(this.errorMessage(error));
+        this.sending.set(false);
+      }
+    });
+  }
+
+  closeReminder(): void { this.reminderStep.set('closed'); }
+
+  private errorMessage(error: { error?: { message?: string } }): string {
+    return error?.error?.message ?? 'La relance n’a pas pu être traitée. Réessayez.';
   }
 
   reload(): void {

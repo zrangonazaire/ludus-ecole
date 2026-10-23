@@ -37,16 +37,18 @@ public interface StudentHealthRecordRepository extends JpaRepository<StudentHeal
      * <p>This is what a teacher's screen is built from — never the full list
      * filtered afterwards, so that the rest never leaves the database.</p>
      */
-    @Query("""
-            SELECT DISTINCT r FROM StudentHealthRecord r
-              JOIN r.conditions c
-              JOIN Enrollment e ON e.student = r.student
-            WHERE e.academicYear.id = :yearId
+    @Query(value = """
+            SELECT DISTINCT r.*
+            FROM student_health_record r
+            JOIN health_condition c ON c.health_record_id = r.id
+            JOIN enrollment e ON e.student_id = r.student_id
+            WHERE e.academic_year_id = :yearId
               AND c.active = TRUE
-              AND c.severity IN (ci.company.eduops.health.domain.HealthSeverity.HIGH,
-                                 ci.company.eduops.health.domain.HealthSeverity.CRITICAL)
-            """)
-    List<StudentHealthRecord> findWithAlerts(@Param("yearId") UUID yearId);
+              AND CAST(c.severity AS text) IN (:alertSeverities)
+            """, nativeQuery = true)
+    List<StudentHealthRecord> findWithAlerts(@Param("yearId") UUID yearId,
+                                              @Param("alertSeverities")
+                                              List<String> alertSeverities);
 
     @Query("""
             SELECT COUNT(DISTINCT r) FROM StudentHealthRecord r

@@ -6,9 +6,12 @@ import ci.company.eduops.approval.service.ApprovalExecutionService;
 import ci.company.eduops.audit.service.AuditService;
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.tenant.TenantContext;
+import ci.company.eduops.config.EduOpsProperties;
 import ci.company.eduops.finance.domain.*;
 import ci.company.eduops.finance.repository.*;
 import ci.company.eduops.finance.service.DiscountRequestService;
+import ci.company.eduops.notification.service.MailService;
+import ci.company.eduops.security.repository.AppUserRepository;
 import ci.company.eduops.security.service.CurrentUser;
 import ci.company.eduops.student.repository.StudentRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,7 +29,8 @@ class DiscountApprovalServiceTest {
     final ApprovalExecutionService approvals = mock(ApprovalExecutionService.class);
     final DiscountRequestService service = new DiscountRequestService(requests, mock(DiscountRequestLevelRepository.class),
             mock(StudentRepository.class), mock(AcademicYearRepository.class), fees, mock(CurrentUser.class),
-            mock(AuditService.class), approvals, new ObjectMapper(), mock(FeeTypeRepository.class));
+            mock(AuditService.class), approvals, new ObjectMapper(), mock(FeeTypeRepository.class),
+            mock(AppUserRepository.class), mock(MailService.class), new EduOpsProperties());
     DiscountRequest request;
     ApprovalExecution execution;
     @BeforeEach void setup() {

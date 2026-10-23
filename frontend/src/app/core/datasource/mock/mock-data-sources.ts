@@ -715,6 +715,7 @@ export class MockFinanceDataSource implements FinanceDataSource {
       totalLevels: 2,
       createdAt: new Date().toISOString(),
       awaitingMyDecision: true,
+      canCancel: true,
       levels: [
         { levelNumber: 1, name: 'Intendance', roleCode: 'ACCOUNTANT', roleLabel: 'Comptable',
           status: 'PENDING' },
@@ -738,6 +739,7 @@ export class MockFinanceDataSource implements FinanceDataSource {
       totalLevels: 2,
       createdAt: new Date(Date.now() - 86400000).toISOString(),
       awaitingMyDecision: true,
+      canCancel: true,
       levels: [
         { levelNumber: 1, name: 'Intendance', roleCode: 'ACCOUNTANT', roleLabel: 'Comptable',
           status: 'APPROVED', approverName: 'Awa Traoré',
@@ -763,6 +765,7 @@ export class MockFinanceDataSource implements FinanceDataSource {
       createdAt: new Date(Date.now() - 9 * 86400000).toISOString(),
       effectiveAt: new Date(Date.now() - 3 * 86400000).toISOString(),
       awaitingMyDecision: false,
+      canCancel: false,
       levels: [
         { levelNumber: 1, name: 'Intendance', roleCode: 'ACCOUNTANT', roleLabel: 'Comptable',
           status: 'APPROVED', approverName: 'Awa Traoré', decidedAt: new Date().toISOString() },
@@ -812,6 +815,7 @@ export class MockFinanceDataSource implements FinanceDataSource {
       totalLevels: (payload.levels ?? []).length,
       createdAt: new Date().toISOString(),
       awaitingMyDecision: true,
+      canCancel: true,
       levels: (payload.levels ?? []).map((level, index) => ({
         levelNumber: index + 1,
         name: level.name,
@@ -843,13 +847,29 @@ export class MockFinanceDataSource implements FinanceDataSource {
       if (!approved) {
         row.status = 'REJECTED';
         row.rejectionReason = payload.comment;
+        row.canCancel = false;
       } else if (level.levelNumber < row.totalLevels) {
         row.currentLevel = level.levelNumber + 1;
       } else {
         row.status = 'APPROVED';
+        row.canCancel = false;
       }
       row.awaitingMyDecision = row.status === 'SUBMITTED';
             return of({ ...row, levels: row.levels.map((l: DiscountLevel) => ({ ...l })) });
+    }).pipe(delay(LATENCY));
+  }
+
+  cancelDiscountRequest(id: string, reason?: string): Observable<DiscountRequest> {
+    return defer(() => {
+      const row = this.discountStore.find((item) => item.id === id);
+      if (!row || row.status !== 'SUBMITTED' || !row.canCancel) {
+        return throwError(() => new Error('Cette demande ne peut plus être annulée.'));
+      }
+      row.status = 'CANCELLED';
+      row.cancellationReason = reason?.trim() || undefined;
+      row.awaitingMyDecision = false;
+      row.canCancel = false;
+      return of({ ...row, levels: row.levels.map((l: DiscountLevel) => ({ ...l })) });
     }).pipe(delay(LATENCY));
   }
 

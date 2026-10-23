@@ -78,6 +78,12 @@ public class MessageCampaign extends BaseEntity {
     @Column(name = "body_template", nullable = false)
     private String bodyTemplate;
 
+    @Column(name = "collect_responses", nullable = false)
+    private boolean collectResponses;
+
+    @Column(name = "response_question", length = 500)
+    private String responseQuestion;
+
     /** La cible en clair, pour que le journal reste lisible sans requête. */
     @Column(name = "audience_label", nullable = false, length = 300)
     private String audienceLabel;

@@ -123,12 +123,14 @@ public class RecipientResolver {
                 }
                 anyConsent = true;
                 Guardian guardian = link.getGuardian();
-                String address = addressFor(guardian, channel);
+                String address = addressFor(guardian, student, channel);
                 if (address == null) {
                     continue;
                 }
                 anyAddress = true;
-                String key = channel.name() + '|' + address.toLowerCase();
+                String key = channel.name() + '|' + address.toLowerCase()
+                        + (reminder != null && reminder.isFinancial()
+                        ? "|" + student.getId() : "");
                 unique.putIfAbsent(key, new Target(guardian, student, address, channel));
             }
 
@@ -166,13 +168,14 @@ public class RecipientResolver {
         return link.isReceivesNotifications();
     }
 
-    private String addressFor(Guardian guardian, NotificationChannel channel) {
-        if (channel == NotificationChannel.SMS) {
+    private String addressFor(Guardian guardian, Student student, NotificationChannel channel) {
+        if (channel == NotificationChannel.SMS || channel == NotificationChannel.WHATSAPP) {
             String phone = blankToNull(guardian.getPhone());
             return phone != null ? phone : blankToNull(guardian.getPhoneSecondary());
         }
         if (channel == NotificationChannel.EMAIL) {
-            return blankToNull(guardian.getEmail());
+            String responsibleEmail = blankToNull(student.getMailResponsable());
+            return responsibleEmail != null ? responsibleEmail : blankToNull(guardian.getEmail());
         }
         return null;
     }

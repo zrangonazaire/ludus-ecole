@@ -387,6 +387,10 @@ public class EnrollmentService {
         student.setNationality(payload.getNationality());
         student.setNationalId(payload.getNationalId());
         student.setEmail(payload.getEmail());
+        if (payload.getGuardian() != null && payload.getGuardian().getEmail() != null
+                && !payload.getGuardian().getEmail().isBlank()) {
+            student.setMailResponsable(payload.getGuardian().getEmail().trim().toLowerCase(java.util.Locale.ROOT));
+        }
         student.setPhone(payload.getPhone());
         student.setAddressLine1(payload.getAddressLine1());
         student.setCity(payload.getCity());
@@ -412,6 +416,9 @@ public class EnrollmentService {
             link.setRelationship(guardianPayload.getRelationship());
             link.setPrimary(true);
             link.setFinancialResponsibility(guardianPayload.isFinancialResponsibility());
+            // Le formulaire définit le responsable financier comme destinataire
+            // des factures et relances d'impayés.
+            link.setReceivesFinancialNotifications(guardianPayload.isFinancialResponsibility());
             studentGuardianRepository.save(link);
         }
         return student;

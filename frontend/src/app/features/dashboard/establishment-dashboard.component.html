@@ -1,0 +1,50 @@
+<main class="page section-dashboard">
+  <header class="page__header"><div><p class="page__eyebrow">ÉTABLISSEMENT · PILOTAGE</p><h1 class="page__title">Tableau de bord Établissement</h1><p class="page__meta">L’identité de l’école, les années scolaires et les éléments de configuration.</p></div>
+    <div class="header-actions">@if (lastRefresh(); as refreshed) { <span class="refresh-label">Mis à jour à {{ refreshed | date:'HH:mm' }}</span> }<button class="btn btn--secondary" type="button" [disabled]="loading()" (click)="load()">⟳ Actualiser</button></div>
+  </header>
+  @if (loading()) { <eduops-loading-state message="Chargement de la configuration de l’établissement..." /> }
+  @else if (error()) { <eduops-error-state (retry)="load()" /> }
+  @else {
+    <section class="hero-card">
+      <div class="hero-mark" aria-hidden="true">⌂</div>
+      <div class="hero-main">
+        <p class="page__eyebrow">IDENTITÉ DE L’ÉTABLISSEMENT</p>
+        <h2>{{ settings()?.name || 'Informations de l’école non consultables' }}</h2>
+        <p>{{ settings()?.code ? 'Code établissement · ' + settings()!.code : 'Code non renseigné' }}@if (settings()?.city) { <span> · {{ settings()!.city }}</span> }</p>
+      </div>
+      @if (settings()) { <a class="btn btn--secondary" routerLink="/administration">Paramètres de l’école</a> }
+    </section>
+
+    <section class="kpis" aria-label="Indicateurs établissement">
+      @if (canViewYears) { <article class="kpi kpi--blue"><span class="kpi__icon">◷</span><div><p>Année de travail</p><strong>{{ activeYear?.code || 'Aucune' }}</strong><small>{{ activeYear ? activeYear.terms.length + ' période(s) · ' + activeYear.enrollmentCount + ' inscription(s)' : 'Une année doit être activée' }}</small></div></article> }
+      @if (canViewCampuses) { <article class="kpi kpi--green"><span class="kpi__icon">⌂</span><div><p>Campus actifs</p><strong>{{ activeCampusCount ?? '—' }}</strong><small>Sites de l’établissement</small></div></article> }
+      @if (canViewLevels) { <article class="kpi kpi--purple"><span class="kpi__icon">◱</span><div><p>Niveaux actifs</p><strong>{{ activeLevelCount ?? '—' }}</strong><small>Cycles et niveaux configurés</small></div></article> }
+      @if (canViewSchool) { <article class="kpi kpi--gold"><span class="kpi__icon">✉</span><div><p>Coordonnées renseignées</p><strong>{{ contactDetailsComplete ?? 0 }} / 3</strong><small>Email, téléphone et adresse</small></div></article> }
+    </section>
+
+    <section class="content-grid">
+      <article class="card setup-card"><header class="card__header"><div><p class="page__eyebrow">VUE D’ENSEMBLE</p><h2>Configuration de l’école</h2></div><span class="completion">{{ checksComplete }} / {{ checkTotal }} repères consultables</span></header>
+        <div class="check-list">
+          <div class="check-row"><span class="check-icon" [class.check-icon--done]="!!settings()">{{ settings() ? '✓' : '·' }}</span><span><strong>Identité et coordonnées</strong><small>{{ settings()?.name || 'Informations à compléter ou accès non disponible' }}</small></span>@if (canViewSchool) { <a routerLink="/administration">Voir</a> }</div>
+          <div class="check-row"><span class="check-icon" [class.check-icon--done]="!!activeYear">{{ activeYear ? '✓' : '·' }}</span><span><strong>Année scolaire active</strong><small>{{ activeYear ? activeYear.label + ' · ' + activeYear.terms.length + ' période(s)' : 'Aucune année active' }}</small></span>@if (canViewYears) { <a routerLink="/academic-years">Voir</a> }</div>
+          <div class="check-row"><span class="check-icon" [class.check-icon--done]="(activeCampusCount ?? 0) > 0">{{ (activeCampusCount ?? 0) > 0 ? '✓' : '·' }}</span><span><strong>Campus</strong><small>{{ activeCampusCount === null ? 'Non consultable avec ce profil' : activeCampusCount + ' site(s) actif(s)' }}</small></span>@if (canViewCampuses) { <a routerLink="/campus">Voir</a> }</div>
+          <div class="check-row"><span class="check-icon" [class.check-icon--done]="(activeLevelCount ?? 0) > 0">{{ (activeLevelCount ?? 0) > 0 ? '✓' : '·' }}</span><span><strong>Cycles et niveaux</strong><small>{{ activeLevelCount === null ? 'Non consultables avec ce profil' : activeLevelCount + ' niveau(x) actif(s)' }}</small></span>@if (canViewLevels) { <a routerLink="/levels">Voir</a> }</div>
+        </div>
+      </article>
+
+      <article class="card year-card"><header class="card__header"><div><p class="page__eyebrow">ANNÉES SCOLAIRES</p><h2>Calendrier de travail</h2></div>@if (canViewYears) { <a routerLink="/academic-years" class="text-link">Gérer les années →</a> }</header>
+        @if (!canViewYears) { <div class="empty-state"><strong>Calendrier non accessible avec votre profil</strong><p>Le droit de consulter les années scolaires est requis.</p></div> }
+        @else if (years()?.length) { <div class="year-list">@for (year of years()!.slice(0, 4); track year.id) { <div class="year-row"><span class="year-mark" [class.year-mark--active]="year.active">{{ year.active ? '✓' : '◷' }}</span><span class="year-row__main"><strong>{{ year.label }}</strong><small>{{ year.startDate | date:'dd/MM/yyyy' }} – {{ year.endDate | date:'dd/MM/yyyy' }} · {{ year.terms.length }} période(s)</small></span><span class="year-status" [class.year-status--active]="year.active">{{ year.statusLabel }}</span></div> }</div> }
+        @else { <div class="empty-state"><strong>Aucune année scolaire enregistrée</strong><p>Créez une année et ses périodes pour ouvrir les inscriptions et les notes.</p><a routerLink="/academic-years">Créer une année scolaire</a></div> }
+      </article>
+    </section>
+
+    <section class="card quick-card"><header class="card__header"><div><p class="page__eyebrow">ACCÈS RAPIDE</p><h2>Configurer et faire évoluer l’établissement</h2></div></header><nav class="shortcuts" aria-label="Outils établissement">
+      @if (canViewSchool) { <a routerLink="/administration"><span class="shortcut-icon shortcut-icon--blue">⌂</span><span><strong>Paramètres de l’école</strong><small>Identité, coordonnées, langue et numérotation</small></span><b>→</b></a> }
+      @if (canViewYears) { <a routerLink="/academic-years"><span class="shortcut-icon shortcut-icon--green">◷</span><span><strong>Années et périodes</strong><small>Préparer la prochaine année et ses échéances</small></span><b>→</b></a> }
+      @if (canViewLevels) { <a routerLink="/levels"><span class="shortcut-icon shortcut-icon--purple">◱</span><span><strong>Cycles et niveaux</strong><small>Structurer le parcours scolaire</small></span><b>→</b></a> }
+      @if (canViewCampuses) { <a routerLink="/campus"><span class="shortcut-icon shortcut-icon--gold">⌂</span><span><strong>Campus</strong><small>Gérer les sites de l’établissement</small></span><b>→</b></a> }
+      @if (canViewRooms) { <a routerLink="/rooms"><span class="shortcut-icon shortcut-icon--red">▤</span><span><strong>Bâtiments et salles</strong><small>Organiser les espaces de cours</small></span><b>→</b></a> }
+    </nav></section>
+  }
+</main>

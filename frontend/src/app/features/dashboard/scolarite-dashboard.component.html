@@ -1,0 +1,106 @@
+<main class="page school-dashboard">
+  <header class="page__header">
+    <div>
+      <p class="page__eyebrow">SCOLARITÉ · PILOTAGE</p>
+      <h1 class="page__title">Tableau de bord Scolarité</h1>
+      <p class="page__meta">Les dossiers des élèves et les démarches à suivre par le secrétariat.</p>
+    </div>
+    <div class="header-actions">
+      @if (lastRefresh(); as refreshed) { <span class="refresh-label">Mis à jour à {{ refreshed | date:'HH:mm' }}</span> }
+      <button class="btn btn--secondary" type="button" [disabled]="loading()" (click)="load()"><span aria-hidden="true">⟳</span> Actualiser</button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <eduops-loading-state message="Chargement du suivi de la scolarité..." />
+  } @else if (error()) {
+    <eduops-error-state (retry)="load()" />
+  } @else {
+    <section class="kpis" aria-label="Indicateurs de scolarité">
+      <article class="kpi kpi--blue"><span class="kpi__icon">◍</span><div><p>Élèves actifs</p><strong>{{ activeStudents()?.totalElements ?? '—' }}</strong><small>Élèves inscrits dans l’établissement</small></div></article>
+      @if (canViewAdmissions) {
+        <article class="kpi kpi--purple"><span class="kpi__icon">◐</span><div><p>Candidatures à examiner</p><strong>{{ admissionsToReview ?? '—' }}</strong><small>Soumises ou en cours d’étude</small></div></article>
+      }
+      @if (canViewEnrollments) {
+        <article class="kpi kpi--gold"><span class="kpi__icon">✓</span><div><p>Inscriptions à valider</p><strong>{{ pendingEnrollments()?.totalElements ?? '—' }}</strong><small>Dossiers en attente de validation</small></div></article>
+      }
+      @if (canViewRequests) {
+        <article class="kpi kpi--red"><span class="kpi__icon">◑</span><div><p>Demandes des familles</p><strong>{{ openFamilyRequestCount ?? '—' }}</strong><small>{{ familyRequests()?.overdueCount ?? 0 }} en retard de traitement</small></div></article>
+      }
+    </section>
+
+    <section class="work-grid">
+      <article class="card">
+        <header class="card__header"><div><p class="page__eyebrow">INSCRIPTIONS</p><h2>Dossiers à valider</h2></div>@if (canViewEnrollments) { <a routerLink="/enrollments" class="text-link">Toutes les inscriptions →</a> }</header>
+        @if (!canViewEnrollments) {
+          <div class="empty-state"><span>✓</span><strong>Liste non accessible avec votre profil</strong><p>Le droit de consulter les inscriptions est requis pour afficher cette file.</p></div>
+        } @else {
+          @if (pendingEnrollments(); as pending) {
+          @if (pending.content.length) {
+            <div class="table-wrap"><table><thead><tr><th>Élève</th><th>Classe demandée</th><th>Date</th><th></th></tr></thead><tbody>
+              @for (enrollment of pending.content; track enrollmentTrack($index, enrollment)) {
+                <tr><td><strong>{{ enrollment.studentName }}</strong><small>{{ enrollment.studentNumber }}</small></td><td>{{ enrollment.classroomName }}</td><td>{{ enrollment.enrollmentDate | date:'dd/MM/yyyy' }}</td><td><a class="row-link" routerLink="/enrollments">Examiner</a></td></tr>
+              }
+            </tbody></table></div>
+            @if (pending.totalElements > pending.content.length) { <a class="card__footer-link" routerLink="/enrollments">Voir les {{ pending.totalElements }} dossiers en attente</a> }
+          } @else {
+            <div class="empty-state"><span>✓</span><strong>Aucune inscription en attente</strong><p>Les nouveaux dossiers à valider apparaîtront ici.</p></div>
+          }
+        } @else {
+          <div class="empty-state"><span>✓</span><strong>Les inscriptions sont indisponibles</strong><p>Réessayez ou ouvrez le module Inscriptions.</p><a routerLink="/enrollments">Ouvrir les inscriptions</a></div>
+        }
+        }
+      </article>
+
+      <article class="card">
+        <header class="card__header"><div><p class="page__eyebrow">ADMISSIONS</p><h2>Candidatures récentes</h2></div>@if (canViewAdmissions) { <a routerLink="/admissions" class="text-link">Toutes les admissions →</a> }</header>
+        @if (!canViewAdmissions) {
+          <div class="empty-state"><span>◐</span><strong>Admissions non accessibles avec votre profil</strong><p>Le droit de consulter les candidatures est requis.</p></div>
+        } @else {
+          @if (recentAdmissions(); as admissions) {
+          @if (admissions.content.length) {
+            <div class="admission-list">
+              @for (admission of admissions.content; track admissionTrack($index, admission)) {
+                <a class="admission-row" routerLink="/admissions"><span class="admission-initial">{{ admission.firstName.slice(0, 1) }}</span><span class="admission-row__main"><strong>{{ admission.fullName }}</strong><small>{{ admission.requestedLevelName }} · {{ admission.applicationNumber }}</small></span><span class="status-chip" [class.status-chip--waiting]="admission.status === 'SUBMITTED' || admission.status === 'UNDER_REVIEW'">{{ admissionStatusLabel(admission.status) }}</span></a>
+              }
+            </div>
+          } @else {
+            <div class="empty-state"><span>◐</span><strong>Aucune candidature récente</strong><p>Les candidatures reçues seront listées ici.</p></div>
+          }
+        } @else {
+          <div class="empty-state"><span>◐</span><strong>Les candidatures sont indisponibles</strong><p>Réessayez ou ouvrez le module Admissions.</p><a routerLink="/admissions">Ouvrir les admissions</a></div>
+        }
+        }
+      </article>
+    </section>
+
+    <section class="bottom-grid">
+      <article class="card request-card">
+        <header class="card__header"><div><p class="page__eyebrow">RELATION FAMILLES</p><h2>Demandes à suivre</h2></div>@if (canViewRequests) { <a routerLink="/requests" class="text-link">Ouvrir les demandes →</a> }</header>
+        @if (!canViewRequests) {
+          <div class="empty-state"><span>◑</span><strong>Demandes non accessibles avec votre profil</strong><p>Le droit de gérer les demandes des familles est requis.</p></div>
+        } @else {
+          @if (familyRequests(); as requests) {
+          <div class="request-summary">
+            <div><strong>{{ requests.newCount }}</strong><span>Nouvelles</span></div><div><strong>{{ requests.inProgressCount }}</strong><span>En cours</span></div><div><strong>{{ requests.waitingFamilyCount }}</strong><span>En attente famille</span></div><div class="request-summary__late"><strong>{{ requests.overdueCount }}</strong><span>En retard</span></div>
+          </div>
+          @if (!openFamilyRequestCount) { <p class="all-clear">Aucune demande de famille en attente de traitement.</p> }
+        } @else {
+          <div class="empty-state"><span>◑</span><strong>Les demandes ne sont pas disponibles</strong><p>Réessayez ou consultez leur suivi dans le module dédié.</p><a routerLink="/requests">Ouvrir les demandes</a></div>
+        }
+        }
+      </article>
+
+      <article class="card quick-card">
+        <header class="card__header"><div><p class="page__eyebrow">ACCÈS RAPIDE</p><h2>Gestion de la scolarité</h2></div></header>
+        <nav class="shortcuts" aria-label="Outils de scolarité">
+          <a routerLink="/students"><span class="shortcut-icon shortcut-icon--blue">◍</span><span><strong>Élèves</strong><small>Rechercher et mettre à jour un dossier</small></span><b>→</b></a>
+          @if (canViewAdmissions) { <a routerLink="/admissions"><span class="shortcut-icon shortcut-icon--purple">◐</span><span><strong>Admissions</strong><small>Suivre les candidatures et décisions</small></span><b>→</b></a> }
+          @if (canViewEnrollments) { <a routerLink="/enrollments"><span class="shortcut-icon shortcut-icon--gold">✓</span><span><strong>Inscriptions</strong><small>Valider et suivre les inscriptions</small></span><b>→</b></a> }
+          <a routerLink="/transfers"><span class="shortcut-icon shortcut-icon--green">⇄</span><span><strong>Transferts et départs</strong><small>Gérer les mouvements d’élèves</small></span><b>→</b></a>
+          @if (canViewRequests) { <a routerLink="/requests"><span class="shortcut-icon shortcut-icon--red">◑</span><span><strong>Demandes des familles</strong><small>Traiter les démarches et documents demandés</small></span><b>→</b></a> }
+        </nav>
+      </article>
+    </section>
+  }
+</main>

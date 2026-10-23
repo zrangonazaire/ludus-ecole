@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Email;
 
 import java.time.LocalDate;
 
@@ -199,6 +200,7 @@ public class NewStudentPayload {
         private String phone;
 
         @Size(max = 180)
+        @Email
         private String email;
 
         @NotNull

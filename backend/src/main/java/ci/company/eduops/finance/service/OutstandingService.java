@@ -124,21 +124,23 @@ public class OutstandingService {
             row.setOldestDueDate(oldest);
             row.setDaysOverdue(oldest.isBefore(today)
                     ? ChronoUnit.DAYS.between(oldest, today) : 0);
-            attachGuardian(row, student.getId());
+            attachGuardian(row, student);
             rows.add(row);
         }
         return rows;
     }
 
-    private void attachGuardian(OutstandingStudentResponse row, UUID studentId) {
+    private void attachGuardian(OutstandingStudentResponse row, Student student) {
         StudentGuardian link = guardianRepository
-                .findByStudentIdAndFinancialResponsibilityTrue(studentId)
-                .or(() -> guardianRepository.findByStudentIdAndPrimaryTrue(studentId))
+                .findByStudentIdAndFinancialResponsibilityTrue(student.getId())
+                .or(() -> guardianRepository.findByStudentIdAndPrimaryTrue(student.getId()))
                 .orElse(null);
-        if (link == null) return;
-        row.setGuardianName(link.getGuardian().fullName());
-        row.setGuardianPhone(link.getGuardian().getPhone());
-        row.setGuardianEmail(link.getGuardian().getEmail());
+        if (link != null) {
+            row.setGuardianName(link.getGuardian().fullName());
+            row.setGuardianPhone(link.getGuardian().getPhone());
+        }
+        row.setGuardianEmail(student.getMailResponsable() != null && !student.getMailResponsable().isBlank()
+                ? student.getMailResponsable() : link == null ? null : link.getGuardian().getEmail());
     }
 
     private OutstandingBoardResponse totals(List<OutstandingStudentResponse> rows,

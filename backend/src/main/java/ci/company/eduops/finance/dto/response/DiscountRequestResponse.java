@@ -33,6 +33,9 @@ public class DiscountRequestResponse {
     private int currentLevel;
     private int totalLevels;
     private String rejectionReason;
+    private String cancellationReason;
+    private UUID createdBy;
+    private boolean canCancel;
     private OffsetDateTime effectiveAt;
     private OffsetDateTime createdAt;
     /** Vrai si le palier en attente est réservé au profil du lecteur. */
