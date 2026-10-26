@@ -26,10 +26,18 @@ Write-Host "  SYNCHRONISATION ET REDEPLOIEMENT SUR LE VPS ($HostIp)" -Foreground
 Write-Host "=================================================================" -ForegroundColor Cyan
 
 Write-Host "`n==> [1/6] Préparation du dossier distant $Dest..." -ForegroundColor Yellow
-Invoke-CheckedNative ssh "${User}@${HostIp}" "sudo mkdir -p ${Dest}/config && sudo chown -R ${User}:${User} ${Dest}"
+Invoke-CheckedNative ssh "${User}@${HostIp}" "sudo mkdir -p ${Dest}/config && sudo chown ${User}:${User} ${Dest}"
 
 Write-Host "==> [2/6] Transfert des dossiers docker/ et scripts/..." -ForegroundColor Yellow
-Invoke-CheckedNative scp -r docker "${User}@${HostIp}:${Dest}/"
+# Preserve private configuration and its owners on the VPS.
+$dockerArchive = Join-Path ([System.IO.Path]::GetTempPath()) ("eduops-docker-" + [guid]::NewGuid().ToString('N') + ".tar")
+try {
+  Invoke-CheckedNative -Command tar -CommandArguments @('--exclude=.env', '--exclude=.env.*', '--exclude=./postgres/production.password', '--exclude=./redis/production.conf', '-cf', $dockerArchive, '-C', 'docker', '.')
+  Invoke-CheckedNative scp $dockerArchive "${User}@${HostIp}:${Dest}/.deploy-docker.tar"
+  Invoke-CheckedNative ssh "${User}@${HostIp}" "mkdir -p ${Dest}/docker && tar --no-same-owner --no-same-permissions -xf ${Dest}/.deploy-docker.tar -C ${Dest}/docker && rm -f ${Dest}/.deploy-docker.tar"
+} finally {
+  if (Test-Path -LiteralPath $dockerArchive) { Remove-Item -LiteralPath $dockerArchive }
+}
 Invoke-CheckedNative scp -r scripts "${User}@${HostIp}:${Dest}/"
 
 Write-Host "==> [3/6] Transfert du backend..." -ForegroundColor Yellow

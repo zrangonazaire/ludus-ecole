@@ -16,10 +16,15 @@ echo "  SYNCHRONISATION ET REDEPLOIEMENT SUR LE VPS ($HOST)"
 echo "================================================================="
 
 echo "==> [1/6] Preparation du dossier distant $DEST..."
-ssh "$USER@$HOST" "sudo mkdir -p $DEST/config && sudo chown -R $USER:$USER $DEST"
+ssh "$USER@$HOST" "sudo mkdir -p $DEST/config && sudo chown $USER:$USER $DEST"
 
 echo "==> [2/6] Transfert de docker/ et scripts/..."
-scp -r docker "$USER@$HOST:$DEST/"
+# Application updates must not overwrite the VPS secrets with local values.
+docker_archive=$(mktemp)
+trap 'rm -f "$docker_archive"' EXIT
+tar --exclude=.env --exclude='.env.*' --exclude=./postgres/production.password --exclude=./redis/production.conf -cf "$docker_archive" -C docker .
+scp "$docker_archive" "$USER@$HOST:$DEST/.deploy-docker.tar"
+ssh "$USER@$HOST" "mkdir -p $DEST/docker && tar --no-same-owner --no-same-permissions -xf $DEST/.deploy-docker.tar -C $DEST/docker && rm -f $DEST/.deploy-docker.tar"
 scp -r scripts "$USER@$HOST:$DEST/"
 
 echo "==> [3/6] Transfert du backend (pom.xml et src/)..."

@@ -15,6 +15,21 @@ case "${1:-}" in
   *) echo "Usage: bash scripts/redeploy.sh [--skip-git-pull]" >&2; exit 2 ;;
 esac
 
+deployment_failed() {
+  local status=$?
+  trap - ERR
+  echo "Deploiement echoue (code $status). Diagnostic des conteneurs :" >&2
+  sudo docker compose -f docker/compose.prod.yml ps -a || true
+  sudo docker compose -f docker/compose.prod.yml logs --no-color --tail=120 backend postgres redis || true
+  local backend_id
+  backend_id=$(sudo docker compose -f docker/compose.prod.yml ps -a -q backend) || true
+  if [ -n "$backend_id" ]; then
+    sudo docker inspect --format '{{json .State}}' "$backend_id" || true
+  fi
+  exit "$status"
+}
+trap deployment_failed ERR
+
 echo "================================================================="
 echo "   REDEPLOIEMENT DE L'APPLICATION EDUOPS (LUDUS ECOLE)"
 echo "================================================================="
@@ -22,7 +37,7 @@ echo "================================================================="
 # 1. Sauvegarde préventive si le stack tourne déjà
 if [ -f scripts/backup-prod.sh ]; then
   echo "==> [1/5] Sauvegarde préventive des données..."
-  bash scripts/backup-prod.sh || echo "⚠️ Sauvegarde ignorée (première installation ou conteneurs non démarrés)."
+  sudo bash scripts/backup-prod.sh || echo "⚠️ Sauvegarde ignorée (première installation ou conteneurs non démarrés)."
 else
   echo "==> [1/5] Pas de script de sauvegarde, étape ignorée."
 fi
@@ -40,9 +55,16 @@ fi
 echo "==> [3/5] Construction des nouvelles images Docker (Backend & Frontend)..."
 sudo docker compose -f docker/compose.prod.yml build backend frontend
 
+# Restore access to the bind-mounted configuration for the non-root backend.
+sudo bash scripts/prepare-prod-permissions.sh
+sudo docker compose -f docker/compose.prod.yml config --quiet
+
 # 4. Redémarrage des services
 echo "==> [4/5] Redémarrage à chaud des conteneurs applicatifs..."
-sudo docker compose -f docker/compose.prod.yml up -d --wait --wait-timeout 300 postgres redis backend frontend
+sudo docker compose -f docker/compose.prod.yml up -d --wait --wait-timeout 300 postgres redis
+# Recreate the application even if the image did not change: Compose can fail
+# immediately when reusing a backend that is already marked unhealthy.
+sudo docker compose -f docker/compose.prod.yml up -d --no-deps --force-recreate --wait --wait-timeout 300 backend frontend
 
 # 5. Contrôle de santé
 echo "==> [5/5] Contrôle d'intégrité..."

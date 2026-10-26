@@ -6,6 +6,12 @@ function ssh {
 }
 function scp {
   $global:DeploymentTestState.Calls.Add(@('scp') + $args)
+  if (($args -join ' ') -match '\.deploy-docker\.tar$') {
+    $archiveEntries = & tar -tf $args[0]
+    if ($LASTEXITCODE -ne 0) { throw 'Could not inspect deployment archive' }
+    if ($archiveEntries -match '^\./(\.env($|\.)|postgres/production\.password$|redis/production\.conf$)') { throw 'Private VPS config included in deployment archive' }
+    if ($archiveEntries -notcontains './nginx/production.conf') { throw 'Nginx public config missing from archive' }
+  }
   if ($global:DeploymentTestState.Mode -eq 'transfer') { $global:LASTEXITCODE = 23 } else { $global:LASTEXITCODE = 0 }
 }
 foreach ($mode in @('prepare', 'transfer', 'deploy', 'success')) {
@@ -19,6 +25,7 @@ foreach ($mode in @('prepare', 'transfer', 'deploy', 'success')) {
     if ($remoteCall -notmatch '--skip-git-pull') { throw 'Missing explicit Git skip during sync' }
     $sourceTransfer = @($global:DeploymentTestState.Calls | Where-Object { ($_ -join ' ') -match 'scp -r backend/src' })
     if ($sourceTransfer.Count -ne 1) { throw 'Backend source transfer missing' }
+    if (@($global:DeploymentTestState.Calls | Where-Object { ($_ -join ' ') -match 'chown -R' }).Count -ne 0) { throw 'Recursive chown would break production config ownership' }
   } else {
     if (-not $global:DeploymentTestState.Failed -or $output -match 'succ') { throw "False deployment success for $mode" }
     if ($mode -eq 'prepare' -and $global:DeploymentTestState.Calls.Count -ne 1) { throw 'Continued after SSH failure' }

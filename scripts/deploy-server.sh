@@ -8,8 +8,6 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 HOST_PUBLIC=57.129.132.150
-BACKEND_IMG=astairenazaire/ludus-backend:1.0.0
-CONFIG=/opt/eduops/config/application-prod.yml
 
 echo "==> Version docker compose"
 sudo docker compose version
@@ -24,22 +22,7 @@ else
 fi
 
 echo "==> Droits sur les secrets de production"
-UID_BACKEND=$(sudo docker run --rm --entrypoint id "$BACKEND_IMG" -u 2>/dev/null | cut -d= -f2 | cut -d'(' -f1 || echo "1000")
-GID_REDIS=$(sudo docker run --rm --entrypoint id redis:7-alpine redis 2>/dev/null | awk -F'gid=' '{print $2}' | cut -d'(' -f1 || echo "1000")
-echo "  UID backend=$UID_BACKEND  GID redis=$GID_REDIS"
-
-if [ -f "$CONFIG" ]; then
-  sudo chown "$UID_BACKEND" "$CONFIG"
-  sudo chmod 600 "$CONFIG"
-fi
-if [ -f docker/postgres/production.password ]; then
-  sudo chown root:root docker/postgres/production.password
-  sudo chmod 600 docker/postgres/production.password
-fi
-if [ -f docker/redis/production.conf ]; then
-  sudo chown root:"$GID_REDIS" docker/redis/production.conf
-  sudo chmod 640 docker/redis/production.conf
-fi
+sudo bash scripts/prepare-prod-permissions.sh
 
 echo "==> Validation du Compose"
 sudo docker compose -f docker/compose.prod.yml config --quiet

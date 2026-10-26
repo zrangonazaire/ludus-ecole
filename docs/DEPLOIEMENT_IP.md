@@ -44,6 +44,15 @@ scp backend/src/main/resources/application-prod.yml ubuntu@57.129.132.150:/opt/e
 
 ## Sur le serveur
 
+Pour les mises a jour depuis le PC, utiliser `./scripts/sync-to-vps.ps1`
+(PowerShell) ou `bash scripts/sync-to-vps.sh`. Ces scripts conservent les secrets
+deja presents sur le VPS : `config/application-prod.yml`,
+`docker/postgres/production.password`, `docker/redis/production.conf` et les `.env`.
+Ils doivent donc etre installes avant la premiere synchronisation.
+Le redeploiement retablit leurs droits selon les utilisateurs des images puis
+recree les conteneurs applicatifs. En cas d'echec, il affiche les logs et l'etat
+du backend avant de transmettre le code d'erreur a PowerShell.
+
 ```bash
 ssh ubuntu@57.129.132.150
 cd /opt/eduops
