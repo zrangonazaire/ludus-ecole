@@ -240,6 +240,7 @@ export class StudentFilesComponent implements OnInit {
     this.error.set(false);
     const requestedStudentId = this.route.snapshot.queryParamMap.get('studentId');
     const requestedType = this.route.snapshot.queryParamMap.get('type');
+    const requestedBulk = this.route.snapshot.queryParamMap.get('bulk') === 'true';
     if (requestedType && this.templates.some(template => template.type === requestedType)) {
       this.chooseTemplate(requestedType as OfficialDocumentType);
     }
@@ -266,7 +267,12 @@ export class StudentFilesComponent implements OnInit {
         const activeYear = data.years.find((year) => year.status === 'ACTIVE') ?? data.years[0];
         this.academicYearCode.set(activeYear?.code ?? '');
         this.selectedStudentId.set(data.requestedStudent?.id ?? students[0]?.id ?? '');
-        this.selectedStudentIds.set(data.requestedStudent ? [data.requestedStudent.id] : []);
+        if (requestedBulk) {
+          this.bulkMode.set(true);
+          this.selectedStudentIds.set(students.slice(0, 20).map((s) => s.id));
+        } else {
+          this.selectedStudentIds.set(data.requestedStudent ? [data.requestedStudent.id] : []);
+        }
         if (data.requestedStudent) this.tab.set('CREATE');
         this.loading.set(false);
         this.draftRevision.update((value) => value + 1);
@@ -585,6 +591,45 @@ export class StudentFilesComponent implements OnInit {
 
   bornLabel(document: OfficialDocument): string {
     return document.gender === 'FEMALE' ? 'née' : 'né';
+  }
+
+  openBadgeBatch(): void {
+    this.tab.set('CREATE');
+    this.chooseTemplate('STUDENT_CARD');
+    this.bulkMode.set(true);
+    const ids = this.visibleStudents().slice(0, 25).map((s) => s.id);
+    this.selectedStudentIds.set(ids);
+    if (ids[0]) this.chooseStudent(ids[0]);
+  }
+
+  qrCells(seed: string): ReadonlyArray<{ x: number; y: number }> {
+    const size = 11;
+    const cells: Array<{ x: number; y: number }> = [];
+    let hash = 2166136261;
+    for (let i = 0; i < seed.length; i++) {
+      hash ^= seed.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    const isFinder = (r: number, c: number, fr: number, fc: number): boolean | null => {
+      const dr = r - fr;
+      const dc = c - fc;
+      if (dr < 0 || dr > 3 || dc < 0 || dc > 3) return null;
+      if (dr === 3 || dc === 3) return false;
+      return true;
+    };
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const tl = isFinder(r, c, 0, 0);
+        const tr = isFinder(r, size - 1 - c, 0, 0);
+        const bl = isFinder(size - 1 - r, c, 0, 0);
+        if (tl !== null) { if (tl) cells.push({ x: c, y: r }); continue; }
+        if (tr !== null) { if (tr) cells.push({ x: c, y: r }); continue; }
+        if (bl !== null) { if (bl) cells.push({ x: c, y: r }); continue; }
+        const bit = ((hash >>> ((r * size + c) % 28)) ^ (r * 7 + c * 13)) & 1;
+        if (bit === 1) cells.push({ x: c, y: r });
+      }
+    }
+    return cells;
   }
 
   private previewLayout(): OfficialDocumentLayout | null {

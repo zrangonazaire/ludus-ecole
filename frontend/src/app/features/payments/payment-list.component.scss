@@ -1,6 +1,68 @@
 @import 'styles/tokens';
 
 .register-search { max-width: 380px; }
+
+.cashbook-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cashbook-kpi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+
+  &__label {
+    display: block;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  &__value {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 800;
+  }
+
+  &__badge {
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    background: var(--success-bg);
+    color: var(--success);
+  }
+
+  &--in {
+    border-left: 4px solid var(--success);
+    .cashbook-kpi__value { color: var(--success); }
+  }
+
+  &--out {
+    border-left: 4px solid var(--danger);
+    .cashbook-kpi__value { color: var(--danger); }
+  }
+
+  &--net {
+    border-left: 4px solid var(--brand);
+    background: linear-gradient(135deg, #ffffff 0%, var(--brand-tint) 100%);
+    .cashbook-kpi__value { color: var(--brand); }
+  }
+}
 .amount-cell { font-weight: 700; }
 
 .drawer-backdrop {

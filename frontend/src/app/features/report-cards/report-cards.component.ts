@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
-import { CLASSROOM_DATA_SOURCE, REFERENCE_DATA_SOURCE, REPORT_CARD_DATA_SOURCE } from '@core/datasource/data-source';
+import { CLASSROOM_DATA_SOURCE, REFERENCE_DATA_SOURCE, REPORT_CARD_DATA_SOURCE, OFFICIAL_DOCUMENT_DATA_SOURCE } from '@core/datasource/data-source';
+import { OfficialDocumentLayout } from '@core/models/official-document.models';
 import { Classroom, Term } from '@core/models/domain.models';
 import {
   COUNCIL_DECISIONS, CouncilDecision, REPORT_CARD_STATES, ReportCard, ReportCardBatch,
@@ -52,6 +53,8 @@ export class ReportCardsComponent implements OnInit {
   private readonly dataSource = inject(REPORT_CARD_DATA_SOURCE);
   private readonly classrooms = inject(CLASSROOM_DATA_SOURCE);
   private readonly reference = inject(REFERENCE_DATA_SOURCE);
+  private readonly documentsSource = inject(OFFICIAL_DOCUMENT_DATA_SOURCE, { optional: true });
+  readonly layout = signal<OfficialDocumentLayout | null>(null);
   private readonly notifications = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
@@ -151,6 +154,12 @@ export class ReportCardsComponent implements OnInit {
       years: this.reference.academicYears()
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (data) => {
+        if (this.documentsSource) {
+          this.documentsSource.layout().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+            next: (layout: OfficialDocumentLayout) => this.layout.set(layout),
+            error: () => {}
+          });
+        }
         this.classroomList.set(data.classrooms);
         const active = data.years.find((year) => year.status === 'ACTIVE') ?? data.years[0];
         if (!active) {

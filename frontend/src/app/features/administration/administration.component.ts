@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal
+  ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SchoolLogoComponent } from './school-logo.component';
@@ -10,6 +10,7 @@ import { PERMISSIONS } from '@core/models/auth.models';
 import { COMMON_LOCALES, COMMON_TIMEZONES } from '@core/models/school-settings.models';
 import { NotificationService } from '@core/services/notification.service';
 import { SchoolSettingsService } from '@core/services/school-settings.service';
+import { I18nService } from '@core/services/i18n.service';
 import { translateErrorCode } from '@core/services/error-messages';
 import { ErrorStateComponent } from '@shared/ui/error-state/error-state.component';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
@@ -29,6 +30,7 @@ export class AdministrationComponent implements OnInit {
   private readonly settingsService = inject(SchoolSettingsService);
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
+  private readonly i18n = inject(I18nService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -80,6 +82,16 @@ export class AdministrationComponent implements OnInit {
     studentSequenceStartNumber: [1 as number | null, [Validators.required, Validators.min(1)]]
   });
 
+  constructor() {
+    effect(() => {
+      const currentLocale = this.i18n.locale();
+      const ctrl = this.form.get('locale');
+      if (currentLocale && ctrl && ctrl.value !== currentLocale) {
+        ctrl.setValue(currentLocale, { emitEvent: false });
+      }
+    });
+  }
+
   ngOnInit(): void {
     this.load();
 
@@ -87,6 +99,14 @@ export class AdministrationComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.updatePreviews();
+      });
+
+    this.form.get('locale')?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((loc) => {
+        if (loc) {
+          this.i18n.setLocale(loc);
+        }
       });
   }
 
@@ -115,7 +135,7 @@ export class AdministrationComponent implements OnInit {
             city: settings.city ?? '',
             country: settings.country ?? '',
             currency: settings.currency ?? 'XOF',
-            locale: settings.locale ?? 'fr-CI',
+            locale: this.i18n.locale() || settings.locale || 'fr-CI',
             timezone: settings.timezone ?? 'Africa/Abidjan',
             gradingScaleMax: Number(settings.gradingScaleMax ?? 20),
             rankingEnabled: settings.rankingEnabled,
@@ -255,6 +275,7 @@ export class AdministrationComponent implements OnInit {
         this.studentSequenceUpdatedAt.set(updated.studentSequenceUpdatedAt ?? null);
         this.form.markAsPristine();
         this.updatePreviews();
+        this.i18n.setLocale(updated.locale ?? v.locale ?? 'fr-CI');
         this.notifications.success(
           'Les paramètres et la numérotation sont enregistrés avec succès.', 'Paramètres mis à jour');
       },

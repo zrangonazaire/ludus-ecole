@@ -1,12 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, from, of } from 'rxjs';
+import { Observable, firstValueFrom, from, of } from 'rxjs';
 import { delay, map } from 'rxjs/operators';
 import { environment } from '@env/environment';
 import {
   ImportBatch, ImportPreview, ImportRow, ImportRowStatus
 } from '@core/models/import.models';
-import { MOCK_CLASSROOMS, MOCK_STUDENTS } from '@core/datasource/mock/mock-data';
+import { FEE_DATA_SOURCE } from '@core/datasource/data-source';
+import { LevelFees } from '@core/models/fee.models';
+import {
+  MOCK_ACADEMIC_YEAR, MOCK_CLASSROOMS, MOCK_RECENT_ENROLLMENTS, MOCK_STUDENTS
+} from '@core/datasource/mock/mock-data';
 import { SpreadsheetError, excelSerialToDate, readSpreadsheet } from '@core/utils/spreadsheet';
 
 /** Colonnes du modèle, dans l'ordre où le serveur les produit. */
@@ -18,32 +22,33 @@ const COLUMNS = [
 
 const REQUIRED = ['Nom', 'Prénoms', 'Sexe', 'Date de naissance'] as const;
 
+/** Default fallback level fees if a level has no schedule in mock mode yet. */
+const DEFAULT_LEVEL_FEES: Record<string, { total: number; lines: number }> = {
+  'l-6': { total: 600000, lines: 3 },
+  'l-5': { total: 625000, lines: 3 },
+  'l-4': { total: 650000, lines: 3 },
+  'l-3': { total: 700000, lines: 3 }
+};
+
 /**
  * Import d'élèves par fichier.
  *
  * <p>Trois temps distincts : modèle, analyse, confirmation. La séparation est
  * volontaire — elle garantit qu'aucun fichier n'est écrit sans avoir été vu.</p>
  *
- * <p>En démonstration, le fichier déposé est réellement lu et contrôlé. Un
- * aperçu qui afficherait des lignes fictives à la place des vôtres serait pire
- * qu'inutile : il vous ferait confirmer un contenu que vous n'avez pas vu.</p>
+ * <p>Chaque élève affecté à une classe reçoit automatiquement les frais
+ * rattachés au niveau de sa classe.</p>
  */
 @Injectable({ providedIn: 'root' })
 export class StudentImportService {
   private readonly http = inject(HttpClient);
+  private readonly feeDataSource = inject(FEE_DATA_SOURCE);
   private readonly base = `${environment.apiBaseUrl}/imports/students`;
   private readonly historyBase = `${environment.apiBaseUrl}/imports/batches`;
 
   /** Le lot analysé, conservé le temps de la confirmation. */
   private pending: ImportPreview | null = null;
 
-  /**
-   * L'historique de démonstration.
-   *
-   * Vide au départ, et volontairement : inventer trois imports passés à une
-   * école qui n'en a fait aucun lui montrerait un écran qui ment. Il se
-   * remplit de ce que la personne importe vraiment pendant sa session.
-   */
   private readonly mockHistory: ImportBatch[] = [];
 
   /** Déclenche le téléchargement du classeur modèle. */
@@ -56,12 +61,15 @@ export class StudentImportService {
       .subscribe((blob) => this.saveBlob(blob, 'modele-import-eleves.xlsx'));
   }
 
-  analyse(file: File): Observable<ImportPreview> {
+  analyse(file: File, defaultClassroomId?: string): Observable<ImportPreview> {
     if (environment.useMockData) {
-      return from(this.analyseLocally(file));
+      return from(this.analyseLocally(file, defaultClassroomId));
     }
     const form = new FormData();
     form.append('file', file);
+    if (defaultClassroomId) {
+      form.append('classroomId', defaultClassroomId);
+    }
     return this.http.post<ImportPreview>(`${this.base}/upload`, form);
   }
 
@@ -92,13 +100,7 @@ export class StudentImportService {
 
   // ──────────────────────────────────────────────── analyse locale
 
-  /**
-   * Lit le fichier déposé et applique les mêmes contrôles que le serveur.
-   *
-   * <p>Rien n'est enregistré : cette passe ne fait que décrire ce qui se
-   * passerait.</p>
-   */
-  private async analyseLocally(file: File): Promise<ImportPreview> {
+  private async analyseLocally(file: File, defaultClassroomId?: string): Promise<ImportPreview> {
     let sheet: string[][];
     try {
       sheet = await readSpreadsheet(file);
@@ -125,14 +127,32 @@ export class StudentImportService {
         + 'Utilisez le modèle proposé à l\'étape précédente.');
     }
 
-    const classes = new Map(MOCK_CLASSROOMS.map(
-      (c) => [normaliseHeader(c.name), c]));
+    let levelFeesList: LevelFees[] = [];
+    try {
+      levelFeesList = await firstValueFrom(this.feeDataSource.levels());
+    } catch {
+      levelFeesList = [];
+    }
+    const feesByLevel = new Map(levelFeesList.map((lf) => [lf.levelId, lf]));
+
+    const classes = new Map<string, typeof MOCK_CLASSROOMS[number]>();
+    MOCK_CLASSROOMS.forEach((c) => {
+      classes.set(normaliseHeader(c.name), c);
+      classes.set(normaliseHeader(c.code), c);
+      classes.set(normaliseClassAlias(c.name), c);
+      classes.set(normaliseClassAlias(c.code), c);
+    });
+
+    const defaultClassroom = defaultClassroomId
+      ? MOCK_CLASSROOMS.find((c) => c.id === defaultClassroomId)
+      : undefined;
+
     const seen = new Set<string>();
     const existing = new Set(MOCK_STUDENTS.map(
       (s) => `${normaliseHeader(s.lastName)}|${normaliseHeader(s.firstName)}`));
 
     const rows: ImportRow[] = [];
-    let sequence = 241;
+    let sequence = 241 + MOCK_STUDENTS.length;
 
     for (let i = 1; i < sheet.length; i++) {
       const cells = sheet[i];
@@ -140,6 +160,12 @@ export class StudentImportService {
       columnOf.forEach((index, label) => {
         values[label] = (cells[index] ?? '').trim();
       });
+
+      if (i === 1
+          && normaliseHeader(values['Nom'] ?? '') === 'kone'
+          && normaliseHeader(values['Prénoms'] ?? '') === 'aya marie') {
+        continue;
+      }
 
       const errors: string[] = [];
       const warnings: string[] = [];
@@ -150,7 +176,6 @@ export class StudentImportService {
         }
       });
 
-      // Excel convertit une date saisie à la main en numéro de série.
       const rawDate = values['Date de naissance'] ?? '';
       const converted = excelSerialToDate(rawDate);
       if (converted) {
@@ -165,28 +190,42 @@ export class StudentImportService {
       }
 
       const className = values['Classe'] ?? '';
-      const classroom = className ? classes.get(normaliseHeader(className)) : undefined;
+      const classroom = className
+        ? (classes.get(normaliseHeader(className)) ?? classes.get(normaliseClassAlias(className)))
+        : defaultClassroom;
+
+      if (classroom && !className) {
+        values['Classe'] = classroom.name;
+      }
+
+      let resolvedFeesAmount = 0;
+      let resolvedFeeLinesCount = 0;
+
       if (className && !classroom) {
-        // « 5eme » ne suffit pas quand les classes s'appellent « 5eme A » :
-        // on nomme les candidates plutôt que de renvoyer un refus sec.
         const near = MOCK_CLASSROOMS
           .filter((c) => normaliseHeader(c.name).startsWith(normaliseHeader(className)))
           .map((c) => c.name);
         errors.push(near.length > 0
           ? `Classe « ${className} » introuvable. Vouliez-vous dire ${near.join(' ou ')} ?`
           : `Classe « ${className} » introuvable`);
-      } else if (!className) {
-        warnings.push('Aucune classe : l\'élève sera créé sans inscription');
-      } else if (classroom && classroom.availableSeats <= 0) {
-        warnings.push(`${classroom.name} est complète : une dérogation sera demandée`);
+      } else if (!classroom) {
+        warnings.push('Aucune classe : choisissez une classe cible ou renseignez la colonne « Classe » pour associer les frais du niveau');
+      } else {
+        const levelFee = feesByLevel.get(classroom.levelId);
+        if (levelFee && levelFee.mandatoryTotal > 0) {
+          resolvedFeesAmount = levelFee.mandatoryTotal;
+          resolvedFeeLinesCount = Math.max(1, levelFee.instalmentCount || levelFee.scheduleCount);
+        } else {
+          const fallback = DEFAULT_LEVEL_FEES[classroom.levelId] ?? { total: 600000, lines: 3 };
+          resolvedFeesAmount = fallback.total;
+          resolvedFeeLinesCount = fallback.lines;
+        }
       }
 
       const phone = values['Téléphone du responsable'] ?? '';
       if (!phone) {
         warnings.push('Aucun téléphone de responsable');
       } else if (/^[-+]?\d+([.,]\d+)?e[-+]?\d+$/i.test(phone.replace(/\s/g, ''))) {
-        // Excel prend « +2250711223 » pour un nombre et le réécrit en notation
-        // scientifique. Le numéro d'origine est perdu, pas seulement mal affiché.
         errors.push(`Téléphone « ${phone} » illisible : le tableur l'a converti en `
           + 'nombre. Mettez la colonne au format Texte avant de saisir.');
       }
@@ -213,8 +252,6 @@ export class StudentImportService {
       seen.add(identity);
 
       rows.push({
-        // +1 : la première ligne du fichier est l'en-tête, et les tableurs
-        // numérotent à partir de 1. La ligne affichée est celle d'Excel.
         rowNumber: i + 1,
         status,
         values,
@@ -222,7 +259,11 @@ export class StudentImportService {
         warnings,
         previewStudentNumber: status === 'VALID' || status === 'WARNING'
           ? `EDU-2026-${String(sequence++).padStart(6, '0')}`
-          : undefined
+          : undefined,
+        classroomName: classroom?.name,
+        levelName: classroom?.levelName,
+        feesAmount: classroom ? resolvedFeesAmount : undefined,
+        feeLinesCount: classroom ? resolvedFeeLinesCount : undefined
       });
     }
 
@@ -235,6 +276,10 @@ export class StudentImportService {
     const count = (status: ImportRowStatus) => rows.filter((r) => r.status === status).length;
     const valid = count('VALID');
     const warning = count('WARNING');
+    const importableRows = rows.filter((r) => r.status === 'VALID' || r.status === 'WARNING');
+    const totalFeesAmount = importableRows.reduce((sum, r) => sum + (r.feesAmount ?? 0), 0);
+    const totalFeeLinesCreated = importableRows.reduce((sum, r) => sum + (r.feeLinesCount ?? 0), 0);
+
     return {
       batchId: `local-${Date.now()}`,
       fileName,
@@ -244,11 +289,14 @@ export class StudentImportService {
       duplicateRows: count('DUPLICATE'),
       invalidRows: count('INVALID'),
       importable: valid + warning > 0,
-      rows
+      rows,
+      totalFeesAmount,
+      totalFeeLinesCreated,
+      currency: 'XOF'
     };
   }
 
-  /** Le rapport ne compte que ce qui a réellement été importable. */
+  /** Crée les élèves, les inscrit dans leur classe et associe les frais de leur niveau en mode démo. */
   private buildReport(): ImportPreview {
     const source = this.pending;
     if (!source) {
@@ -256,6 +304,63 @@ export class StudentImportService {
     }
     const kept = source.rows.filter(
       (r) => r.status === 'VALID' || r.status === 'WARNING');
+
+    const today = new Date().toISOString().slice(0, 10);
+    kept.forEach((row, idx) => {
+      const lastName = (row.values['Nom'] ?? '').trim();
+      const firstName = (row.values['Prénoms'] ?? '').trim();
+      const fullName = `${firstName} ${lastName}`.trim();
+      const rawSex = normaliseHeader(row.values['Sexe'] ?? 'F');
+      const gender = rawSex.startsWith('m') || rawSex.startsWith('g') ? 'MALE' : 'FEMALE';
+      const classroom = MOCK_CLASSROOMS.find(
+        (c) => normaliseHeader(c.name) === normaliseHeader(row.classroomName ?? row.values['Classe'] ?? '')
+      );
+      const studentId = `st-imp-${Date.now()}-${idx}`;
+      const studentNumber = row.previewStudentNumber ?? `EDU-2026-${String(300 + idx).padStart(6, '0')}`;
+
+      MOCK_STUDENTS.unshift({
+        id: studentId,
+        studentNumber,
+        firstName,
+        lastName,
+        fullName,
+        gender,
+        birthDate: row.values['Date de naissance'] ?? '2013-01-01',
+        status: classroom ? 'ACTIVE' : 'ADMITTED',
+        classroomId: classroom?.id,
+        classroomName: classroom?.name
+      });
+
+      if (classroom) {
+        classroom.activeEnrollments += 1;
+        classroom.availableSeats = Math.max(0, classroom.capacityMaximum - classroom.activeEnrollments);
+        classroom.occupancyRate = classroom.capacityMaximum > 0
+          ? Math.round((classroom.activeEnrollments * 100) / classroom.capacityMaximum)
+          : 0;
+
+        MOCK_RECENT_ENROLLMENTS.unshift({
+          id: `enr-imp-${Date.now()}-${idx}`,
+          enrollmentNumber: `INS-2026-${String(500 + idx).padStart(5, '0')}`,
+          studentId,
+          studentNumber,
+          studentName: fullName,
+          academicYearId: MOCK_ACADEMIC_YEAR.id,
+          academicYearCode: MOCK_ACADEMIC_YEAR.code,
+          classroomId: classroom.id,
+          classroomName: classroom.name,
+          levelId: classroom.levelId,
+          levelName: classroom.levelName,
+          enrollmentKind: 'NEW',
+          status: 'ACTIVE',
+          enrollmentDate: today,
+          repeating: false,
+          overCapacityOverride: false,
+          feeLinesCreated: row.feeLinesCount ?? 3,
+          totalFeesDue: row.feesAmount ?? 600000
+        });
+      }
+    });
+
     const report: ImportPreview = {
       ...source,
       validRows: kept.length,
@@ -263,13 +368,15 @@ export class StudentImportService {
       duplicateRows: source.duplicateRows,
       invalidRows: source.invalidRows,
       importable: false,
-      rows: kept
+      rows: kept,
+      totalFeesAmount: kept.reduce((sum, r) => sum + (r.feesAmount ?? 0), 0),
+      totalFeeLinesCreated: kept.reduce((sum, r) => sum + (r.feeLinesCount ?? 0), 0),
+      currency: source.currency ?? 'XOF'
     };
     this.pending = null;
     return report;
   }
 
-  /** Consigne l'import confirmé, pour que l'historique dise vrai en démonstration. */
   private recordMockBatch(report: ImportPreview): void {
     if (!report.fileName) {
       return;
@@ -334,12 +441,11 @@ export class StudentImportService {
     URL.revokeObjectURL(url);
   }
 
-  /** En démonstration, un CSV suffit à montrer les colonnes attendues. */
   private downloadMockTemplate(): void {
     const example = ['KONE', 'Aya Marie', 'F', '14/05/2012', 'Abidjan', 'Ivoirienne',
       MOCK_CLASSROOMS[0]?.name ?? '6eme A', 'KONE Mariam', '+225 07 11 22 33',
       'mariam.kone@mail.ci', 'Mère', 'EPP Cocody'];
-    const csv = `﻿${COLUMNS.join(';')}\n${example.join(';')}\n`;
+    const csv = `\uFEFF${COLUMNS.join(';')}\n${example.join(';')}\n`;
     this.saveBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }),
       'modele-import-eleves.csv');
   }
@@ -352,5 +458,16 @@ function normaliseHeader(value: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normaliseClassAlias(value: string): string {
+  return normaliseHeader(value)
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^([3456])e\b/, '$1eme')
+    .replace(/^2nde\b/, 'seconde')
+    .replace(/^1ere\b|^1re\b/, 'premiere')
+    .replace(/^tle\b/, 'terminale')
     .trim();
 }

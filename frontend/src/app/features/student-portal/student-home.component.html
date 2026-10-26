@@ -165,6 +165,33 @@
       </section>
     </div>
 
+    <section class="announcements" aria-labelledby="homework-title" style="margin-bottom: var(--space-5)">
+      <header class="section-heading">
+        <div>
+          <p class="section-heading__eyebrow">Cahier de textes</p>
+          <h2 id="homework-title">Mes devoirs à faire ({{ homework.pendingCount() }})</h2>
+        </div>
+      </header>
+      <div class="announcement-list">
+        @for (hw of homework.items(); track hw.id) {
+          <article class="announcement" [style.opacity]="hw.completed ? '0.68' : '1'">
+            <span class="announcement__dot" [class]="hw.completed ? 'announcement__dot announcement__dot--general' : 'announcement__dot announcement__dot--academic'" aria-hidden="true"></span>
+            <div class="announcement__body" style="flex: 1">
+              <div class="announcement__meta">
+                <span>{{ hw.subjectName }} · {{ hw.teacherName }}</span>
+                <time [attr.datetime]="hw.dueDate">Pour le {{ hw.dueDate | date:'dd/MM' }}</time>
+              </div>
+              <h3 [style.text-decoration]="hw.completed ? 'line-through' : 'none'">{{ hw.title }}</h3>
+              <p>{{ hw.description }}</p>
+            </div>
+            <button type="button" class="btn btn--secondary btn--sm" (click)="homework.toggleCompleted(hw.id)">
+              {{ hw.completed ? '✓ Fait' : 'À faire' }}
+            </button>
+          </article>
+        }
+      </div>
+    </section>
+
     <section class="announcements" aria-labelledby="announcements-title">
       <header class="section-heading">
         <div>

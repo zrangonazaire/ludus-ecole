@@ -3,10 +3,13 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CLASSROOM_DATA_SOURCE, ENROLLMENT_DATA_SOURCE, STUDENT_DATA_SOURCE } from '@core/datasource/data-source';
+import {
+  CLASSROOM_DATA_SOURCE, ENROLLMENT_DATA_SOURCE, FEE_DATA_SOURCE, STUDENT_DATA_SOURCE
+} from '@core/datasource/data-source';
 import { Classroom, EnrollmentCheckResult, StudentSummary } from '@core/models/domain.models';
+import { LevelFees } from '@core/models/fee.models';
 import { ImportPreview } from '@core/models/import.models';
 import { StudentImportService } from '@core/services/student-import.service';
 import { NotificationService } from '@core/services/notification.service';
@@ -14,6 +17,7 @@ import { SetupStatusService } from '@core/services/setup-status.service';
 import { translateErrorCode } from '@core/services/error-messages';
 import { AvatarComponent } from '@shared/ui/avatar/avatar.component';
 import { StatusBadgeComponent } from '@shared/ui/status-badge/status-badge.component';
+import { MoneyPipe } from '@shared/pipes/money.pipe';
 
 /** Les trois façons réelles d'inscrire un élève. */
 export type EnrollmentMode = 'NEW' | 'RETURNING' | 'IMPORT';
@@ -22,7 +26,7 @@ export type EnrollmentMode = 'NEW' | 'RETURNING' | 'IMPORT';
   selector: 'eduops-enrollment-wizard',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink,
-    AvatarComponent, StatusBadgeComponent],
+    AvatarComponent, StatusBadgeComponent, MoneyPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './enrollment-wizard.component.html',
   styleUrl: './enrollment-wizard.component.scss'
@@ -32,10 +36,12 @@ export class EnrollmentWizardComponent implements OnInit {
   private readonly students = inject(STUDENT_DATA_SOURCE);
   private readonly classrooms = inject(CLASSROOM_DATA_SOURCE);
   private readonly enrollments = inject(ENROLLMENT_DATA_SOURCE);
+  private readonly fees = inject(FEE_DATA_SOURCE);
   private readonly importService = inject(StudentImportService);
   private readonly notifications = inject(NotificationService);
   private readonly setupStatus = inject(SetupStatusService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
   /** null tant que l'utilisateur n'a pas choisi son mode d'entrée. */
@@ -44,6 +50,7 @@ export class EnrollmentWizardComponent implements OnInit {
   readonly submitting = signal(false);
 
   readonly availableClasses = signal<Classroom[]>([]);
+  readonly levelFeesList = signal<LevelFees[]>([]);
   readonly selectedClassroom = signal<Classroom | null>(null);
   readonly checkResult = signal<EnrollmentCheckResult | null>(null);
   readonly checking = signal(false);
@@ -53,10 +60,25 @@ export class EnrollmentWizardComponent implements OnInit {
   readonly selectedStudent = signal<StudentSummary | null>(null);
 
   // --- mode import ---
+  readonly importClassroomId = signal<string>('');
   readonly preview = signal<ImportPreview | null>(null);
   readonly importReport = signal<ImportPreview | null>(null);
   readonly analysing = signal(false);
   readonly dragging = signal(false);
+
+  readonly importTargetClassroom = computed(() =>
+    this.availableClasses().find((c) => c.id === this.importClassroomId()) ?? null
+  );
+
+  readonly importTargetLevelFees = computed(() => {
+    const cls = this.importTargetClassroom();
+    return cls ? this.feesForLevel(cls.levelId) : null;
+  });
+
+  readonly selectedClassroomLevelFees = computed(() => {
+    const cls = this.selectedClassroom();
+    return cls ? this.feesForLevel(cls.levelId) : null;
+  });
 
   /** Dérogation de capacité : permission + justification, toutes deux auditées. */
   overrideRequested = false;
@@ -85,8 +107,37 @@ export class EnrollmentWizardComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.fees.levels().pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (levels) => this.levelFeesList.set(levels),
+        error: () => this.levelFeesList.set([])
+      });
+
     this.classrooms.list().pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((list) => this.availableClasses.set(list));
+      .subscribe((list) => {
+        this.availableClasses.set(list);
+        const requestedMode = this.route.snapshot.queryParamMap.get('mode');
+        if (requestedMode === 'IMPORT' || requestedMode === 'NEW' || requestedMode === 'RETURNING') {
+          this.chooseMode(requestedMode);
+        }
+        const requestedClassId = this.route.snapshot.queryParamMap.get('classroomId');
+        if (requestedClassId) {
+          const found = list.find((c) => c.id === requestedClassId);
+          if (found) {
+            this.chooseClassroom(found);
+            this.importClassroomId.set(found.id);
+          }
+        }
+      });
+  }
+
+  feesForLevel(levelId?: string): LevelFees | null {
+    if (!levelId) return null;
+    return this.levelFeesList().find((lf) => lf.levelId === levelId) ?? null;
+  }
+
+  onImportClassroomChange(classroomId: string): void {
+    this.importClassroomId.set(classroomId);
   }
 
   // ------------------------------------------------------------- navigation
@@ -119,7 +170,7 @@ export class EnrollmentWizardComponent implements OnInit {
     switch (this.mode()) {
       case 'NEW': return ['Identité', 'Responsable', 'Classe', 'Confirmation'];
       case 'RETURNING': return ['Élève', 'Classe', 'Confirmation'];
-      case 'IMPORT': return ['Modèle', 'Dépôt', 'Vérification', 'Import'];
+      case 'IMPORT': return ['Modèle & Classe', 'Dépôt', 'Vérification & Frais', 'Import'];
       default: return [];
     }
   });
@@ -273,7 +324,8 @@ export class EnrollmentWizardComponent implements OnInit {
 
   private analyseFile(file: File): void {
     this.analysing.set(true);
-    this.importService.analyse(file)
+    const targetClassroomId = this.importClassroomId() || undefined;
+    this.importService.analyse(file, targetClassroomId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (preview) => {
@@ -300,8 +352,11 @@ export class EnrollmentWizardComponent implements OnInit {
           this.submitting.set(false);
           this.step.set(4);
           this.setupStatus.refresh();
+          const feeNote = report.totalFeeLinesCreated
+            ? ` (${report.totalFeeLinesCreated} échéance(s) de frais générée(s))`
+            : '';
           this.notifications.success(
-            `${report.validRows} élève(s) créé(s) et inscrit(s).`, 'Import terminé');
+            `${report.validRows} élève(s) créé(s) et inscrit(s)${feeNote}.`, 'Import terminé');
         },
         error: () => this.submitting.set(false)
       });
@@ -330,7 +385,7 @@ export class EnrollmentWizardComponent implements OnInit {
     const rows = this.preview()?.rows ?? [];
     const keys = new Set<string>();
     rows.forEach((r) => Object.keys(r.values).forEach((k) => keys.add(k)));
-    return Array.from(keys).slice(0, 5);
+    return Array.from(keys).slice(0, 4);
   });
 
   // --- pagination de l'aperçu import : 300 lignes d'un coup rend le tableau illisible ---

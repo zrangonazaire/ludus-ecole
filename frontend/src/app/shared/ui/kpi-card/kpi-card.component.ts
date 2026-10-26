@@ -15,11 +15,13 @@ import { KpiValue } from '@core/models/domain.models';
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <article class="kpi" [class.kpi--clickable]="clickable">
+    <article [class]="'kpi kpi--' + (kpi.tone ?? 'neutral') + (clickable ? ' kpi--clickable' : '')">
       <header class="kpi__head">
         <span class="kpi__label">{{ kpi.label }}</span>
         @if (kpi.live) {
-          <span class="badge badge--info badge--live" aria-label="Donnée temps reel">LIVE</span>
+          <span class="badge badge--info badge--live" aria-label="Donnée temps réel">LIVE</span>
+        } @else if (clickable) {
+          <span class="kpi__arrow" aria-hidden="true">→</span>
         }
       </header>
 
@@ -38,6 +40,8 @@ import { KpiValue } from '@core/models/domain.models';
   `,
   styles: [`
     .kpi {
+      position: relative;
+      overflow: hidden;
       background: var(--surface-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-card);
@@ -45,12 +49,35 @@ import { KpiValue } from '@core/models/domain.models';
       box-shadow: var(--shadow-xs);
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
       gap: var(--space-2);
-      min-height: 116px;
-      transition: box-shadow var(--transition-base), transform var(--transition-base);
+      min-height: 120px;
+      transition: box-shadow var(--transition-base), transform var(--transition-base), border-color var(--transition-base);
     }
+    .kpi::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--brand);
+      opacity: 0.7;
+    }
+    .kpi--success::before { background: var(--success); }
+    .kpi--warning::before { background: var(--warning); }
+    .kpi--danger::before  { background: var(--danger); }
+
     .kpi--clickable { cursor: pointer; }
-    .kpi--clickable:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .kpi--clickable:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--brand-tint-border);
+      transform: translateY(-2px);
+    }
+    .kpi--clickable:hover .kpi__arrow {
+      transform: translateX(3px);
+      color: var(--brand);
+    }
 
     .kpi__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
     .kpi__label {
@@ -59,12 +86,17 @@ import { KpiValue } from '@core/models/domain.models';
       color: var(--text-muted);
       letter-spacing: 0.01em;
     }
+    .kpi__arrow {
+      font-size: var(--text-sm);
+      color: var(--text-light);
+      transition: transform var(--transition-fast), color var(--transition-fast);
+    }
 
     .kpi__value {
       font-family: var(--font-display);
       font-size: var(--text-3xl);
       font-weight: 700;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.025em;
       line-height: 1.1;
       color: var(--text-strong);
       margin: 0;

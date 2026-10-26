@@ -10,11 +10,18 @@
     [description]="helpCopy().description"
     [points]="helpCopy().points" />
 
-  <header class="page-head">
+  <header class="page-head" style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
     <div>
-      <h1>Import de listes</h1>
-      <p>Reprenez vos listes existantes sans les ressaisir. Rien n’est
-        enregistré avant que vous ayez vu ce que le fichier contient.</p>
+      <h1>Import de listes Excel & CSV</h1>
+      <p>Importez vos listes d’élèves dans une classe et associez automatiquement les frais liés au niveau.</p>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button type="button" class="btn btn--secondary" (click)="downloadTemplate()">
+        ⬇ Télécharger le modèle Excel
+      </button>
+      <a class="btn btn--primary" [routerLink]="['/enrollments/new']" [queryParams]="{ mode: 'IMPORT' }">
+        🎓 Ouvrir l’assistant d’inscription par lot
+      </a>
     </div>
   </header>
 
@@ -22,18 +29,18 @@
     <button type="button" class="steps__item"
             [class.is-active]="step() === 'DEPOT'"
             (click)="goTo('DEPOT')">
-      <span class="steps__num">1</span> Déposer un fichier
+      <span class="steps__num">1</span> Choisir la classe & Déposer le fichier
     </button>
     <button type="button" class="steps__item"
             [class.is-active]="step() === 'APERCU'"
             [disabled]="!preview() && !report()"
             (click)="goTo('APERCU')">
-      <span class="steps__num">2</span> Vérifier l’aperçu
+      <span class="steps__num">2</span> Vérifier l’aperçu & les frais
     </button>
     <button type="button" class="steps__item"
             [class.is-active]="step() === 'HISTORIQUE'"
             (click)="goTo('HISTORIQUE')">
-      <span class="steps__num">3</span> Historique
+      <span class="steps__num">3</span> Historique des imports
     </button>
   </nav>
 
@@ -47,6 +54,30 @@
   <!-- ─────────────────────────────────────────────── 1. Dépôt -->
   @if (step() === 'DEPOT') {
     <div class="panel">
+      <div style="margin-bottom: 20px; padding: 16px; border-radius: 12px; background: var(--brand-tint, #eaf1fe); border: 1px solid var(--brand-tint-border, #cfe0fb);">
+        <label for="import-target-classroom" style="display:block; font-weight:700; margin-bottom:6px; color:var(--text-strong);">
+          Classe cible par défaut (recommandé pour associer les frais du niveau)
+        </label>
+        <p style="margin:0 0 10px; font-size:13px; color:var(--text-normal);">
+          Si votre fichier Excel ne précise pas la colonne « Classe » sur chaque ligne, tous les élèves importés seront inscrits dans cette classe et recevront automatiquement les frais configurés pour son niveau.
+        </p>
+        <select id="import-target-classroom" class="select" style="max-width: 440px; background:#fff;"
+                [ngModel]="targetClassroomId()"
+                (ngModelChange)="targetClassroomId.set($event)">
+          <option value="">— Lire la colonne « Classe » du fichier Excel —</option>
+          @for (room of classrooms(); track room.id) {
+            <option [value]="room.id">
+              {{ room.name }} — Niveau : {{ room.levelName }} ({{ room.activeEnrollments }}/{{ room.capacityMaximum }} élèves)
+            </option>
+          }
+        </select>
+        @if (selectedClassroom(); as room) {
+          <p style="margin:10px 0 0; font-size:13px; font-weight:600; color:var(--brand, #1f5fd6);">
+            ✓ Classe sélectionnée : <strong>{{ room.name }}</strong> (Niveau <strong>{{ room.levelName }}</strong>) — les tarifs et échéances du niveau {{ room.levelName }} seront automatiquement associés à chaque élève importé.
+          </p>
+        }
+      </div>
+
       <ol class="howto">
         <li>
           <strong>Téléchargez le modèle.</strong>
@@ -62,7 +93,7 @@
           nombre, et le numéro d’origine est perdu.
         </li>
         <li><strong>Déposez le fichier ci-dessous.</strong> Vous verrez un
-          aperçu avant toute écriture.</li>
+          aperçu complet avec la classe et les frais associés avant toute écriture.</li>
       </ol>
 
       <div class="dropzone"
@@ -71,12 +102,12 @@
            (dragleave)="onDragLeave()"
            (drop)="onDrop($event)">
         @if (analysing()) {
-          <eduops-loading-state message="Lecture du fichier…" />
+          <eduops-loading-state message="Lecture du fichier et calcul des frais du niveau…" />
         } @else {
-          <p class="dropzone__hint">Glissez votre classeur ici</p>
+          <p class="dropzone__hint">Glissez votre classeur Excel (.xlsx) ou CSV ici</p>
           <p class="dropzone__or">ou</p>
           <label class="btn btn--primary" [class.is-disabled]="!canImport()">
-            Choisir un fichier
+            Choisir un fichier Excel / CSV
             <input type="file" hidden
                    accept=".xlsx,.csv,.tsv"
                    [disabled]="!canImport()"
@@ -93,10 +124,14 @@
 
     @if (report(); as done) {
       <div class="panel panel--done">
-        <h2>Import terminé</h2>
+        <h2>Import terminé avec succès</h2>
         <p>
           {{ done.rows.length }} ligne(s) traitée(s) depuis
           <strong>{{ done.fileName }}</strong>.
+          @if (done.totalFeesAmount != null && done.totalFeesAmount > 0) {
+            Total des frais générés : <strong>{{ done.totalFeesAmount | money }}</strong>
+            ({{ done.totalFeeLinesCreated ?? 0 }} échéance(s) au total).
+          }
         </p>
         @if (done.rows.length > 0) {
           <ul class="refused">
@@ -114,6 +149,9 @@
           <button type="button" class="btn btn--primary" (click)="discard()">
             Importer un autre fichier
           </button>
+          <a class="btn btn--secondary" routerLink="/students">
+            Voir les dossiers élèves
+          </a>
           <button type="button" class="btn btn--ghost" (click)="goTo('HISTORIQUE')">
             Voir l’historique
           </button>
@@ -124,7 +162,12 @@
     @if (preview(); as data) {
       <div class="panel">
         <div class="summary">
-          <p class="summary__file">{{ data.fileName }}</p>
+          <p class="summary__file">
+            {{ data.fileName }}
+            @if (data.totalFeesAmount != null && data.totalFeesAmount > 0) {
+              · Frais estimés : <strong>{{ data.totalFeesAmount | money }}</strong>
+            }
+          </p>
           <ul class="summary__counts">
             <li class="count count--valid">{{ data.validRows }} prête(s)</li>
             <li class="count count--warning">{{ data.warningRows }} à vérifier</li>
@@ -150,13 +193,13 @@
         }
 
         <div class="filters" role="group" aria-label="Filtrer les lignes">
-          <button type="button" [class.is-active]="rowFilter() === 'A_CORRIGER'"
-                  (click)="filterRows('A_CORRIGER')">
-            À corriger ({{ toFixCount() }})
-          </button>
           <button type="button" [class.is-active]="rowFilter() === 'TOUT'"
                   (click)="filterRows('TOUT')">
             Toutes ({{ data.totalRows }})
+          </button>
+          <button type="button" [class.is-active]="rowFilter() === 'A_CORRIGER'"
+                  (click)="filterRows('A_CORRIGER')">
+            À corriger ({{ toFixCount() }})
           </button>
           <button type="button" [class.is-active]="rowFilter() === 'INVALID'"
                   (click)="filterRows('INVALID')">
@@ -179,6 +222,9 @@
                 <tr>
                   <th scope="col">Ligne</th>
                   <th scope="col">État</th>
+                  <th scope="col">Classe affectée</th>
+                  <th scope="col">Niveau</th>
+                  <th scope="col">Frais associés</th>
                   @for (column of columns(); track column) {
                     <th scope="col">{{ column }}</th>
                   }
@@ -193,6 +239,18 @@
                       <span [class]="'badge badge--' + statusTone(row.status)">
                         {{ statusLabel(row.status) }}
                       </span>
+                    </td>
+                    <td><strong>{{ row.classroomName || row.values['Classe'] || '—' }}</strong></td>
+                    <td>{{ row.levelName || '—' }}</td>
+                    <td>
+                      @if (row.feesAmount != null) {
+                        <strong>{{ row.feesAmount | money }}</strong>
+                        @if (row.feeLinesCount) {
+                          <small style="display:block; color:var(--text-muted);">{{ row.feeLinesCount }} échéance(s)</small>
+                        }
+                      } @else {
+                        <span>—</span>
+                      }
                     </td>
                     @for (column of columns(); track column) {
                       <td>{{ row.values[column] }}</td>
@@ -248,8 +306,8 @@
                   [disabled]="!data.importable || confirming() || !canImport()"
                   (click)="confirm()">
             {{ confirming()
-              ? 'Import en cours…'
-              : 'Créer ' + willCreate() + ' élève(s)' }}
+              ? 'Import et génération des frais en cours…'
+              : 'Créer et inscrire ' + willCreate() + ' élève(s) avec leurs frais' }}
           </button>
           <button type="button" class="btn btn--ghost" (click)="discard()">
             Abandonner

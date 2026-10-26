@@ -215,6 +215,18 @@ button.channel-option { cursor: pointer; }
 }
 
 .collect-action { text-decoration: none; }
+.row-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.btn--whatsapp {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+  font-weight: 600;
+  &:hover {
+    background: #d1fae5;
+    border-color: #6ee7b7;
+    color: #065f46;
+  }
+}
 
 @include tablet-down {
   .metrics { grid-template-columns: 1fr 1fr 1fr; }

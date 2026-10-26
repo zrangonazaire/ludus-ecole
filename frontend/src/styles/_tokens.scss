@@ -6,58 +6,65 @@
 :root {
   /* ---------- Brand ---------- */
   --brand: #1f5fd6;
-  --brand-hover: #1a52bd;
-  --brand-tint: #eaf1fe;
-  --brand-tint-border: #cfe0fb;
+  --brand-hover: #184db0;
+  --brand-active: #133e8f;
+  --brand-tint: #eef4ff;
+  --brand-tint-border: #c7dcfe;
+  --brand-gradient: linear-gradient(135deg, #1f5fd6 0%, #3b76e8 55%, #0f9bb3 100%);
+  --brand-soft-gradient: linear-gradient(135deg, #eef4ff 0%, #f4f8ff 60%, #ecfdf8 100%);
 
   /* ---------- Text ---------- */
-  --text-strong: #1b2435;
-  --text-normal: #3a4660;
-  --text-muted: #7b8499;
-  --text-light: #9aa3b4;
+  --text-strong: #0f172a;
+  --text-normal: #334155;
+  --text-muted: #64748b;
+  --text-light: #94a3b8;
   --text-on-brand: #ffffff;
 
   /* ---------- Surfaces ---------- */
-  --surface-page: #f6f8fb;
+  --surface-page: #f4f7fb;
   --surface-card: #ffffff;
-  --surface-hover: #f9fafc;
-  --surface-sunken: #f1f4f9;
+  --surface-hover: #f8fafc;
+  --surface-sunken: #eef2f7;
+  --surface-glass: rgba(255, 255, 255, 0.88);
 
   /* ---------- Borders ---------- */
-  --border: #e9edf3;
-  --border-light: #eef1f6;
-  --border-strong: #d9e0ea;
+  --border: #e2e8f0;
+  --border-light: #eef2f6;
+  --border-strong: #cbd5e1;
 
   /* ---------- Semantic ---------- */
-  --success: #16915a;
-  --success-bg: #e7f4ed;
-  --warning: #d97a16;
-  --warning-bg: #fdf0e1;
-  --danger: #dc3545;
-  --danger-bg: #fdf4f5;
+  --success: #0d9458;
+  --success-bg: #e6f7ef;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --danger: #dc2626;
+  --danger-bg: #fee2e2;
   --info: #1f5fd6;
-  --info-bg: #eaf1fe;
+  --info-bg: #eef4ff;
+  --purple: #6d28d9;
+  --purple-bg: #f3e8ff;
 
   /* ---------- Charts (accessible, distinguishable hues) ---------- */
   --chart-1: #1f5fd6;
-  --chart-2: #16915a;
-  --chart-3: #d97a16;
-  --chart-4: #7c5cd6;
-  --chart-5: #0f9bb3;
-  --chart-6: #dc3545;
+  --chart-2: #0d9458;
+  --chart-3: #d97706;
+  --chart-4: #7c3aed;
+  --chart-5: #0891b2;
+  --chart-6: #dc2626;
 
   /* ---------- Radius (section 89) ---------- */
-  --radius-card: 14px;
+  --radius-card: 16px;
   --radius-button: 10px;
-  --radius-badge: 7px;
-  --radius-pill: 20px;
+  --radius-badge: 8px;
+  --radius-pill: 999px;
   --radius-input: 10px;
 
-  /* ---------- Elevation: light only, never heavy ---------- */
-  --shadow-xs: 0 1px 2px rgba(27, 36, 53, 0.04);
-  --shadow-sm: 0 1px 3px rgba(27, 36, 53, 0.06), 0 1px 2px rgba(27, 36, 53, 0.04);
-  --shadow-md: 0 4px 12px rgba(27, 36, 53, 0.08);
-  --shadow-lg: 0 12px 28px rgba(27, 36, 53, 0.12);
+  /* ---------- Elevation: light, layered, tactile ---------- */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  --shadow-md: 0 8px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 20px 38px -8px rgba(15, 23, 42, 0.14), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+  --shadow-brand: 0 8px 20px -4px rgba(31, 95, 214, 0.28);
 
   /* ---------- Spacing scale ---------- */
   --space-1: 4px;
@@ -72,9 +79,9 @@
 
   /* ---------- Layout (section 56) ---------- */
   --topbar-height: 64px;
-  --sidebar-width: 268px;
+  --sidebar-width: 272px;
   --sidebar-width-collapsed: 72px;
-  --bottom-tab-height: 60px;
+  --bottom-tab-height: 62px;
   --content-max-width: 1560px;
 
   /* ---------- Typography (section 51) ---------- */
@@ -87,16 +94,16 @@
   --text-md: 15px;
   --text-lg: 18px;
   --text-xl: 22px;
-  --text-2xl: 28px;
-  --text-3xl: 34px;
+  --text-2xl: 26px;
+  --text-3xl: 32px;
 
-  --leading-tight: 1.2;
+  --leading-tight: 1.22;
   --leading-normal: 1.5;
   --leading-relaxed: 1.65;
 
   /* ---------- Motion ---------- */
-  --transition-fast: 120ms ease;
-  --transition-base: 180ms ease;
+  --transition-fast: 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --transition-base: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
   /* ---------- Z-index ---------- */
   --z-dropdown: 1000;

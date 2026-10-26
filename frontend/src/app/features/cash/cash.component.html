@@ -1,5 +1,5 @@
 <div class="screen-only">
-<div class="heading"><div><span class="eyebrow">FINANCE · MES SESSIONS</span><h1>Caisse</h1><p>Ouvrez votre caisse, suivez les espèces et contrôlez le solde en fin de journée.</p></div><button class="btn" [disabled]="loading()" (click)="load()">Actualiser</button></div>
+<div class="heading"><div><span class="eyebrow">FINANCE · MES SESSIONS</span><h1>Caisse</h1><p>Ouvrez votre caisse, suivez les espèces et contrôlez le solde en fin de journée.</p></div><div class="buttons" style="display:flex; gap:8px; flex-wrap:wrap;"><a class="btn btn--primary" routerLink="/payments">💳 Brouillard de caisse, Dépenses & Reçus</a><button class="btn" [disabled]="loading()" (click)="load()">Actualiser</button></div></div>
 @if (auth.has('USER_MANAGE')) {
   <section class="card register-admin">
     <div class="section-heading"><div><h2>Affectation des caisses</h2><p>Attribuez une caisse à un compte actif doté du profil Caissier.</p></div><span>{{ registerOverview().registers.length }} caisse(s)</span></div>

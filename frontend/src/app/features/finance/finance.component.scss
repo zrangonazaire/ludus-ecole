@@ -724,8 +724,35 @@
   }
 }
 
-.approval-choice { padding: 1rem; margin-bottom: 1rem; }
-.approval-choice select { display: block; max-width: 36rem; margin: .5rem 0; }
+.approval-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--surface-sunken);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  box-shadow: none;
+
+  label {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    flex: 1 1 260px;
+  }
+}
+.approval-choice select { width: auto; min-width: 240px; max-width: 340px; height: 34px; font-size: var(--text-sm); margin: 0; }
 .approval-requests { display: grid; gap: 1rem; }
 .approval-request { padding: 1.25rem; }
 .approval-request h2 { font-size: 1.1rem; }

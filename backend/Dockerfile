@@ -10,7 +10,8 @@ COPY pom.xml ./pom.xml
 RUN mvn -B -q dependency:go-offline
 # Source layer
 COPY src ./src
-RUN mvn -B -DskipTests clean package \
+RUN rm -f src/main/resources/application-prod.yml \
+ && mvn -B -DskipTests clean package \
  && mv target/*.jar target/app.jar
 
 FROM eclipse-temurin:21-jre-alpine AS runtime

@@ -27,7 +27,10 @@ import { PERMISSIONS } from '@core/models/auth.models';
           }
         </div>
         <div class="page__actions">
-          <button type="button" class="btn btn--secondary">Exporter</button>
+          <a class="btn btn--secondary" [routerLink]="['/enrollments/new']" [queryParams]="{ mode: 'IMPORT' }"
+             *eduopsHasPermission="createPermission">
+            <span aria-hidden="true">📥</span> Importer Excel (Classe & Frais)
+          </a>
           <a class="btn btn--primary" routerLink="/enrollments/new"
              *eduopsHasPermission="createPermission">
             <span aria-hidden="true">+</span> Nouvelle inscription
@@ -46,10 +49,9 @@ import { PERMISSIONS } from '@core/models/auth.models';
           [columns]="columns" [page]="page()" [loading]="loading()"
           [showPageSize]="true"
           [pageSize]="pageSize()"
-           [pageSizeOptions]="[5, 10, 20, 50, 100]"
-
+          [pageSizeOptions]="[5, 10, 20, 50, 100]"
           caption="Liste des inscriptions"
-          emptyTitle="Aucune inscription trouve"
+          emptyTitle="Aucune inscription trouvée"
           emptyMessage="Ajustez la recherche ou les filtres."
           (pageChange)="onPageChange($event)"
           (pageSizeChange)="onPageSizeChange($event)" />
@@ -59,7 +61,7 @@ import { PERMISSIONS } from '@core/models/auth.models';
     <ng-template #kindTpl let-enrollment>
       <span class="badge badge--neutral">
         {{ enrollment.enrollmentKind === 'NEW' ? 'Nouvelle'
-           : enrollment.enrollmentKind === 'RE_ENROLLMENT' ? 'Reinscription' : 'Transfert' }}
+           : enrollment.enrollmentKind === 'RE_ENROLLMENT' ? 'Réinscription' : 'Transfert' }}
       </span>
     </ng-template>
 
@@ -74,8 +76,8 @@ import { PERMISSIONS } from '@core/models/auth.models';
       <div class="row">
         <eduops-status-badge [status]="enrollment.status" />
         @if (enrollment.overCapacityOverride) {
-          <span class="badge badge--warning" title="Inscription en depassement de capacite, justifiee et auditee">
-            Derogation
+          <span class="badge badge--warning" title="Inscription en dépassement de capacité, justifiée et auditée">
+            Dérogation
           </span>
         }
       </div>

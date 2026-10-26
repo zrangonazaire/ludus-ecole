@@ -4,6 +4,7 @@ import ci.company.eduops.academicyear.repository.AcademicYearRepository;
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.exception.ErrorCode;
 import ci.company.eduops.common.tenant.TenantContext;
+import ci.company.eduops.document.service.OfficialDocumentService;
 import ci.company.eduops.finance.repository.StudentFeeRepository;
 import ci.company.eduops.payment.repository.PaymentRepository;
 import ci.company.eduops.payment.repository.ReceiptRepository;
@@ -25,6 +26,7 @@ public class StudentStatementService {
     private final ReceiptRepository receipts;
     private final AcademicYearRepository years;
     private final StudentFeeRepository fees;
+    private final OfficialDocumentService documents;
 
     /** One database snapshot prevents a payment arriving halfway through the printed statement. */
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -54,7 +56,21 @@ public class StudentStatementService {
                 p.getAmount(), p.getAllocatedAmount(), p.remainingToAllocate(), p.getCurrency())).toList();
         String address = java.util.stream.Stream.of(school.getAddressLine1(), school.getCity())
                 .filter(s -> s != null && !s.isBlank()).collect(java.util.stream.Collectors.joining(" · "));
-        return new StudentStatementResponse(school.getName(), address, school.getPhone(), OffsetDateTime.now(),
+        String schoolLogo = null;
+        if (documents != null) {
+            try {
+                var layout = documents.layout();
+                if (layout != null && layout.isShowLogo()) {
+                    schoolLogo = layout.getLogoDataUrl();
+                }
+            } catch (Exception ignored) {
+                // Ignore layout lookup error and fallback
+            }
+        }
+        if ((schoolLogo == null || schoolLogo.isBlank()) && school != null) {
+            schoolLogo = school.getLogoUrl();
+        }
+        return new StudentStatementResponse(school.getName(), address, school.getPhone(), schoolLogo, OffsetDateTime.now(),
                 detail, enrollments, balances, lines);
     }
 }

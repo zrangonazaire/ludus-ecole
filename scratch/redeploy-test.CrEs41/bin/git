@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+echo "git $*" >> "$TEST_CALLS"
+exit 43

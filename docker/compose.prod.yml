@@ -56,7 +56,10 @@ services:
       options:
         max-size: 10m
         max-file: '3'
-    image: astairenazaire/ludus-backend:1.0.0
+    image: ${BACKEND_IMAGE:-astairenazaire/ludus-backend:1.0.0}
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile
     command:
       - '--spring.profiles.active=prod'
       - '--spring.config.additional-location=file:/app/config/application-prod.yml'
@@ -92,7 +95,10 @@ services:
       options:
         max-size: 10m
         max-file: '3'
-    image: astairenazaire/ludus-frontend:1.0.0
+    image: ${FRONTEND_IMAGE:-astairenazaire/ludus-frontend:1.0.0}
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile
     depends_on:
       backend:
         condition: service_healthy

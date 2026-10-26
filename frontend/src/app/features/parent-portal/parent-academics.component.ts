@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal 
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { STUDENT_PORTAL_DATA_SOURCE } from '@core/datasource/data-source';
+import { HomeworkService } from '@core/services/homework.service';
 import { StudentGradesData, StudentReportCard } from '@core/models/student-portal.models';
 import { GradePipe } from '@shared/pipes/grade.pipe';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
@@ -28,6 +29,9 @@ import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.co
     </header>
 
     <div class="tabs">
+      <button class="tab-btn" [class.tab-btn--active]="activeTab() === 'homework'" (click)="activeTab.set('homework')">
+        Cahier de textes & Devoirs ({{ homework.pendingCount() }})
+      </button>
       <button class="tab-btn" [class.tab-btn--active]="activeTab() === 'grades'" (click)="activeTab.set('grades')">
         Notes & Évaluations
       </button>
@@ -42,6 +46,26 @@ import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.co
     @if (loading()) {
       <eduops-loading-state message="Chargement des données scolaires..." />
     } @else {
+      @if (activeTab() === 'homework') {
+        <div class="subjects-list">
+          @for (item of homework.items(); track item.id) {
+            <div class="subject-card card">
+              <div class="subject-card__header">
+                <div>
+                  <span class="rc-badge">{{ item.classroomName }} · {{ item.subjectName }}</span>
+                  <h3 class="subject-card__title">{{ item.title }}</h3>
+                  <span class="subject-card__meta">Donné par {{ item.teacherName }} · À rendre pour le {{ item.dueDate | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <button type="button" class="btn btn--outline" (click)="homework.toggleCompleted(item.id)">
+                  {{ item.completed ? '✓ Fait à la maison' : 'Marquer comme fait' }}
+                </button>
+              </div>
+              <p class="rc-card__appreciation" style="margin-top: 8px;">{{ item.description }}</p>
+            </div>
+          }
+        </div>
+      }
+
       <!-- ONGLETS NOTES -->
       @if (activeTab() === 'grades') {
         <div class="kpi-row">
@@ -304,9 +328,10 @@ import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.co
 })
 export class ParentAcademicsComponent implements OnInit {
   private readonly dataSource = inject(STUDENT_PORTAL_DATA_SOURCE);
+  readonly homework = inject(HomeworkService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly activeTab = signal<'grades' | 'report-cards' | 'attendance'>('grades');
+  readonly activeTab = signal<'homework' | 'grades' | 'report-cards' | 'attendance'>('grades');
   readonly grades = signal<StudentGradesData | null>(null);
   readonly reportCards = signal<StudentReportCard[]>([]);
   readonly loading = signal(true);

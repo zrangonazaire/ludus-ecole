@@ -7,42 +7,338 @@
       <span aria-hidden="true">☰</span>
     </button>
 
-    <a class="topbar__brand" routerLink="/dashboard">
-      <img class="soocloo-logo" src="assets/branding/soocloo-logo.png" alt="Soocloo" width="160" height="60">
+    <a class="topbar__brand" routerLink="/dashboard" (click)="closePopovers()">
+      <img class="soocloo-logo" src="assets/branding/soocloo-logo.png" alt="Soocloo" width="148" height="52">
     </a>
 
-    <!-- Global search: matricule, eleve, parent, enseignant, classe, recu (section 60) -->
-    <form class="search" role="search" (submit)="$event.preventDefault()">
-      <label class="visually-hidden" for="global-search">Recherche globale</label>
-      <span class="search__icon" aria-hidden="true">⌕</span>
-      <input id="global-search" class="search__input" type="search"
-             placeholder="Rechercher un élève, un matricule, une classe, un reçu..."
-             [value]="searchTerm()"
-             (input)="searchTerm.set($any($event.target).value)" />
-    </form>
+    <!-- Global interactive search & Command Palette (Ctrl+K) -->
+    <div class="search-container">
+      <form class="search" role="search" (submit)="$event.preventDefault()">
+        <label class="visually-hidden" for="global-search">Recherche globale</label>
+        <span class="search__icon" aria-hidden="true">⌕</span>
+        <input id="global-search" class="search__input" type="search" autocomplete="off"
+               placeholder="Rechercher un élève, un matricule, un écran ou une action…"
+               [value]="searchTerm()"
+               (focus)="onSearchFocus()"
+               (input)="onSearchInput($any($event.target).value)" />
+        @if (searchTerm()) {
+          <button type="button" class="search__clear" aria-label="Effacer la recherche"
+                  (click)="clearSearch()">×</button>
+        } @else {
+          <kbd class="search__Shortcut" aria-hidden="true">Ctrl K</kbd>
+        }
+      </form>
 
+      @if (searchFocused()) {
+        <div class="command-backdrop" (click)="closeSearch()"></div>
+        <div class="command-dropdown" role="dialog" aria-label="Résultats de recherche rapide">
+
+          <!-- Live Student Matches -->
+          @if (searchTerm().trim().length >= 2) {
+            <div class="command-group">
+              <div class="command-group__title">
+                <span>Élèves</span>
+                @if (searchingStudents()) {
+                  <span class="command-group__meta">Recherche en cours…</span>
+                }
+              </div>
+              @for (student of studentResults(); track student.id) {
+                <div class="command-student">
+                  <button type="button" class="command-student__main"
+                          (click)="navigateTo('/students/' + student.id)">
+                    <eduops-avatar [name]="student.fullName" [photoUrl]="student.photoUrl" size="sm" />
+                    <div class="command-student__info">
+                      <strong>{{ student.fullName }}</strong>
+                      <span class="numeric">{{ student.studentNumber }} · {{ student.classroomName ?? 'Sans classe' }}</span>
+                    </div>
+                  </button>
+                  <div class="command-student__actions">
+                    <button type="button" class="btn btn--secondary btn--sm"
+                            (click)="navigateTo('/students/' + student.id)">Fiche</button>
+                    <button type="button" class="btn btn--primary btn--sm"
+                            (click)="navigateTo('/payments', { studentId: student.id })">Encaisser</button>
+                  </div>
+                </div>
+              } @empty {
+                @if (!searchingStudents()) {
+                  <p class="command-empty">Aucun élève trouvé pour « {{ searchTerm() }} ».</p>
+                }
+              }
+            </div>
+          }
+
+          <!-- Quick Actions -->
+          @if (matchingActions().length > 0) {
+            <div class="command-group">
+              <div class="command-group__title">
+                <span>Actions rapides</span>
+              </div>
+              <div class="command-actions-grid">
+                @for (action of matchingActions(); track action.label) {
+                  <button type="button" class="command-action-tile"
+                          (click)="navigateTo(action.route, action.queryParams)">
+                    <span class="command-action-tile__icon" [attr.data-tone]="action.tone" aria-hidden="true">
+                      {{ action.icon }}
+                    </span>
+                    <span class="command-action-tile__body">
+                      <strong>{{ action.label }}</strong>
+                      <small>{{ action.subtitle }}</small>
+                    </span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Screens / Modules -->
+          @if (matchingScreens().length > 0) {
+            <div class="command-group">
+              <div class="command-group__title">
+                <span>{{ searchTerm() ? 'Écrans correspondants' : 'Accès directs' }}</span>
+              </div>
+              @for (screen of matchingScreens(); track screen.label) {
+                <button type="button" class="command-item" (click)="navigateTo(screen.route, screen.queryParams)">
+                  <span class="command-item__icon" aria-hidden="true">{{ screen.icon }}</span>
+                  <span class="command-item__label">{{ screen.label }}</span>
+                  <span class="command-item__section">{{ screen.section }}</span>
+                  <span class="command-item__arrow" aria-hidden="true">→</span>
+                </button>
+              }
+            </div>
+          }
+
+          <footer class="command-footer">
+            <span>Astuce : tapez un nom d’élève, un matricule ou « caisse », « bulletin », « appel »</span>
+            <button type="button" class="command-footer__close" (click)="closeSearch()">Fermer (Échap)</button>
+          </footer>
+        </div>
+      }
+    </div>
+
+    <!-- Topbar Right Actions -->
     <div class="topbar__actions">
-      <span class="ws-indicator" [class]="'ws-indicator--' + ws.state()"
-            [attr.title]="'Temps reel : ' + ws.state()" aria-hidden="true"></span>
 
-      <button type="button" class="icon-btn" aria-label="Notifications">
-        <span aria-hidden="true">◔</span>
-        <span class="icon-btn__dot" aria-hidden="true"></span>
+      <!-- Quick Action Launcher (+ Action rapide) -->
+      <div class="popover-anchor">
+        <button type="button" class="btn btn--primary btn--sm topbar__quick-btn"
+                [attr.aria-expanded]="quickActionsOpen()"
+                (click)="toggleQuickActions()">
+          <span aria-hidden="true">+</span>
+          <span class="topbar__quick-label">Action rapide</span>
+        </button>
+
+        @if (quickActionsOpen()) {
+          <div class="popover-backdrop" (click)="closePopovers()"></div>
+          <div class="popover popover--actions" role="menu" aria-label="Actions rapides">
+            <header class="popover__head">
+              <div>
+                <strong>Que souhaitez-vous faire ?</strong>
+                <p>Accédez directement aux opérations du quotidien</p>
+              </div>
+            </header>
+            <div class="quick-list">
+              @for (action of visibleQuickActions(); track action.label) {
+                <button type="button" class="quick-item" role="menuitem"
+                        (click)="navigateTo(action.route, action.queryParams)">
+                  <span class="quick-item__icon" [attr.data-tone]="action.tone" aria-hidden="true">
+                    {{ action.icon }}
+                  </span>
+                  <span class="quick-item__text">
+                    <strong>{{ action.label }}</strong>
+                    <small>{{ action.subtitle }}</small>
+                  </span>
+                  <span class="quick-item__arrow" aria-hidden="true">›</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Portal Switcher (for Admins / Demo exploration) -->
+      @if (isAdmin()) {
+        <div class="popover-anchor hide-mobile">
+          <button type="button" class="btn btn--secondary btn--sm topbar__portal-btn"
+                  [attr.aria-expanded]="portalMenuOpen()"
+                  (click)="togglePortalMenu()"
+                  title="Explorer les portails Enseignant, Parent et Élève">
+            <span aria-hidden="true">⇄</span>
+            <span>Portails</span>
+          </button>
+
+          @if (portalMenuOpen()) {
+            <div class="popover-backdrop" (click)="closePopovers()"></div>
+            <div class="popover popover--portals" role="menu" aria-label="Changer de portail">
+              <header class="popover__head">
+                <div>
+                  <strong>Changer d’espace</strong>
+                  <p>Prévisualisez l’expérience de chaque membre de l’école</p>
+                </div>
+              </header>
+              <div class="portal-switch-list">
+                <button type="button" class="portal-switch-item portal-switch-item--active"
+                        (click)="navigateTo('/dashboard')">
+                  <span class="portal-switch-item__badge" data-tone="blue">◈</span>
+                  <div>
+                    <strong>Administration & Direction</strong>
+                    <small>Pilotage complet de l’établissement</small>
+                  </div>
+                  <span class="badge badge--info">Actif</span>
+                </button>
+                <button type="button" class="portal-switch-item"
+                        (click)="navigateTo('/teacher/home')">
+                  <span class="portal-switch-item__badge" data-tone="green">✎</span>
+                  <div>
+                    <strong>Portail Enseignant</strong>
+                    <small>Appel en classe, cahier de notes et planning</small>
+                  </div>
+                </button>
+                <button type="button" class="portal-switch-item"
+                        (click)="navigateTo('/parent/home')">
+                  <span class="portal-switch-item__badge" data-tone="purple">♡</span>
+                  <div>
+                    <strong>Portail Parent</strong>
+                    <small>Suivi des enfants, bulletins et paiements</small>
+                  </div>
+                </button>
+                <button type="button" class="portal-switch-item"
+                        (click)="navigateTo('/student/home')">
+                  <span class="portal-switch-item__badge" data-tone="amber">✦</span>
+                  <div>
+                    <strong>Portail Élève</strong>
+                    <small>Emploi du temps, notes et résultats</small>
+                  </div>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Quick Language Switcher (FR / EN) -->
+      <button type="button" class="btn btn--secondary btn--sm topbar__lang-btn"
+              (click)="i18n.toggleLanguage()"
+              [attr.title]="i18n.lang() === 'en' ? 'Switch to French (FR)' : 'Passer en anglais (EN)'">
+        <span aria-hidden="true">🌐</span>
+        <span class="mono">{{ i18n.lang().toUpperCase() }}</span>
       </button>
 
+      <!-- Notifications & Setup Status Popover -->
+      <div class="popover-anchor">
+        <button type="button" class="icon-btn" aria-label="Notifications et état"
+                [attr.aria-expanded]="notificationsOpen()"
+                (click)="toggleNotifications()">
+          <span class="ws-indicator" [class]="'ws-indicator--' + ws.state()"
+                [attr.title]="'Temps réel : ' + ws.state()" aria-hidden="true"></span>
+          <span aria-hidden="true">🔔</span>
+          @if (setupIncomplete()) {
+            <span class="icon-btn__dot" aria-hidden="true"></span>
+          }
+        </button>
+
+        @if (notificationsOpen()) {
+          <div class="popover-backdrop" (click)="closePopovers()"></div>
+          <div class="popover popover--notifications" role="dialog" aria-label="Centre de notifications">
+            <header class="popover__head">
+              <div>
+                <strong>Centre d’activité</strong>
+                <p>Alertes, messages et configuration de l’école</p>
+              </div>
+            </header>
+
+            <div class="notif-body">
+              @if (setupState(); as s) {
+                @if (!s.complete) {
+                  <div class="notif-setup">
+                    <div class="notif-setup__row">
+                      <strong>Configuration : {{ s.completedSteps }}/{{ s.totalSteps }} étapes</strong>
+                      <span class="badge badge--warning numeric">{{ s.percentComplete }}%</span>
+                    </div>
+                    <div class="notif-setup__bar">
+                      <span [style.width.%]="s.percentComplete"></span>
+                    </div>
+                    <button type="button" class="btn btn--primary btn--sm btn--block"
+                            (click)="navigateTo('/setup')">
+                      Continuer la mise en place →
+                    </button>
+                  </div>
+                }
+              }
+
+              <div class="notif-links">
+                <button type="button" class="quick-item" (click)="navigateTo('/alerts')">
+                  <span class="quick-item__icon" data-tone="amber">⚡</span>
+                  <span class="quick-item__text">
+                    <strong>Alertes de l’établissement</strong>
+                    <small>Classes saturées, retards de saisie, absences</small>
+                  </span>
+                  <span class="quick-item__arrow">›</span>
+                </button>
+                <button type="button" class="quick-item" (click)="navigateTo('/notifications')">
+                  <span class="quick-item__icon" data-tone="blue">✉</span>
+                  <span class="quick-item__text">
+                    <strong>Messages & Annonces</strong>
+                    <small>Communications envoyées aux familles et équipes</small>
+                  </span>
+                  <span class="quick-item__arrow">›</span>
+                </button>
+                <button type="button" class="quick-item" (click)="navigateTo('/requests')">
+                  <span class="quick-item__icon" data-tone="teal">📥</span>
+                  <span class="quick-item__text">
+                    <strong>Demandes des familles</strong>
+                    <small>Attestations et rendez-vous en attente</small>
+                  </span>
+                  <span class="quick-item__arrow">›</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- User Profile & Logout -->
       <div class="user">
         <eduops-avatar [name]="user()?.fullName ?? ''" size="sm" />
         <div class="user__meta">
           <span class="user__name">{{ user()?.fullName }}</span>
-          <span class="user__role">{{ user()?.roles?.[0] }}</span>
+          <span class="user__role">{{ roleLabel(user()?.roles?.[0]) }}</span>
         </div>
-        <button type="button" class="btn btn--ghost btn--sm" (click)="logout()">Déconnexion</button>
+        <button type="button" class="btn btn--ghost btn--sm user__logout"
+                title="Se déconnecter" (click)="logout()">
+          Déconnexion
+        </button>
       </div>
     </div>
   </header>
 
-  <!-- ============ Sidebar (248px) ============ -->
+  <!-- ============ Sidebar (272px) ============ -->
   <aside class="sidebar" [attr.aria-hidden]="!drawerOpen() && null">
+
+    <!-- Mode Switcher: Essentiel (Grand Public) vs Complet (Expert) -->
+    <div class="sidebar__mode-box">
+      <div class="mode-switch" role="group" aria-label="Mode d’affichage du menu">
+        <button type="button" class="mode-switch__btn"
+                [class.mode-switch__btn--active]="navMode() === 'essential'"
+                (click)="setNavMode('essential')">
+          <span>Essentiel</span>
+          <small class="numeric">{{ essentialModuleCount() }}</small>
+        </button>
+        <button type="button" class="mode-switch__btn"
+                [class.mode-switch__btn--active]="navMode() === 'full'"
+                (click)="setNavMode('full')">
+          <span>Tous les modules</span>
+          <small class="numeric">{{ totalModuleCount() }}</small>
+        </button>
+      </div>
+      <p class="sidebar__mode-hint">
+        @if (navMode() === 'essential') {
+          Vue simplifiée pour le quotidien.
+        } @else {
+          Vue complète avec tous les réglages.
+        }
+      </p>
+    </div>
+
     <nav class="sidebar__nav" aria-label="Navigation principale">
       @for (group of navigation(); track group.section) {
         <div class="sidebar__group" [class.sidebar__group--collapsed]="isCollapsed(group.section)">
@@ -56,50 +352,67 @@
           </button>
 
           @if (!isCollapsed(group.section)) {
-            @for (item of group.items; track item.route) {
+            @for (item of group.items; track item.label) {
               <a class="sidebar__link" [routerLink]="item.route"
-                 [class.sidebar__link--soon]="!item.ready"
+                 [queryParams]="item.queryParams"
+                 [class.sidebar__link--soon]="item.ready === false"
                  routerLinkActive="sidebar__link--active" (click)="closeDrawer()">
                 <span class="sidebar__icon" aria-hidden="true">{{ item.icon }}</span>
                 <span class="sidebar__label">{{ item.label }}</span>
                 @if (item.badge && item.badge(); as badge) {
                   <span class="sidebar__badge numeric"
                         [attr.aria-label]="'Configuration : ' + badge + ' étapes'">{{ badge }}</span>
-                } @else if (!item.ready) {
-                  <span class="sidebar__soon" title="Écran à venir" aria-hidden="true"></span>
-                  <span class="visually-hidden">Écran à venir</span>
                 }
               </a>
             }
           }
         </div>
       }
+
+      @if (navMode() === 'essential') {
+        <div class="sidebar__expand-cta">
+          <button type="button" class="sidebar__more-btn" (click)="setNavMode('full')">
+            <span>+ Voir les {{ totalModuleCount() - essentialModuleCount() }} autres modules</span>
+            <small>Admissions, Caisse, Bourses, Salles, Accès…</small>
+          </button>
+        </div>
+      }
     </nav>
 
-    <!-- Aide, toujours accessible en bas de la barre laterale -->
+    <!-- Footer: System Config, Guide & School Identity Card -->
     <div class="sidebar__help">
       @if (canSeeSystemConfig()) {
         <a class="sidebar__link" routerLink="/system-config"
            routerLinkActive="sidebar__link--active" ariaCurrentWhenActive="page"
            (click)="closeDrawer()">
           <span class="sidebar__icon" aria-hidden="true">⚙</span>
-          <span>Configuration système</span>
+          <span class="sidebar__label">Configuration système</span>
+        </a>
+        <a class="sidebar__link" routerLink="/administration"
+           routerLinkActive="sidebar__link--active" ariaCurrentWhenActive="page"
+           (click)="closeDrawer()">
+          <span class="sidebar__icon" aria-hidden="true">🏛</span>
+          <span class="sidebar__label">Paramètres de l’école</span>
         </a>
       }
       <button type="button" class="sidebar__link sidebar__link--button" (click)="replayTour()">
-        <span class="sidebar__icon" aria-hidden="true">◎</span>
-        <span>Reprendre le guide</span>
+        <span class="sidebar__icon" aria-hidden="true">💡</span>
+        <span class="sidebar__label">Visite guidée</span>
       </button>
-      <a class="sidebar__link" routerLink="/setup" (click)="closeDrawer()">
-        <span class="sidebar__icon" aria-hidden="true">◑</span>
-        <span>État de la configuration</span>
-      </a>
       <a class="sidebar__link" routerLink="/roadmap"
          routerLinkActive="sidebar__link--active" ariaCurrentWhenActive="page"
          (click)="closeDrawer()">
-        <span class="sidebar__icon" aria-hidden="true">↗</span>
-        <span>Roadmap — Guide</span>
+        <span class="sidebar__icon" aria-hidden="true">🧭</span>
+        <span class="sidebar__label">Guide d’utilisation</span>
       </a>
+
+      <div class="workspace-badge">
+        <span class="workspace-badge__dot" aria-hidden="true"></span>
+        <div class="workspace-badge__info">
+          <small>ESPACE ÉTABLISSEMENT</small>
+          <strong>{{ setupState()?.schoolName || schoolName }}</strong>
+        </div>
+      </div>
     </div>
   </aside>
 
@@ -110,6 +423,6 @@
     <router-outlet />
   </main>
 
-  <!-- Visite guidee : superposee, au-dessus de tout -->
+  <!-- Visite guidée : superposée, au-dessus de tout -->
   <eduops-guided-tour />
 </div>

@@ -2,8 +2,9 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { STUDENT_DATA_SOURCE } from '@core/datasource/data-source';
+import { STUDENT_DATA_SOURCE, OFFICIAL_DOCUMENT_DATA_SOURCE } from '@core/datasource/data-source';
 import { StudentDetail } from '@core/models/domain.models';
+import { OfficialDocumentLayout } from '@core/models/official-document.models';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
 
 @Component({
@@ -74,16 +75,20 @@ import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.co
           </div>
 
           <div class="cert-header__center">
-            <img class="cert-logo" src="assets/branding/ludus-logo.png" alt="LUDUS École" (error)="onLogoError($event)">
+            @if (layout()?.showLogo && layout()?.logoDataUrl) {
+              <img class="cert-logo" [src]="layout()!.logoDataUrl" [alt]="layout()?.schoolName || 'Logo de l’établissement'" (error)="onLogoError($event)">
+            } @else {
+              <div class="cert-monogram">{{ (layout()?.schoolName || 'E').charAt(0) }}</div>
+            }
           </div>
 
           <div class="cert-header__right">
-            <h2 class="cert-school-name">LUDUS ÉCOLE</h2>
+            <h2 class="cert-school-name">{{ layout()?.schoolName || 'ÉTABLISSEMENT SCOLAIRE' }}</h2>
             <p class="cert-school-info">
-              Agrément ministériel N° 0418/MENA/DES<br>
-              Cocody Riviera Palmeraie, Abidjan<br>
-              Tél : +225 27 22 40 50 60<br>
-              contact&#64;ludus-ecole.ci
+              @if (layout()?.registrationNumber) { {{ layout()?.registrationNumber }}<br> }
+              @if (layout()?.address) { {{ layout()?.address }}<br> }
+              @if (layout()?.phone) { Tél : {{ layout()?.phone }}<br> }
+              @if (layout()?.email) { {{ layout()?.email }} }
             </p>
           </div>
         </header>
@@ -101,7 +106,7 @@ import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.co
         <!-- CORPS DU TEXTE -->
         <div class="cert-body">
           <p class="cert-paragraph">
-            Le Directeur Général du complexe d'enseignement <strong>LUDUS ÉCOLE</strong>, soussigné, atteste par la présente que :
+            {{ layout()?.signatoryTitle || 'Le Chef d\'établissement' }} du complexe d'enseignement <strong>{{ layout()?.schoolName || 'l’établissement' }}</strong>, soussigné, atteste par la présente que :
           </p>
 
           <div class="student-box">
@@ -269,6 +274,12 @@ import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.co
     .qr-code-text { display: block; font-family: monospace; font-size: 10px; color: #0f172a; margin-top: 2px; }
     .cert-check-text { font-size: 9px; color: #94a3b8; }
 
+    .cert-monogram {
+      width: 70px; height: 70px; border-radius: 8px; background: #eef3fb;
+      color: #173f8f; display: flex; align-items: center; justify-content: center;
+      font-size: 32px; font-weight: 800; border: 2px solid #173f8f; margin: 0 auto;
+    }
+
     .cert-signature-box { display: flex; flex-direction: column; align-items: center; min-width: 250px; text-align: center; }
     .sig-location { font-size: 13px; margin-bottom: 6px; color: #475569; }
     .sig-title { font-weight: 700; font-size: 14px; color: #0f172a; text-transform: uppercase; margin-bottom: 12px; }
@@ -301,8 +312,10 @@ import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.co
 })
 export class CertificatesComponent implements OnInit {
   private readonly studentSource = inject(STUDENT_DATA_SOURCE);
+  private readonly documentsSource = inject(OFFICIAL_DOCUMENT_DATA_SOURCE, { optional: true });
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly layout = signal<OfficialDocumentLayout | null>(null);
   readonly studentsList = signal<StudentDetail[]>([]);
   readonly currentStudent = signal<StudentDetail | null>(null);
 
@@ -310,11 +323,18 @@ export class CertificatesComponent implements OnInit {
   selectedStudentId = 'st-1';
   academicYear = '2025-2026';
   purpose = 'Pour faire valoir ce que de droit';
-  refNumber = 'LUD-CERT-2026-' + Math.floor(1000 + Math.random() * 9000);
+  refNumber = 'CERT-2026-' + Math.floor(1000 + Math.random() * 9000);
   mathCode = Math.floor(100000 + Math.random() * 900000);
   currentDate = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   ngOnInit(): void {
+    if (this.documentsSource) {
+      this.documentsSource.layout().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (layout: OfficialDocumentLayout) => this.layout.set(layout),
+        error: () => {}
+      });
+    }
+
     this.studentSource.getById('st-1').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (student) => {
         const student2: StudentDetail = {

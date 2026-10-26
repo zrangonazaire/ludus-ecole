@@ -64,20 +64,22 @@ public class StudentImportController {
     @PreAuthorize("hasAuthority('" + Permissions.IMPORT_EXECUTE + "')")
     @Operation(summary = "Analyser un fichier, sans rien enregistrer",
             description = """
-                    Valide chaque ligne, signale les doublons et les erreurs, et
-                    renvoie l'aperçu complet. Aucune écriture en base à ce stade.
+                    Valide chaque ligne, signale les doublons et les erreurs, résout
+                    la classe et les frais du niveau correspondant, et renvoie l'aperçu complet.
+                    Aucune écriture en base à ce stade.
                     """)
-    public ResponseEntity<ImportPreviewResponse> upload(@RequestParam("file") MultipartFile file) {
-        return ResponseEntity.ok(importService.analyse(file));
+    public ResponseEntity<ImportPreviewResponse> upload(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "classroomId", required = false) UUID classroomId) {
+        return ResponseEntity.ok(importService.analyse(file, classroomId));
     }
 
     @PostMapping("/{batchId}/confirm")
     @PreAuthorize("hasAuthority('" + Permissions.IMPORT_EXECUTE + "')")
     @Operation(summary = "Confirmer l'import",
             description = """
-                    Crée les élèves retenus et les inscrit. Chaque ligne passe par
-                    les mêmes règles qu'une inscription manuelle : une classe pleine
-                    bloque cette ligne-là, pas tout le fichier.
+                    Crée les élèves retenus, les inscrit dans leur classe et génère
+                    automatiquement les frais liés au niveau de la classe.
                     """)
     public ResponseEntity<ImportPreviewResponse> confirm(@PathVariable UUID batchId) {
         return ResponseEntity.ok(importService.confirm(batchId));

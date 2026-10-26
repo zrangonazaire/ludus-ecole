@@ -1,18 +1,37 @@
 <div class="page">
 
+  <!-- ============ Pôle Switcher Bar ============ -->
+  <nav class="pole-bar" aria-label="Pôles de pilotage">
+    @for (pole of poles; track pole.route) {
+      <a class="pole-pill" [routerLink]="pole.route" routerLinkActive="pole-pill--active"
+         [routerLinkActiveOptions]="{ exact: true }">
+        <span class="pole-pill__icon" aria-hidden="true">{{ pole.icon }}</span>
+        <span>{{ pole.label }}</span>
+      </a>
+    }
+  </nav>
+
   <!-- ============ Header (section 56) ============ -->
   <header class="page__header">
     <div>
-      <h1 class="page__title">Tableau de bord</h1>
+      <h1 class="page__title">
+        @if (firstName(); as name) {
+          Bonjour, {{ name }}
+        } @else {
+          Vue d’ensemble de l’établissement
+        }
+      </h1>
       @if (data(); as dashboard) {
         <p class="page__meta">
-          <strong>{{ dashboard.academicYear.code }}</strong>
-          <span class="dot">•</span>{{ dashboard.campusName }}
+          <span class="meta-chip">{{ dashboard.academicYear.code }}</span>
+          <span>{{ dashboard.campusName }}</span>
           @if (dashboard.currentTerm) {
-            <span class="dot">•</span>{{ dashboard.currentTerm.name }}
+            <span class="dot">•</span><strong>{{ dashboard.currentTerm.name }}</strong>
           }
-          <span class="dot">•</span>{{ today() }}
+          <span class="dot">•</span><span class="capitalize">{{ today() }}</span>
         </p>
+      } @else {
+        <p class="page__meta capitalize">{{ today() }}</p>
       }
     </div>
 
@@ -20,13 +39,32 @@
       <button type="button" class="btn btn--secondary" (click)="load()">
         <span aria-hidden="true">⟳</span> Actualiser
       </button>
+      <a class="btn btn--secondary" routerLink="/payments" [queryParams]="{ action: 'collect' }">
+        <span aria-hidden="true">₣</span> Encaisser
+      </a>
       <a class="btn btn--primary" routerLink="/enrollments/new">
-        <span aria-hidden="true">+</span> Nouvelle inscription
+        <span aria-hidden="true">+</span> Inscrire un élève
       </a>
     </div>
   </header>
 
-  <!-- Bien demarrer : reste affiche tant que la configuration n'est pas finie -->
+  <!-- ============ Que voulez-vous faire aujourd'hui ? ============ -->
+  <section class="hero-actions" aria-label="Actions quotidiennes">
+    @for (action of heroActions; track action.title) {
+      <a class="hero-card" [class]="'hero-card hero-card--' + action.tone"
+         [routerLink]="action.route" [queryParams]="action.queryParams">
+        <div class="hero-card__top">
+          <span class="hero-card__icon" aria-hidden="true">{{ action.icon }}</span>
+          <span class="hero-card__badge">{{ action.badge }}</span>
+        </div>
+        <h2 class="hero-card__title">{{ action.title }}</h2>
+        <p class="hero-card__desc">{{ action.description }}</p>
+        <span class="hero-card__cta">Ouvrir <span aria-hidden="true">→</span></span>
+      </a>
+    }
+  </section>
+
+  <!-- Bien démarrer : reste affiché tant que la configuration n'est pas finie -->
   <eduops-setup-progress />
 
   @if (loading()) {
@@ -37,9 +75,11 @@
     @if (data(); as dashboard) {
 
     <!-- ============ KPI grid (section 57) ============ -->
-    <section class="grid grid--kpi" aria-label="Indicateurs cles">
+    <section class="grid grid--kpi" aria-label="Indicateurs clés">
       @for (kpi of dashboard.kpis; track kpi.key) {
-        <eduops-kpi-card [kpi]="kpi" />
+        <a class="kpi-link" [routerLink]="kpiRoute(kpi)">
+          <eduops-kpi-card [kpi]="kpi" [clickable]="true" />
+        </a>
       }
     </section>
 
@@ -53,12 +93,12 @@
                          subtitle="Évolution sur les 8 dernières semaines"
                          [data]="dashboard.attendanceTrend" type="line" />
 
-      <eduops-chart-card title="Performance academique"
+      <eduops-chart-card title="Performance académique"
                          subtitle="Évolution de la moyenne générale"
                          [data]="dashboard.academicPerformance" type="area" />
 
       <eduops-chart-card title="Encaissements"
-                         subtitle="Realise contre attendu, par mois"
+                         subtitle="Réalisé contre attendu, par mois"
                          [data]="dashboard.monthlyCollections" type="bar" />
     </section>
 
@@ -69,20 +109,22 @@
       <article class="card">
         <header class="card__header">
           <h3 class="card__title">Dernières inscriptions</h3>
-          <a class="link-sm" routerLink="/enrollments">Tout voir</a>
+          <a class="link-sm" routerLink="/enrollments">Tout voir →</a>
         </header>
         <ul class="list">
           @for (enrollment of dashboard.recentEnrollments; track enrollment.id) {
-            <li class="list__item">
-              <eduops-avatar [name]="enrollment.studentName" size="sm" />
-              <div class="list__body">
-                <p class="list__title">{{ enrollment.studentName }}</p>
-                <p class="list__meta numeric">{{ enrollment.studentNumber }} — {{ enrollment.classroomName }}</p>
-              </div>
-              <eduops-status-badge [status]="enrollment.status" />
+            <li>
+              <a class="list__item list__item--interactive" [routerLink]="['/students', enrollment.studentId]">
+                <eduops-avatar [name]="enrollment.studentName" size="sm" />
+                <div class="list__body">
+                  <p class="list__title">{{ enrollment.studentName }}</p>
+                  <p class="list__meta numeric">{{ enrollment.studentNumber }} — {{ enrollment.classroomName }}</p>
+                </div>
+                <eduops-status-badge [status]="enrollment.status" />
+              </a>
             </li>
           } @empty {
-            <li class="list__empty">Aucune inscription recente.</li>
+            <li class="list__empty">Aucune inscription récente.</li>
           }
         </ul>
       </article>
@@ -95,16 +137,18 @@
         </header>
         <ul class="list">
           @for (absence of dashboard.todayAbsences; track absence.studentId) {
-            <li class="list__item">
-              <eduops-avatar [name]="absence.studentName" size="sm" />
-              <div class="list__body">
-                <p class="list__title">{{ absence.studentName }}</p>
-                <p class="list__meta numeric">{{ absence.studentNumber }}</p>
-              </div>
-              <eduops-status-badge [status]="absence.status" />
+            <li>
+              <a class="list__item list__item--interactive" [routerLink]="['/students', absence.studentId]">
+                <eduops-avatar [name]="absence.studentName" size="sm" />
+                <div class="list__body">
+                  <p class="list__title">{{ absence.studentName }}</p>
+                  <p class="list__meta numeric">{{ absence.studentNumber }}</p>
+                </div>
+                <eduops-status-badge [status]="absence.status" />
+              </a>
             </li>
           } @empty {
-            <li class="list__empty">Aucune absence signalee aujourd'hui.</li>
+            <li class="list__empty">Aucune absence signalée aujourd'hui.</li>
           }
         </ul>
       </article>
@@ -112,8 +156,8 @@
       <!-- Encaissements recents -->
       <article class="card">
         <header class="card__header">
-          <h3 class="card__title">Encaissements recents</h3>
-          <a class="link-sm" routerLink="/payments">Tout voir</a>
+          <h3 class="card__title">Encaissements récents</h3>
+          <a class="link-sm" routerLink="/payments">Tout voir →</a>
         </header>
         <ul class="list">
           @for (payment of dashboard.recentPayments; track payment.id) {
@@ -134,7 +178,7 @@
       <article class="card">
         <header class="card__header">
           <h3 class="card__title">Alertes importantes</h3>
-          <a class="link-sm" routerLink="/alerts">Tout voir</a>
+          <a class="link-sm" routerLink="/alerts">Tout voir →</a>
         </header>
         <ul class="list">
           @for (alert of dashboard.alerts; track alert.id) {
@@ -155,8 +199,8 @@
       <!-- Evaluations a venir -->
       <article class="card">
         <header class="card__header">
-          <h3 class="card__title">Évaluations a venir</h3>
-          <a class="link-sm" routerLink="/assessments">Tout voir</a>
+          <h3 class="card__title">Évaluations à venir</h3>
+          <a class="link-sm" routerLink="/assessments">Tout voir →</a>
         </header>
         <ul class="list">
           @for (assessment of dashboard.upcomingAssessments; track assessment.id) {
@@ -171,7 +215,7 @@
               <eduops-status-badge [status]="assessment.status" />
             </li>
           } @empty {
-            <li class="list__empty">Aucune évaluation programmee.</li>
+            <li class="list__empty">Aucune évaluation programmée.</li>
           }
         </ul>
       </article>
@@ -179,8 +223,8 @@
       <!-- Classes necessitant attention -->
       <article class="card">
         <header class="card__header">
-          <h3 class="card__title">Classes a surveiller</h3>
-          <a class="link-sm" routerLink="/classes">Tout voir</a>
+          <h3 class="card__title">Classes à surveiller</h3>
+          <a class="link-sm" routerLink="/classes">Tout voir →</a>
         </header>
         <ul class="list">
           @for (classroom of dashboard.classesNeedingAttention; track classroom.id) {

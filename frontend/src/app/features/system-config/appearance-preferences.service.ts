@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { I18nService } from '@core/services/i18n.service';
 
 export type FontSizeChoice = 'small' | 'normal' | 'large';
 
@@ -37,13 +38,12 @@ function key(schoolId?: string): string {
  * Préférences « Apparence et région » : affichage local du front.
  *
  * <p>Stockées dans le navigateur (localStorage, par établissement), appliquées
- * immédiatement sur `:root` (couleur `--brand`, taille de police). Elles ne
- * remplacent pas les paramètres serveur (`PUT /api/v1/school` : devise, langue,
- * fuseau de l'établissement) — ce sont des surcharges d'affichage sur ce
- * navigateur, réversibles via « Réinitialiser ».</p>
+ * immédiatement sur `:root` (couleur `--brand`, taille de police, langue `I18nService`).</p>
  */
 @Injectable({ providedIn: 'root' })
 export class AppearancePreferencesService {
+  private readonly i18n = inject(I18nService);
+
   constructor() {
     this.apply(this.load());
   }
@@ -52,7 +52,7 @@ export class AppearancePreferencesService {
     try {
       const raw = localStorage.getItem(key(schoolId));
       if (!raw) {
-        return { ...DEFAULTS };
+        return { ...DEFAULTS, locale: this.i18n.locale() || DEFAULTS.locale };
       }
       return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<AppearancePreferences>) };
     } catch {
@@ -83,12 +83,15 @@ export class AppearancePreferencesService {
     return { ...DEFAULTS };
   }
 
-  /** Applique couleur + taille sur le document (idempotent). */
+  /** Applique couleur, taille de police et langue sur le document (idempotent). */
   apply(prefs: AppearancePreferences): void {
     try {
       const root = document.documentElement;
       root.style.setProperty('--brand', prefs.brand);
       root.style.setProperty('font-size', FONT_PX[prefs.fontSize] ?? FONT_PX.normal);
+      if (prefs.locale) {
+        this.i18n.setLocale(prefs.locale);
+      }
     } catch {
       // Rendu serveur ou DOM indisponible : rien à appliquer.
     }

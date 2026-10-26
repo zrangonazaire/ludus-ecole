@@ -73,7 +73,7 @@ export class SignupComponent {
 
   readonly schoolForm = this.fb.nonNullable.group({
     schoolName: [this.demoDraft.profile.schoolName, [Validators.required, Validators.maxLength(200)]],
-    schoolCode: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(30),
+    schoolCode: [this.deriveSchoolCode(this.demoDraft.profile.schoolName), [Validators.required, Validators.minLength(2), Validators.maxLength(30),
                       Validators.pattern(/^[A-Za-z0-9-]+$/)]],
     city: [this.demoDraft.profile.city],
     country: [this.demoDraft.profile.country || 'Côte d’Ivoire'],
@@ -111,6 +111,16 @@ export class SignupComponent {
   private readonly passwordValue = signal('');
 
   constructor() {
+    // Auto-suggest schoolCode from schoolName unless the user customized it manually.
+    this.schoolForm.controls.schoolName.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((name) => {
+        if (!this.schoolForm.controls.schoolCode.dirty) {
+          const suggested = this.deriveSchoolCode(name);
+          this.schoolForm.controls.schoolCode.setValue(suggested);
+        }
+      });
+
     // Live availability of the school code.
     this.schoolForm.controls.schoolCode.valueChanges
       .pipe(
@@ -154,6 +164,38 @@ export class SignupComponent {
     this.adminForm.controls.password.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((value) => this.passwordValue.set(value));
+
+    const initialCode = this.schoolForm.controls.schoolCode.value.trim();
+    if (initialCode.length >= 2) {
+      this.checkingCode.set(true);
+      this.signupService.isSchoolCodeAvailable(initialCode)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((available) => {
+          this.checkingCode.set(false);
+          this.codeAvailable.set(available);
+        });
+    }
+  }
+
+  private deriveSchoolCode(rawName: string): string {
+    const clean = (rawName || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9\s-]/g, ' ')
+      .trim();
+    if (!clean) return '';
+    const stopWords = new Set(['DE', 'DU', 'DES', 'LE', 'LA', 'LES', 'ET', 'AU', 'AUX', 'SUR', 'EN']);
+    const words = clean.split(/\s+/).filter((w) => w.length > 0 && !stopWords.has(w));
+    if (words.length === 0) return clean.replace(/\s+/g, '').slice(0, 6);
+    if (words.length === 1) return words[0].slice(0, 8);
+    if (words.length === 2) {
+      const acronym = `${words[0].slice(0, 2)}${words[1].slice(0, 4)}`;
+      return acronym.slice(0, 8);
+    }
+    const initials = words.map((w) => w[0]).join('');
+    if (initials.length >= 3) return initials.slice(0, 8);
+    return words.join('').slice(0, 8);
   }
 
   goToStep2(): void {

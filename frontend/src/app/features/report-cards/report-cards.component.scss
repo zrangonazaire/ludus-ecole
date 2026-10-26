@@ -314,6 +314,11 @@
     border-bottom: 1.5pt solid #101828;
   }
 
+  &__logo {
+    max-height: 18mm;
+    max-width: 32mm;
+    object-fit: contain;
+  }
   &__school-name { margin: 0; font-size: 13pt; font-weight: 700; }
   &__year { margin: 1mm 0 0; font-size: 9pt; color: #475467; }
 

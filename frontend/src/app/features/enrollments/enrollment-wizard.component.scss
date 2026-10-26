@@ -491,3 +491,131 @@
     color: var(--text-light);
   }
 }
+
+
+/* ───────────────── classe cible & frais de niveau (import) ───────────────── */
+
+.class-row__level-pill {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 2px 8px;
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--brand);
+  background: var(--brand-tint);
+  border-radius: var(--radius-pill);
+}
+
+.import-class-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+
+  &--compact {
+    padding: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+}
+
+.import-fee-preview {
+  padding: var(--space-3);
+  background: var(--surface-card);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-button);
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  &__badge {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--brand);
+  }
+
+  &__amount {
+    font-size: .875rem;
+    color: var(--text-strong);
+  }
+
+  &__warn {
+    font-size: .82rem;
+    color: var(--warning);
+
+    a {
+      margin-left: var(--space-2);
+      font-weight: 600;
+      color: var(--brand);
+      text-decoration: underline;
+    }
+  }
+}
+
+.import-fee-inline {
+  margin: 0;
+  font-size: .82rem;
+  color: var(--text-normal);
+}
+
+.tally__item--fees {
+  background: var(--brand-tint);
+  border: 1px solid var(--brand);
+
+  .tally__value {
+    color: var(--brand);
+  }
+
+  .tally__value--sm {
+    font-size: 1.1rem;
+  }
+}
+
+.cell-level-fees {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  &__class {
+    font-weight: 600;
+    color: var(--text-strong);
+
+    small {
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+  }
+
+  &__amount {
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--success);
+
+    small {
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+  }
+
+  &__none {
+    font-size: .75rem;
+    color: var(--warning);
+  }
+}
+
+.done__fees {
+  margin: var(--space-1) 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: .9rem;
+  color: var(--brand);
+  background: var(--brand-tint);
+  border-radius: var(--radius-pill);
+}

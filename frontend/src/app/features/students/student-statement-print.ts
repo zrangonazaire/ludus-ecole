@@ -26,6 +26,7 @@ export function renderStudentStatement(doc: Document, statement: StudentStatemen
     .toolbar button { padding: 9px 15px; border: 0; border-radius: 6px; color: #fff; background: #173f8f; font-weight: 700; cursor: pointer; }
     .masthead { display: grid; grid-template-columns: 42mm 1fr; gap: 8mm; align-items: center; padding-bottom: 5mm; border-bottom: 3px solid #173f8f; }
     .logo { width: 38mm; height: 27mm; object-fit: contain; object-position: left center; }
+    .school-monogram { width: 38mm; height: 27mm; border-radius: 6px; background: #eef3fb; color: #173f8f; display: flex; align-items: center; justify-content: center; font-size: 24pt; font-weight: 800; border: 2px solid #173f8f; }
     .school { color: #52647d; font-size: 9pt; line-height: 1.45; }
     .school strong { display: block; margin-bottom: 1mm; color: #173f8f; font-size: 12pt; }
     .doc-title { margin: 0 0 2mm; color: #102b62; font-size: 19pt; letter-spacing: .04em; text-align: right; }
@@ -128,11 +129,42 @@ export function renderStudentStatement(doc: Document, statement: StudentStatemen
 
   const masthead = doc.createElement('header');
   masthead.className = 'masthead';
-  const logo = doc.createElement('img');
-  logo.className = 'logo';
-  logo.alt = 'Logo de Ludus École';
-  logo.src = new URL('/assets/branding/ludus-logo.png', window.location.origin).href;
-  masthead.append(logo);
+
+  let logoSrc = statement.schoolLogo?.trim();
+  if (!logoSrc) {
+    try {
+      const stored = localStorage.getItem('eduops.mock.official-document-layout.v1');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.showLogo && parsed?.logoDataUrl) {
+          logoSrc = parsed.logoDataUrl;
+        }
+      }
+    } catch { /* ignore fallback error */ }
+  }
+
+  if (logoSrc) {
+    const logo = doc.createElement('img');
+    logo.className = 'logo';
+    logo.alt = statement.schoolName ? `Logo de ${statement.schoolName}` : 'Logo de l’établissement';
+    logo.src = logoSrc;
+    logo.onerror = () => {
+      logo.remove();
+      const monogram = doc.createElement('div');
+      monogram.className = 'school-monogram';
+      monogram.textContent = (statement.schoolName || 'E').trim().charAt(0).toUpperCase();
+      monogram.setAttribute('aria-hidden', 'true');
+      masthead.prepend(monogram);
+    };
+    masthead.append(logo);
+  } else {
+    const monogram = doc.createElement('div');
+    monogram.className = 'school-monogram';
+    monogram.textContent = (statement.schoolName || 'E').trim().charAt(0).toUpperCase();
+    monogram.setAttribute('aria-hidden', 'true');
+    masthead.append(monogram);
+  }
+
   const mastMeta = doc.createElement('div');
   const school = add('div', '', mastMeta);
   school.className = 'school';

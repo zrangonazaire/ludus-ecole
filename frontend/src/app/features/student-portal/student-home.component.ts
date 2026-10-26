@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { STUDENT_PORTAL_DATA_SOURCE } from '@core/datasource/data-source';
+import { HomeworkService } from '@core/services/homework.service';
 import {
   StudentAnnouncementCategory, StudentDashboard, StudentDashboardCourse
 } from '@core/models/student-portal.models';
@@ -24,6 +25,7 @@ import { GradePipe } from '@shared/pipes/grade.pipe';
 })
 export class StudentHomeComponent implements OnInit {
   private readonly dataSource = inject(STUDENT_PORTAL_DATA_SOURCE);
+  readonly homework = inject(HomeworkService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly dashboard = signal<StudentDashboard | null>(null);

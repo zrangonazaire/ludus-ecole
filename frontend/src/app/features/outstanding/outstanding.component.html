@@ -292,10 +292,17 @@
 </ng-template>
 
 <ng-template #actionsTpl let-row>
-  <button type="button" class="btn btn--sm" (click)="selectedStudent.set(row)">Suivi</button>
+  <div class="row-actions">
+    <button type="button" class="btn btn--sm btn--whatsapp"
+            title="Relancer le parent sur WhatsApp en 1 clic"
+            (click)="openWhatsAppReminder(row)">
+      <span aria-hidden="true">💬</span> WhatsApp
+    </button>
+    <button type="button" class="btn btn--sm" (click)="selectedStudent.set(row)">Suivi</button>
   <a class="btn btn--primary btn--sm collect-action"
      [routerLink]="['/payments']" [queryParams]="{ studentId: row.studentId }"
      *eduopsHasPermission="createPaymentPermission">
     Encaisser
   </a>
+  </div>
 </ng-template>

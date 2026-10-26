@@ -31,6 +31,11 @@
           <button type="button" class="btn btn--secondary" [disabled]="printing() || editing()"
                   (click)="printStatement()">{{ printing() ? 'Préparation…' : 'Imprimer la fiche élève' }}</button>
         }
+        @if (canCollect()) {
+          <a class="btn btn--secondary" routerLink="/payments" [queryParams]="{ studentId: student.id }">
+            <span aria-hidden="true">₣</span> Encaisser
+          </a>
+        }
         @if (canEdit()) {
           <button type="button" class="btn btn--primary" [disabled]="editing()" (click)="openEdit()">Modifier</button>
         }
@@ -194,7 +199,14 @@
           </div>
 
           <section class="card" style="margin-top: var(--space-6)">
-            <header class="card__header"><h3 class="card__title">Échéancier</h3></header>
+            <header class="card__header">
+              <h3 class="card__title">Échéancier</h3>
+              @if (canCollect() && finance.outstandingAmount > 0) {
+                <a class="btn btn--primary btn--sm" routerLink="/payments" [queryParams]="{ studentId: student.id }">
+                  <span aria-hidden="true">₣</span> Encaisser un règlement
+                </a>
+              }
+            </header>
             <div class="table-wrapper">
               <table class="table">
                 <thead>

@@ -2,6 +2,7 @@ package ci.company.eduops.report.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,6 +33,14 @@ public class ImportRowResponse {
     private List<String> warnings = new ArrayList<>();
     /** Matricule qui sera attribué, quand la ligne est importable. */
     private String previewStudentNumber;
+    /** Classe résolue pour l'inscription. */
+    private String classroomName;
+    /** Niveau académique rattaché à la classe. */
+    private String levelName;
+    /** Montant total des frais du niveau associés à l'élève. */
+    private BigDecimal feesAmount;
+    /** Nombre d'échéances de frais générées pour ce niveau. */
+    private int feeLinesCount;
 
     public int getRowNumber() {
         return rowNumber;
@@ -79,6 +88,38 @@ public class ImportRowResponse {
 
     public void setPreviewStudentNumber(String previewStudentNumber) {
         this.previewStudentNumber = previewStudentNumber;
+    }
+
+    public String getClassroomName() {
+        return classroomName;
+    }
+
+    public void setClassroomName(String classroomName) {
+        this.classroomName = classroomName;
+    }
+
+    public String getLevelName() {
+        return levelName;
+    }
+
+    public void setLevelName(String levelName) {
+        this.levelName = levelName;
+    }
+
+    public BigDecimal getFeesAmount() {
+        return feesAmount;
+    }
+
+    public void setFeesAmount(BigDecimal feesAmount) {
+        this.feesAmount = feesAmount;
+    }
+
+    public int getFeeLinesCount() {
+        return feeLinesCount;
+    }
+
+    public void setFeeLinesCount(int feeLinesCount) {
+        this.feeLinesCount = feeLinesCount;
     }
 
     public void addError(String message) {

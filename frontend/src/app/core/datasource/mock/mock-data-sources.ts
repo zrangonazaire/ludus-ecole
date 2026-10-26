@@ -197,6 +197,50 @@ export class MockStudentDataSource implements StudentDataSource {
   }
 
   private buildFinancialSummary(studentId: string): FinancialSummary {
+    const enrollment = MOCK_RECENT_ENROLLMENTS.find((e) => e.studentId === studentId);
+    if (enrollment && studentId.startsWith('st-imp-')) {
+      const total = enrollment.totalFeesDue ?? 600000;
+      const lines = Math.max(1, enrollment.feeLinesCreated ?? 3);
+      const share = Math.round(total / lines);
+      const firstShare = total - share * (lines - 1);
+      const dueDates = ['2026-10-15', '2027-01-15', '2027-04-15'];
+      return {
+        studentId,
+        academicYearId: MOCK_ACADEMIC_YEAR.id,
+        totalGross: total,
+        totalDiscount: 0,
+        totalDue: total,
+        totalPaid: 0,
+        outstandingAmount: total,
+        nextDueDate: dueDates[0],
+        overdueCount: 0,
+        globalStatus: 'DUE',
+        currency: 'XOF',
+        fees: Array.from({ length: lines }, (_, idx) => {
+          const amt = idx === 0 ? firstShare : share;
+          return {
+            id: `f-${studentId}-${idx + 1}`,
+            label: `Scolarité ${enrollment.levelName ?? ''} - Échéance ${idx + 1}`.trim(),
+            feeTypeId: 'ft-tuition',
+            feeTypeCode: 'SCOL',
+            feeTypeName: `Scolarité ${enrollment.levelName ?? ''}`.trim(),
+            category: 'TUITION',
+            categoryLabel: 'Scolarité',
+            mandatory: true,
+            feeScheduleId: 'fs-tuition',
+            sequence: idx + 1,
+            grossAmount: amt,
+            discountAmount: 0,
+            amountDue: amt,
+            amountPaid: 0,
+            amountRemaining: amt,
+            currency: 'XOF',
+            dueDate: dueDates[idx] ?? '2027-05-15',
+            status: 'DUE'
+          };
+        })
+      };
+    }
     return {
       studentId,
       academicYearId: MOCK_ACADEMIC_YEAR.id,

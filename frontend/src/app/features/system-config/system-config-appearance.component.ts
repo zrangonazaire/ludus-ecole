@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/auth/auth.service';
 import { PERMISSIONS } from '@core/models/auth.models';
 import { COMMON_LOCALES, COMMON_TIMEZONES } from '@core/models/school-settings.models';
+import { I18nService } from '@core/services/i18n.service';
 import { NotificationService } from '@core/services/notification.service';
 import {
   AppearancePreferences, AppearancePreferencesService, FontSizeChoice
@@ -20,6 +21,7 @@ import {
 })
 export class SystemConfigAppearanceComponent {
   private readonly appearanceService = inject(AppearancePreferencesService);
+  private readonly i18n = inject(I18nService);
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
@@ -38,12 +40,18 @@ export class SystemConfigAppearanceComponent {
     brand: [this.saved().brand, [Validators.required, Validators.pattern(/^#[0-9a-fA-F]{6}$/)]],
     fontSize: [this.saved().fontSize, Validators.required],
     currency: [this.saved().currency, [Validators.required, Validators.pattern(/^[A-Z]{3}$/)]],
-    locale: [this.saved().locale, Validators.required],
+    locale: [this.i18n.locale() || this.saved().locale, Validators.required],
     timezone: [this.saved().timezone, Validators.required]
   });
 
   constructor() {
     this.form.valueChanges.subscribe(() => this.preview());
+    effect(() => {
+      const currentLocale = this.i18n.locale();
+      if (currentLocale && this.form.controls.locale.value !== currentLocale) {
+        this.form.controls.locale.setValue(currentLocale, { emitEvent: false });
+      }
+    });
   }
 
   private current(): AppearancePreferences {

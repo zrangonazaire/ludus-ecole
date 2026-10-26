@@ -18,7 +18,16 @@
       }
     </div>
     <div class="page__actions">
-      <button type="button" class="btn btn--secondary">Exporter Excel</button>
+      <button type="button" class="btn btn--secondary" (click)="openStudentCards()">
+        <span aria-hidden="true">🪪</span> Cartes scolaires
+      </button>
+      <button type="button" class="btn btn--secondary" *eduopsHasPermission="createPermission"
+              (click)="openImportWizard()">
+        <span aria-hidden="true">📥</span> Importer Excel / CSV
+      </button>
+      <button type="button" class="btn btn--secondary" [disabled]="exporting()" (click)="exportStudents()">
+        {{ exporting() ? 'Export…' : 'Exporter Excel' }}
+      </button>
       <button type="button" class="btn btn--primary" *eduopsHasPermission="createPermission"
               (click)="openCreateWizard()">
         <span aria-hidden="true">+</span> Nouvel élève

@@ -1,5 +1,6 @@
 package ci.company.eduops.finance.service;
 
+import ci.company.eduops.classroom.domain.Classroom;
 import ci.company.eduops.common.util.MoneyUtils;
 import ci.company.eduops.enrollment.domain.Enrollment;
 import ci.company.eduops.enrollment.domain.EnrollmentKind;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Turns the school's price list into the concrete instalments a family owes
@@ -49,21 +51,12 @@ public class StudentFeeGenerationService {
      */
     @Transactional
     public List<StudentFee> generateForEnrollment(Enrollment enrollment) {
-        List<FeeSchedule> schedules = feeScheduleRepository.findApplicable(
-                enrollment.getAcademicYear().getId(),
-                enrollment.getClassroom().getLevel().getId(),
-                enrollment.getClassroom().getCampus().getId());
-
         boolean returning = enrollment.getEnrollmentKind() == EnrollmentKind.RE_ENROLLMENT;
-        List<StudentFee> created = new ArrayList<>();
+        List<FeeSchedule> schedules = findApplicableSchedulesForClassroom(
+                enrollment.getClassroom(), returning);
 
+        List<StudentFee> created = new ArrayList<>();
         for (FeeSchedule schedule : schedules) {
-            boolean applies = returning
-                    ? schedule.isAppliesToReturningStudents()
-                    : schedule.isAppliesToNewStudents();
-            if (!applies) {
-                continue;
-            }
             created.addAll(createLines(enrollment, schedule));
         }
 
@@ -76,6 +69,40 @@ public class StudentFeeGenerationService {
                     created.size(), enrollment.getEnrollmentNumber());
         }
         return created;
+    }
+
+    /**
+     * Resolves all active fee schedules applicable to a classroom's level, cycle, and campus.
+     */
+    @Transactional(readOnly = true)
+    public List<FeeSchedule> findApplicableSchedulesForClassroom(Classroom classroom, boolean returning) {
+        if (classroom == null || classroom.getAcademicYear() == null || classroom.getLevel() == null) {
+            return List.of();
+        }
+        UUID levelId = classroom.getLevel().getId();
+        UUID cycleId = classroom.getLevel().getCycle() != null
+                ? classroom.getLevel().getCycle().getId()
+                : null;
+        UUID campusId = classroom.getCampus() != null
+                ? classroom.getCampus().getId()
+                : null;
+
+        List<FeeSchedule> schedules = feeScheduleRepository.findApplicable(
+                classroom.getAcademicYear().getId(),
+                levelId,
+                cycleId,
+                campusId);
+
+        List<FeeSchedule> result = new ArrayList<>();
+        for (FeeSchedule schedule : schedules) {
+            boolean applies = returning
+                    ? schedule.isAppliesToReturningStudents()
+                    : schedule.isAppliesToNewStudents();
+            if (applies) {
+                result.add(schedule);
+            }
+        }
+        return result;
     }
 
     /**
@@ -92,9 +119,14 @@ public class StudentFeeGenerationService {
                     || (schedule.getLevel() != null
                         && !schedule.getLevel().getId().equals(
                                 enrollment.getClassroom().getLevel().getId()))
+                    || (schedule.getCycle() != null
+                        && (enrollment.getClassroom().getLevel().getCycle() == null
+                            || !schedule.getCycle().getId().equals(
+                                    enrollment.getClassroom().getLevel().getCycle().getId())))
                     || (schedule.getCampus() != null
-                        && !schedule.getCampus().getId().equals(
-                                enrollment.getClassroom().getCampus().getId()))) {
+                        && (enrollment.getClassroom().getCampus() == null
+                            || !schedule.getCampus().getId().equals(
+                                    enrollment.getClassroom().getCampus().getId())))) {
                 continue;
             }
 

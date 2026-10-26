@@ -46,6 +46,7 @@ export class StudentDetailComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
   private readonly statements = inject(StudentStatementService);
   readonly canEdit = computed(() => this.auth.has(PERMISSIONS.STUDENT_UPDATE));
+  readonly canCollect = computed(() => this.auth.has(PERMISSIONS.PAYMENT_CREATE));
   readonly canStatement = computed(() => this.auth.has(PERMISSIONS.FINANCE_VIEW) && this.auth.has(PERMISSIONS.PAYMENT_VIEW));
   readonly editing = signal(false);
   readonly saving = signal(false);

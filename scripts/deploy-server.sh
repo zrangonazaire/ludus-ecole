@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =====================================================================
-# Script de deploiement a executer SUR le VPS 57.129.132.150
-# Une fois que scripts/upload.sh a transfere les fichiers dans /opt/eduops.
+# Script de deploiement / mise a jour SUR le VPS (57.129.132.150)
+# A executer dans /opt/eduops :
 #   cd /opt/eduops && bash scripts/deploy-server.sh
 # =====================================================================
 set -euo pipefail
@@ -9,69 +9,60 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 HOST_PUBLIC=57.129.132.150
 BACKEND_IMG=astairenazaire/ludus-backend:1.0.0
-FRONTEND_IMG=astairenazaire/ludus-frontend:1.0.0
 CONFIG=/opt/eduops/config/application-prod.yml
 
 echo "==> Version docker compose"
 sudo docker compose version
 
-echo "==> Login Docker Hub (requis si les images sont privees)"
-if sudo docker login -u astairenazaire; then
-  echo "login OK"
+echo "==> Construction / Mise à jour des images Docker"
+if [ -d backend ] && [ -d frontend ]; then
+  echo "  Sources locales détectées : compilation des images..."
+  sudo docker compose -f docker/compose.prod.yml build
 else
-  echo "ATTENTION : login echoue. Les images publiques seront malgre tout tirees."
+  echo "  Pas de sources locales : téléchargement depuis le registre Docker..."
+  sudo docker compose -f docker/compose.prod.yml pull
 fi
 
-echo "==> Telechargement des images"
-sudo bash scripts/compose-prod.sh pull
-
-echo "==> Droits sur les secrets"
-UID_BACKEND=$(sudo docker run --rm --entrypoint id "$BACKEND_IMG" -u | cut -d= -f2 | cut -d'(' -f1)
-GID_REDIS=$(sudo docker run --rm --entrypoint id redis:7-alpine redis | awk -F'gid=' '{print $2}' | cut -d'(' -f1)
+echo "==> Droits sur les secrets de production"
+UID_BACKEND=$(sudo docker run --rm --entrypoint id "$BACKEND_IMG" -u 2>/dev/null | cut -d= -f2 | cut -d'(' -f1 || echo "1000")
+GID_REDIS=$(sudo docker run --rm --entrypoint id redis:7-alpine redis 2>/dev/null | awk -F'gid=' '{print $2}' | cut -d'(' -f1 || echo "1000")
 echo "  UID backend=$UID_BACKEND  GID redis=$GID_REDIS"
-sudo chown "$UID_BACKEND" "$CONFIG"
-sudo chmod 600 "$CONFIG"
-sudo chown root:root docker/postgres/production.password
-sudo chmod 600 docker/postgres/production.password
-sudo chown root:"$GID_REDIS" docker/redis/production.conf
-sudo chmod 640 docker/redis/production.conf
+
+if [ -f "$CONFIG" ]; then
+  sudo chown "$UID_BACKEND" "$CONFIG"
+  sudo chmod 600 "$CONFIG"
+fi
+if [ -f docker/postgres/production.password ]; then
+  sudo chown root:root docker/postgres/production.password
+  sudo chmod 600 docker/postgres/production.password
+fi
+if [ -f docker/redis/production.conf ]; then
+  sudo chown root:"$GID_REDIS" docker/redis/production.conf
+  sudo chmod 640 docker/redis/production.conf
+fi
 
 echo "==> Validation du Compose"
-sudo bash scripts/compose-prod.sh config --quiet
+sudo docker compose -f docker/compose.prod.yml config --quiet
 
-echo "==> Demarrage des conteneurs (attente du healthy)"
-sudo bash scripts/compose-prod.sh up -d --no-build --wait --wait-timeout 300
-sudo bash scripts/compose-prod.sh ps
+echo "==> Démarrage des conteneurs de production"
+sudo docker compose -f docker/compose.prod.yml up -d --wait --wait-timeout 300 postgres redis backend frontend
+sudo docker compose -f docker/compose.prod.yml ps
 
-echo "==> Sante du backend"
-curl -fsS http://127.0.0.1:58080/actuator/health && echo " OK"
+echo "==> Vérification de santé"
+echo -n "  Backend Spring Boot : "
+curl -fsS http://127.0.0.1:58080/actuator/health && echo " (OK)"
+echo -n "  Frontend Nginx : "
+curl -fsS http://127.0.0.1:4200/healthz && echo " (OK)"
 
-echo "==> Reverse proxy Node.js (gateway) + demarrage complet"
-# Gateway = proxy Node.js (port 80) servant le SPA, /api et /ws.
-sudo bash scripts/compose-prod.sh up -d --wait --wait-timeout 180
-sudo bash scripts/compose-prod.sh ps
-
-echo "==> Desactivation de l'ancien Nginx système (s'il existe) pour liberer le port 80"
 if command -v nginx >/dev/null 2>&1; then
-  sudo rm -f /etc/nginx/sites-enabled/eduops
-  sudo rm -f /etc/nginx/sites-available/eduops
-  sudo systemctl disable nginx 2>/dev/null || true
-  sudo systemctl stop nginx 2>/dev/null || true
-  sudo systemctl reload nginx 2>/dev/null || true
-  echo "  Nginx système stoppé et desactivé."
-else
-  echo "  Pas de Nginx système détecté, rien à faire."
+  echo "==> Rechargement de Nginx système hôte..."
+  if sudo nginx -t; then
+    sudo systemctl reload nginx
+    echo "  Nginx hôte rechargé avec succès."
+  fi
 fi
-
-echo "==> Test du proxy Node.js"
-curl -fsS http://127.0.0.1/healthz && echo " (proxy OK)"
-curl -fsS http://127.0.0.1:58080/actuator/health && echo " (backend OK)"
 
 echo
 echo "======================================================================"
-echo " Deploiement termine. Ouvrez http://$HOST_PUBLIC"
-echo " Connexion administrateur initiale :"
-echo "   email    : admin@ecole.local"
-echo "   password : UKYzAsr2Hz97JaXGaZWVwr9n"
-echo " Pensez a changer ce mot de passe a la premiere connexion."
+echo " Déploiement terminé. Accès : https://soocloo.com ou http://$HOST_PUBLIC"
 echo "======================================================================"

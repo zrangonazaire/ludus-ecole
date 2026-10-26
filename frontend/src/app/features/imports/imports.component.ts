@@ -2,15 +2,20 @@ import {
   ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@core/auth/auth.service';
+import { CLASSROOM_DATA_SOURCE } from '@core/datasource/data-source';
 import { PERMISSIONS } from '@core/models/auth.models';
+import { Classroom } from '@core/models/domain.models';
 import {
   ImportBatch, ImportPreview, ImportRow, ImportRowStatus
 } from '@core/models/import.models';
 import { NotificationService } from '@core/services/notification.service';
 import { StudentImportService } from '@core/services/student-import.service';
 import { translateErrorCode } from '@core/services/error-messages';
+import { MoneyPipe } from '@shared/pipes/money.pipe';
 import { ErrorStateComponent } from '@shared/ui/error-state/error-state.component';
 import { LoadingStateComponent } from '@shared/ui/loading-state/loading-state.component';
 import { StepCoachmarkComponent } from '@shared/ui/step-coachmark/step-coachmark.component';
@@ -29,28 +34,22 @@ interface HelpCopy {
 type RowFilter = 'TOUT' | 'A_CORRIGER' | ImportRowStatus;
 
 /**
- * Import de listes.
- *
- * <p>L'écran suit la règle du module : un fichier n'écrit rien tant que
- * personne n'a vu ce qu'il contient. Le dépôt produit un aperçu, l'aperçu
- * demande une confirmation, et la confirmation laisse une trace dans
- * l'historique.</p>
- *
- * <p>L'aperçu s'ouvre par défaut sur les lignes à corriger. Sur un fichier de
- * trois cents élèves dont quatre sont fautifs, montrer les trois cents d'abord
- * revient à cacher les quatre qui demandent une décision.</p>
+ * Import de listes avec sélection de classe cible et génération automatique des frais de niveau.
  */
 @Component({
   selector: 'eduops-imports',
   standalone: true,
-  imports: [CommonModule, LoadingStateComponent, ErrorStateComponent,
-    StepCoachmarkComponent],
+  imports: [
+    CommonModule, FormsModule, RouterLink, MoneyPipe, LoadingStateComponent,
+    ErrorStateComponent, StepCoachmarkComponent
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './imports.component.html',
   styleUrl: './imports.component.scss'
 })
 export class ImportsComponent implements OnInit {
   private readonly imports = inject(StudentImportService);
+  private readonly classroomSource = inject(CLASSROOM_DATA_SOURCE);
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
@@ -61,18 +60,25 @@ export class ImportsComponent implements OnInit {
   readonly preview = signal<ImportPreview | null>(null);
   readonly history = signal<ImportBatch[]>([]);
   readonly openedBatch = signal<ImportBatch | null>(null);
+  readonly classrooms = signal<Classroom[]>([]);
+  readonly targetClassroomId = signal<string>('');
 
   readonly analysing = signal(false);
   readonly confirming = signal(false);
   readonly loadingHistory = signal(true);
   readonly historyFailed = signal(false);
   readonly dragging = signal(false);
-  readonly rowFilter = signal<RowFilter>('A_CORRIGER');
+  readonly rowFilter = signal<RowFilter>('TOUT');
 
   /** Le résultat d'une confirmation, distinct de l'aperçu qui l'a précédé. */
   readonly report = signal<ImportPreview | null>(null);
 
   readonly canImport = computed(() => this.auth.has(PERMISSIONS.IMPORT_EXECUTE));
+
+  readonly selectedClassroom = computed<Classroom | null>(() => {
+    const id = this.targetClassroomId();
+    return id ? (this.classrooms().find((c) => c.id === id) ?? null) : null;
+  });
 
   readonly columns = computed<string[]>(() => {
     const rows = this.preview()?.rows ?? [];
@@ -112,7 +118,6 @@ export class ImportsComponent implements OnInit {
     return preview ? preview.validRows + preview.warningRows : 0;
   });
 
-  // --- pagination de l'aperçu : 300 lignes d'un coup rend le tableau illisible ---
   readonly pageSizeOptions = [10, 20, 50, 100];
   readonly previewPageSize = signal(10);
   readonly previewPage = signal(0);
@@ -149,49 +154,32 @@ export class ImportsComponent implements OnInit {
       case 'DEPOT':
         return {
           step: 1,
-          title: 'Partez du modèle, pas de votre fichier',
-          description: 'Le classeur modèle porte les colonnes attendues dans '
-            + "l'ordre attendu. Recopiez-y vos listes plutôt que d'adapter le "
-            + 'fichier reçu : les erreurs de colonnes sont les plus longues à '
-            + 'démêler ensuite.',
+          title: 'Importez par classe et associez automatiquement les frais du niveau',
+          description: 'Choisissez une classe cible ci-dessous ou indiquez la classe dans la colonne « Classe » du fichier Excel : les frais liés au niveau de la classe seront automatiquement générés pour chaque élève importé.',
           points: [
-            'Mettez la colonne « Téléphone du responsable » au format Texte '
-              + 'avant de saisir : sinon le tableur transforme +225… en nombre.',
-            'La colonne « Classe » doit reprendre le nom exact de vos classes, '
-              + '« 6ème A » et non « 6ème ».',
-            'Une ligne sans classe reste importable : l\'élève est créé, son '
-              + 'inscription viendra plus tard.'
+            'Mettez la colonne « Téléphone du responsable » au format Texte avant de saisir.',
+            'La classe cible par défaut s’applique à toutes les lignes sans colonne « Classe ».',
+            'Les échéances de scolarité du niveau sont créées automatiquement dès la confirmation.'
           ]
         };
       case 'APERCU':
         return {
           step: 2,
-          title: 'Rien n’est encore enregistré',
-          description: 'Ce tableau décrit ce qui se passerait. Les lignes en '
-            + 'rouge seront ignorées, celles en orange passeront avec une '
-            + 'réserve. Corrigez dans votre fichier et redéposez-le autant de '
-            + 'fois qu\'il le faut : tant que vous n\'avez pas confirmé, la '
-            + 'base est intacte.',
+          title: 'Vérifiez la classe et les frais associés avant d’enregistrer',
+          description: 'Chaque ligne indique la classe retenue, le niveau correspondant et le montant total des frais qui seront générés.',
           points: [
-            'Un doublon est détecté sur le nom, le prénom et la date de '
-              + 'naissance : deux homonymes nés le même jour demanderont une '
-              + 'saisie manuelle.',
-            'Le nombre annoncé sur le bouton est exactement le nombre d\'élèves '
-              + 'qui seront créés.'
+            'Un doublon est détecté sur le nom, le prénom et la date de naissance.',
+            'Le nombre annoncé sur le bouton correspond aux élèves qui seront inscrits avec leurs frais.'
           ]
         };
       default:
         return {
           step: 3,
           title: 'Qui a importé quoi, et quand',
-          description: 'Chaque import confirmé laisse une ligne ici, avec son '
-            + 'auteur et son résultat. C\'est ce qui permet de répondre quand '
-            + 'deux cents élèves apparaissent un mardi.',
+          description: 'Chaque import confirmé laisse une trace ici, avec son auteur et son résultat.',
           points: [
-            'Ouvrez un import pour voir les lignes que le serveur a refusées '
-              + 'à l\'écriture et leur motif.',
-            'Redéposer un fichier déjà importé déclenche un avertissement '
-              + 'avant la confirmation.'
+            'Ouvrez un import pour voir les lignes refusées et leur motif.',
+            'Redéposer un fichier déjà importé déclenche un avertissement avant la confirmation.'
           ]
         };
     }
@@ -199,6 +187,12 @@ export class ImportsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadHistory();
+    this.classroomSource.list()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => this.classrooms.set(list),
+        error: () => this.classrooms.set([])
+      });
   }
 
   goTo(step: ImportStep): void {
@@ -253,7 +247,6 @@ export class ImportsComponent implements OnInit {
     if (file) {
       this.analyse(file);
     }
-    // Remis à zéro pour que redéposer le même fichier relance l'analyse.
     input.value = '';
   }
 
@@ -263,14 +256,14 @@ export class ImportsComponent implements OnInit {
     }
     this.analysing.set(true);
     this.report.set(null);
-    this.imports.analyse(file)
+    this.imports.analyse(file, this.targetClassroomId() || undefined)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (preview) => {
           this.analysing.set(false);
           this.preview.set(preview);
           this.previewPage.set(0);
-          this.rowFilter.set(this.toFixCount() > 0 ? 'A_CORRIGER' : 'TOUT');
+          this.rowFilter.set('TOUT');
           this.step.set('APERCU');
         },
         error: (err) => {
@@ -296,7 +289,7 @@ export class ImportsComponent implements OnInit {
           this.preview.set(null);
           const created = report.rows.filter((row) => row.errors.length === 0).length;
           this.notifications.success(
-            `${created} élève(s) créé(s) depuis ${report.fileName}.`,
+            `${created} élève(s) créé(s) et affecté(s) avec leurs frais de niveau depuis ${report.fileName}.`,
             'Import terminé');
           this.loadHistory();
         },
@@ -346,8 +339,6 @@ export class ImportsComponent implements OnInit {
 
   private messageOf(err: unknown): string {
     const failure = (err as { error?: { code?: string; message?: string } })?.error;
-    // Le message du serveur d'abord : il nomme la ligne ou la date en cause,
-    // là où le code ne rend qu'une phrase générique.
     return failure?.message?.trim()
       || translateErrorCode(failure?.code ?? 'UNKNOWN');
   }

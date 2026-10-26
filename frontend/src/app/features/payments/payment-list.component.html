@@ -16,6 +16,12 @@
 
     <div class="page__actions">
 
+      <button type="button" class="btn btn--secondary" (click)="showCashbook.set(!showCashbook())">
+        <span aria-hidden="true">▤</span> {{ showCashbook() ? 'Masquer le brouillard' : 'Brouillard & Dépenses' }}
+      </button>
+      <button type="button" class="btn btn--secondary" (click)="openExpenseModal()">
+        <span aria-hidden="true">−</span> Sortie de caisse
+      </button>
       <button type="button" class="btn btn--secondary" [disabled]="exporting()" (click)="exportPayments()">
 
         {{ exporting() ? 'Export en cours…' : 'Exporter' }}
@@ -33,6 +39,80 @@
     </div>
 
   </header>
+
+  <!-- ═══ Cockpit de Caisse (Entrées − Sorties = Solde net) ═══ -->
+  <section class="cashbook-strip" aria-label="Brouillard de caisse">
+    <article class="cashbook-kpi cashbook-kpi--in">
+      <div>
+        <span class="cashbook-kpi__label">Entrées (Encaissements validés)</span>
+        <strong class="cashbook-kpi__value money">+ {{ totalCashIn() | money:registerCurrency() }}</strong>
+      </div>
+      <span class="cashbook-kpi__badge">Caisse +</span>
+    </article>
+
+    <article class="cashbook-kpi cashbook-kpi--out">
+      <div>
+        <span class="cashbook-kpi__label">Sorties / Dépenses ({{ cashExpenses().length }})</span>
+        <strong class="cashbook-kpi__value money">− {{ totalCashOut() | money:registerCurrency() }}</strong>
+      </div>
+      <button type="button" class="btn btn--ghost btn--sm" (click)="openExpenseModal()">+ Ajouter</button>
+    </article>
+
+    <article class="cashbook-kpi cashbook-kpi--net">
+      <div>
+        <span class="cashbook-kpi__label">Solde net théorique en caisse</span>
+        <strong class="cashbook-kpi__value money">{{ netCashBalance() | money:registerCurrency() }}</strong>
+      </div>
+      <button type="button" class="btn btn--secondary btn--sm" (click)="printCashbook()">
+        🖨 Arrêté de caisse
+      </button>
+    </article>
+  </section>
+
+  @if (showCashbook()) {
+    <section class="card cashbook-panel" style="margin-bottom: var(--space-5)">
+      <header class="card__header">
+        <div>
+          <h2 class="card__title">Journal des sorties & dépenses de caisse</h2>
+          <p class="card__subtitle">Dépenses courantes imputées sur la caisse de l’établissement</p>
+        </div>
+        <div class="row" style="display:flex; gap:8px;">
+          <button type="button" class="btn btn--secondary btn--sm" (click)="printCashbook()">Imprimer le PV de caisse</button>
+          <button type="button" class="btn btn--primary btn--sm" (click)="openExpenseModal()">+ Saisir une dépense</button>
+        </div>
+      </header>
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Catégorie</th>
+              <th>Motif / Libellé</th>
+              <th>Bénéficiaire</th>
+              <th class="numeric">Montant</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (exp of cashExpenses(); track exp.id) {
+              <tr>
+                <td class="numeric">{{ exp.date | date:'dd/MM/yyyy' }}</td>
+                <td><span class="badge badge--neutral">{{ exp.category }}</span></td>
+                <td><strong>{{ exp.label }}</strong></td>
+                <td>{{ exp.beneficiary }}</td>
+                <td class="numeric" style="color: var(--danger); font-weight: 700;">− {{ exp.amount | money:exp.currency }}</td>
+                <td style="text-align:right;">
+                  <button type="button" class="btn btn--ghost btn--sm" (click)="removeExpense(exp.id)">Supprimer</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" style="text-align:center; padding: 20px;">Aucune sortie de caisse enregistrée.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
 
   <section class="card">
 
@@ -93,6 +173,8 @@
   <div class="row">
 
     <button type="button" class="btn btn--ghost btn--sm" (click)="showReceipt(payment)">Reçu</button>
+    <button type="button" class="btn btn--ghost btn--sm" title="Envoyer le reçu sur WhatsApp"
+            (click)="shareReceiptWhatsApp(payment)">💬 WhatsApp</button>
 
     @if (payment.status === 'VALIDATED') {
 
@@ -213,6 +295,7 @@
       <footer class="drawer__foot drawer__foot--success">
 
         <button type="button" class="btn btn--secondary" (click)="showReceipt(result)">Voir le reçu</button>
+        <button type="button" class="btn btn--secondary" (click)="shareReceiptWhatsApp(result)">💬 WhatsApp</button>
 
         <button type="button" class="btn btn--secondary" (click)="collectAnother()">
 
@@ -821,6 +904,7 @@
 
         <button type="button" class="btn btn--secondary" (click)="closeReceipt()">Fermer</button>
 
+        <button type="button" class="btn btn--secondary" [disabled]="!receipt()" (click)="shareReceiptWhatsApp(receipt()!)">💬 Partager WhatsApp</button>
         <button type="button" class="btn btn--primary" [disabled]="!receipt()" (click)="printReceipt()">Imprimer / PDF</button>
 
       </footer>
@@ -850,3 +934,60 @@
   (confirm)="confirmCancel($event)"
 
   (cancel)="cancelTarget.set(null)" />
+
+@if (expenseModalOpen()) {
+  <button type="button" class="drawer-backdrop" aria-label="Fermer" (click)="closeExpenseModal()"></button>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="expense-title">
+    <header class="drawer__head">
+      <div>
+        <span class="drawer__eyebrow">Brouillard de caisse</span>
+        <h2 class="drawer__title" id="expense-title">Nouvelle sortie de caisse</h2>
+        <p class="drawer__meta">Enregistrez un décaissement pour tenir à jour le solde réel de la caisse.</p>
+      </div>
+      <button type="button" class="drawer__close" aria-label="Fermer" (click)="closeExpenseModal()">×</button>
+    </header>
+    <form class="drawer__form" [formGroup]="expenseForm" (ngSubmit)="submitExpense()">
+      <div class="drawer__body">
+        <div class="field">
+          <label class="field__label field__label--required" for="exp-label">Motif / Libellé de la dépense</label>
+          <input id="exp-label" class="input" type="text" formControlName="label"
+                 placeholder="Ex. Achat de craies, rames A4, réparation serrure..." />
+        </div>
+        <div class="grid2" style="margin-top: var(--space-4)">
+          <div class="field">
+            <label class="field__label field__label--required" for="exp-cat">Catégorie</label>
+            <select id="exp-cat" class="select" formControlName="category">
+              <option value="Fournitures & Bureau">Fournitures & Bureau</option>
+              <option value="Eau / Électricité / Internet">Eau / Électricité / Internet</option>
+              <option value="Entretien & Réparations">Entretien & Réparations</option>
+              <option value="Avance / Personnel">Avance / Personnel</option>
+              <option value="Transport & Courses">Transport & Courses</option>
+              <option value="Autre dépense">Autre dépense</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label field__label--required" for="exp-date">Date</label>
+            <input id="exp-date" class="input" type="date" formControlName="date" />
+          </div>
+        </div>
+        <div class="grid2" style="margin-top: var(--space-4)">
+          <div class="field">
+            <label class="field__label field__label--required" for="exp-amount">Montant décaissé ({{ registerCurrency() }})</label>
+            <input id="exp-amount" class="input numeric" type="number" min="1" step="100" formControlName="amount" />
+          </div>
+          <div class="field">
+            <label class="field__label" for="exp-ben">Bénéficiaire / Fournisseur</label>
+            <input id="exp-ben" class="input" type="text" formControlName="beneficiary"
+                   placeholder="Ex. Papeterie du Plateau" />
+          </div>
+        </div>
+      </div>
+      <footer class="drawer__foot">
+        <button type="button" class="btn btn--secondary" (click)="closeExpenseModal()">Annuler</button>
+        <button type="submit" class="btn btn--primary" [disabled]="expenseForm.invalid">
+          Enregistrer la sortie
+        </button>
+      </footer>
+    </form>
+  </aside>
+}

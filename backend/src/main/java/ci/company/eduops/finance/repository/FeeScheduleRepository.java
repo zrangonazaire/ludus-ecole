@@ -13,7 +13,7 @@ import java.util.UUID;
 public interface FeeScheduleRepository extends JpaRepository<FeeSchedule, UUID> {
 
     /**
-     * Every active price applicable to a level, including the school-wide ones
+     * Every active price applicable to a level, including cycle-wide and school-wide ones
      * where {@code level_id} is null. Loaded with instalments to build the
      * student's payment plan in a single pass.
      */
@@ -24,11 +24,17 @@ public interface FeeScheduleRepository extends JpaRepository<FeeSchedule, UUID> 
            WHERE s.academicYear.id = :academicYearId
              AND s.status = 'ACTIVE'
              AND (s.level IS NULL OR s.level.id = :levelId)
-             AND (s.campus IS NULL OR s.campus.id = :campusId)
+             AND (:cycleId IS NULL OR s.cycle IS NULL OR s.cycle.id = :cycleId)
+             AND (:campusId IS NULL OR s.campus IS NULL OR s.campus.id = :campusId)
            """)
     List<FeeSchedule> findApplicable(@Param("academicYearId") UUID academicYearId,
                                      @Param("levelId") UUID levelId,
+                                     @Param("cycleId") UUID cycleId,
                                      @Param("campusId") UUID campusId);
+
+    default List<FeeSchedule> findApplicable(UUID academicYearId, UUID levelId, UUID campusId) {
+        return findApplicable(academicYearId, levelId, null, campusId);
+    }
 
     List<FeeSchedule> findByAcademicYearId(UUID academicYearId);
 
@@ -38,6 +44,8 @@ public interface FeeScheduleRepository extends JpaRepository<FeeSchedule, UUID> 
            LEFT JOIN FETCH s.instalments
            LEFT JOIN FETCH s.feeType
            LEFT JOIN FETCH s.level
+           LEFT JOIN FETCH s.cycle
+           LEFT JOIN FETCH s.campus
            WHERE s.academicYear.id = :academicYearId
              AND s.status = 'ACTIVE'
            """)

@@ -100,7 +100,7 @@ export class OutstandingComponent implements OnInit {
       { key: 'oldestDueDate', label: 'Plus ancienne échéance', template: this.dueTpl, width: '15%' },
       { key: 'daysOverdue', label: 'Retard', template: this.delayTpl, width: '12%' },
       { key: 'outstandingAmount', label: 'Solde', numeric: true, template: this.amountTpl, width: '14%' },
-      { key: 'actions', label: '', template: this.actionsTpl, width: '12%' }
+      { key: 'actions', label: 'Actions', template: this.actionsTpl, width: '18%' }
     ];
 
     this.query$
@@ -238,5 +238,26 @@ export class OutstandingComponent implements OnInit {
     if (row.daysOverdue >= 30) return 'critical';
     if (row.daysOverdue > 0) return 'overdue';
     return 'soon';
+  }
+
+  openWhatsAppReminder(row: OutstandingStudent): void {
+    const formattedAmount = new Intl.NumberFormat('fr-FR').format(row.outstandingAmount)
+      + ' ' + (row.currency || 'FCFA');
+    const dueStr = row.oldestDueDate
+      ? new Date(row.oldestDueDate).toLocaleDateString('fr-FR')
+      : 'en cours';
+    const message =
+      `Bonjour ${row.guardianName || 'cher parent'},\n\n` +
+      `Nous vous contactons au sujet de la scolarité de *${row.studentName}* (matricule ${row.studentNumber}${row.classroomName ? ' · ' + row.classroomName : ''}).\n` +
+      `Le solde restant à régulariser est de *${formattedAmount}* (échéance du ${dueStr}).\n\n` +
+      `Vous pouvez effectuer le règlement à la caisse ou par Mobile Money. Merci de votre confiance.`;
+    const digits = (row.guardianPhone || '').replace(/\D+/g, '');
+    const phoneParam = digits.length >= 8
+      ? (digits.startsWith('225') || digits.length > 10 ? digits : `225${digits}`)
+      : '';
+    const url = phoneParam
+      ? `https://wa.me/${phoneParam}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 }

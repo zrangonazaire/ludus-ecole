@@ -2,6 +2,7 @@ package ci.company.eduops.report.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +27,12 @@ public class ImportPreviewResponse {
     private int invalidRows;
     /** Vrai si au moins une ligne est importable. */
     private boolean importable;
+    /** Nombre total d'échéances de frais de niveau associées au lot. */
+    private int totalFeeLinesCreated;
+    /** Montant cumulé des frais de niveau associés aux élèves du lot. */
+    private BigDecimal totalFeesAmount = BigDecimal.ZERO;
+    /** Devise de facturation de l'établissement. */
+    private String currency = "XOF";
 
     /**
      * Quand ce fichier exact a déjà été importé, s'il l'a été.
@@ -128,5 +135,29 @@ public class ImportPreviewResponse {
 
     public void setRows(List<ImportRowResponse> rows) {
         this.rows = rows;
+    }
+
+    public int getTotalFeeLinesCreated() {
+        return totalFeeLinesCreated;
+    }
+
+    public void setTotalFeeLinesCreated(int totalFeeLinesCreated) {
+        this.totalFeeLinesCreated = totalFeeLinesCreated;
+    }
+
+    public BigDecimal getTotalFeesAmount() {
+        return totalFeesAmount;
+    }
+
+    public void setTotalFeesAmount(BigDecimal totalFeesAmount) {
+        this.totalFeesAmount = totalFeesAmount;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
 }

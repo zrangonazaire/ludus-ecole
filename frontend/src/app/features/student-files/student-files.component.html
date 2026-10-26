@@ -8,6 +8,9 @@
       </p>
     </div>
     <div class="page__actions">
+      <button type="button" class="btn btn--secondary" (click)="openBadgeBatch()">
+        <span class="btn-icon" aria-hidden="true">🪪</span> Cartes scolaires (Lot)
+      </button>
       <button type="button" class="btn btn--secondary" (click)="changeTab('SETTINGS')">
         <span class="btn-icon" aria-hidden="true">⚙</span> Papier à en-tête
       </button>
@@ -875,7 +878,15 @@
     </div>
     <footer>
       <span>{{ document.layout.signatoryTitle }}</span>
-      <span class="numeric">{{ document.verificationCode }}</span>
+      <span class="student-badge__qr" style="display:inline-flex; align-items:center; gap:6px;">
+        <svg viewBox="0 0 11 11" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"
+             style="background:#fff; padding:2px; border-radius:3px; border:1px solid #cbd5e1;">
+          @for (cell of qrCells(document.studentNumber + ':' + document.verificationCode); track $index) {
+            <rect [attr.x]="cell.x" [attr.y]="cell.y" width="1" height="1" fill="#0f172a" />
+          }
+        </svg>
+        <span class="numeric">{{ document.verificationCode }}</span>
+      </span>
     </footer>
   </article>
 </ng-template>

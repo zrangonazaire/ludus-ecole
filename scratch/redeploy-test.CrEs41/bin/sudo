@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+echo "sudo $*" >> "$TEST_CALLS"
+if [[ "$*" == *' build '* && "$TEST_MODE" == build ]]; then exit 19; fi
+exit 0

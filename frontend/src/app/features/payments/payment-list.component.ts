@@ -9,7 +9,8 @@ import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, ReplaySubject, Subscription, catchError, debounceTime, expand, finalize, of, reduce, switchMap } from 'rxjs';
 import { buildXlsx, saveBlob } from '@core/utils/spreadsheet-writer';
-import { FINANCE_DATA_SOURCE, STUDENT_DATA_SOURCE } from '@core/datasource/data-source';
+import { FINANCE_DATA_SOURCE, STUDENT_DATA_SOURCE, OFFICIAL_DOCUMENT_DATA_SOURCE } from '@core/datasource/data-source';
+import { OfficialDocumentLayout } from '@core/models/official-document.models';
 import { PageResponse, PaymentMethod } from '@core/models/common.models';
 import {
   FinancialSummary, Payment, StudentFee, StudentSummary
@@ -43,6 +44,18 @@ interface PaymentMethodChoice {
   hint: string;
   icon: string;
 }
+
+export interface CashExpense {
+  id: string;
+  date: string;
+  label: string;
+  category: string;
+  beneficiary: string;
+  amount: number;
+  currency: string;
+}
+
+const CASH_EXPENSES_STORAGE_KEY = 'eduops.cashbook.expenses.v1';
 
 interface AllocationPreview {
   fee: StudentFee;
@@ -85,6 +98,8 @@ const EMPTY_STUDENT_PAGE: PageResponse<StudentSummary> = {
 export class PaymentListComponent implements OnInit {
   private readonly dataSource = inject(FINANCE_DATA_SOURCE);
   private readonly studentsDataSource = inject(STUDENT_DATA_SOURCE);
+  private readonly documentsSource = inject(OFFICIAL_DOCUMENT_DATA_SOURCE, { optional: true });
+  readonly schoolLayout = signal<OfficialDocumentLayout | null>(null);
   private readonly notifications = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
@@ -114,6 +129,33 @@ export class PaymentListComponent implements OnInit {
   readonly paymentResult = signal<Payment | null>(null);
 
   readonly today = this.localToday();
+
+  readonly showCashbook = signal(false);
+  readonly expenseModalOpen = signal(false);
+  readonly cashExpenses = signal<CashExpense[]>(this.loadCashExpenses());
+  readonly expenseForm = this.fb.nonNullable.group({
+    label: ['', [Validators.required, Validators.maxLength(160)]],
+    category: ['Fournitures & Bureau', [Validators.required]],
+    beneficiary: ['', [Validators.maxLength(120)]],
+    amount: [0, [Validators.required, Validators.min(1)]],
+    date: [this.today, [Validators.required]]
+  });
+
+  readonly registerCurrency = computed(() =>
+    this.page()?.content?.[0]?.currency ?? this.financialSummary()?.currency ?? 'XOF'
+  );
+
+  readonly totalCashIn = computed(() =>
+    (this.page()?.content ?? [])
+      .filter((p) => p.status === 'VALIDATED')
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+  );
+
+  readonly totalCashOut = computed(() =>
+    this.cashExpenses().reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+  );
+
+  readonly netCashBalance = computed(() => this.totalCashIn() - this.totalCashOut());
   readonly createPermission = PERMISSIONS.PAYMENT_CREATE;
   readonly cancelPermission = PERMISSIONS.PAYMENT_CANCEL;
 
@@ -241,6 +283,12 @@ export class PaymentListComponent implements OnInit {
   columns: TableColumn<Payment>[] = [];
 
   ngOnInit(): void {
+    if (this.documentsSource) {
+      this.documentsSource.layout().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (layout: OfficialDocumentLayout) => this.schoolLayout.set(layout),
+        error: () => {}
+      });
+    }
     this.columns = [
       { key: 'paymentDate', label: 'Date', width: '10%' },
       { key: 'receiptNumber', label: 'Reçu', numeric: true, width: '16%' },
@@ -274,7 +322,23 @@ export class PaymentListComponent implements OnInit {
 
     this.load();
 
+    const requestedAction = this.route.snapshot.queryParamMap.get('action');
     const requestedStudentId = this.route.snapshot.queryParamMap.get('studentId');
+    if (requestedAction === 'collect' && !requestedStudentId) {
+      this.openCollection();
+    }
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const sid = params.get('studentId');
+      if (sid && this.selectedStudent()?.id !== sid) {
+        this.openCollection();
+        this.studentsDataSource.getById(sid).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: (student) => this.selectStudent(student),
+          error: () => this.closeCollection()
+        });
+      } else if (params.get('action') === 'collect' && !this.panelOpen()) {
+        this.openCollection();
+      }
+    });
     if (requestedStudentId) {
       this.openCollection();
       this.studentsDataSource.getById(requestedStudentId)
@@ -553,6 +617,36 @@ export class PaymentListComponent implements OnInit {
       li { display: flex; justify-content: space-between; padding: 10px 0; }
       ul { padding: 0; } @page { margin: 16mm; }`;
     preview.document.head.appendChild(style);
+
+    const layout = this.schoolLayout();
+    let logoDataUrl = layout?.showLogo ? layout?.logoDataUrl : undefined;
+    const schoolName = layout?.schoolName || 'Établissement scolaire';
+    const schoolMeta = [layout?.address, layout?.phone].filter(Boolean).join(' · ');
+
+    if (!logoDataUrl) {
+      try {
+        const stored = localStorage.getItem('eduops.mock.official-document-layout.v1');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.showLogo && parsed?.logoDataUrl) {
+            logoDataUrl = parsed.logoDataUrl;
+          }
+        }
+      } catch { /* ignore fallback error */ }
+    }
+
+    const header = preview.document.createElement('div');
+    header.className = 'receipt-print-header';
+    header.innerHTML = `
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #e2e8f0;">
+        ${logoDataUrl ? `<img src="${logoDataUrl}" alt="${schoolName}" style="max-height:60px;max-width:120px;object-fit:contain;" />` : `<div style="width:48px;height:48px;border-radius:6px;background:#eef3fb;color:#173f8f;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;">${schoolName.charAt(0)}</div>`}
+        <div>
+          <h2 style="margin:0;font-size:18px;color:#173f8f;">${schoolName}</h2>
+          ${schoolMeta ? `<p style="margin:4px 0 0;font-size:12px;color:#64748b;">${schoolMeta}</p>` : ''}
+        </div>
+      </div>
+    `;
+    preview.document.body.appendChild(header);
     preview.document.body.appendChild(content.cloneNode(true));
     preview.focus();
     preview.setTimeout(() => preview.print(), 150);
@@ -713,5 +807,181 @@ export class PaymentListComponent implements OnInit {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  shareReceiptWhatsApp(payment: Payment): void {
+    const formattedAmount = new Intl.NumberFormat('fr-FR').format(payment.amount)
+      + ' ' + (payment.currency || 'XOF');
+    const dateStr = payment.paymentDate
+      ? new Date(payment.paymentDate).toLocaleDateString('fr-FR')
+      : this.localToday();
+    const receiptRef = payment.receiptNumber ?? payment.paymentReference;
+    const text =
+      `✅ *REÇU DE PAIEMENT — ${receiptRef}*\n\n` +
+      `• *Élève* : ${payment.studentName} (${payment.studentNumber})\n` +
+      `• *Montant réglé* : *${formattedAmount}*\n` +
+      `• *Date* : ${dateStr}\n` +
+      (payment.outstandingAfterPayment !== undefined
+        ? `• *Solde restant* : ${new Intl.NumberFormat('fr-FR').format(payment.outstandingAfterPayment)} ${payment.currency || 'XOF'}\n`
+        : '') +
+      `\nMerci pour votre règlement.`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+  }
+
+  openExpenseModal(): void {
+    this.expenseForm.reset({
+      label: '',
+      category: 'Fournitures & Bureau',
+      beneficiary: '',
+      amount: 0,
+      date: this.localToday()
+    });
+    this.expenseModalOpen.set(true);
+  }
+
+  closeExpenseModal(): void {
+    this.expenseModalOpen.set(false);
+  }
+
+  submitExpense(): void {
+    if (this.expenseForm.invalid) {
+      this.expenseForm.markAllAsTouched();
+      return;
+    }
+    const raw = this.expenseForm.getRawValue();
+    const entry: CashExpense = {
+      id: createUuid(),
+      date: raw.date,
+      label: raw.label.trim(),
+      category: raw.category,
+      beneficiary: raw.beneficiary.trim() || 'Caisse',
+      amount: Number(raw.amount) || 0,
+      currency: this.registerCurrency()
+    };
+    const updated = [entry, ...this.cashExpenses()];
+    this.cashExpenses.set(updated);
+    this.saveCashExpenses(updated);
+    this.expenseModalOpen.set(false);
+    this.showCashbook.set(true);
+    this.notifications.success(`Sortie de caisse « ${entry.label} » enregistrée.`);
+  }
+
+  removeExpense(id: string): void {
+    const updated = this.cashExpenses().filter((item) => item.id !== id);
+    this.cashExpenses.set(updated);
+    this.saveCashExpenses(updated);
+  }
+
+  printCashbook(): void {
+    const preview = window.open('', '_blank', 'width=860,height=920');
+    if (!preview) {
+      this.notifications.error("Autorisez l'ouverture de la fenêtre pour imprimer le brouillard de caisse.");
+      return;
+    }
+    const currency = this.registerCurrency();
+    const fmt = (n: number) => `${new Intl.NumberFormat('fr-FR').format(n)} ${currency}`;
+    const inflows = (this.page()?.content ?? []).filter((p) => p.status === 'VALIDATED');
+    const outflows = this.cashExpenses();
+    preview.document.title = `Brouillard de caisse - ${this.localToday()}`;
+    preview.document.body.innerHTML = `
+      <div style="font: 14px Arial, sans-serif; color: #0f172a; padding: 28px;">
+        <h1 style="margin:0 0 4px; font-size: 22px;">PROCÈS-VERBAL & BROUILLARD DE CAISSE</h1>
+        <p style="margin:0 0 20px; color:#475569;">Arrêté du ${new Date().toLocaleDateString('fr-FR')} · Devise : ${currency}</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:24px;">
+          <div style="padding:14px; border:1px solid #cbd5e1; border-radius:8px; background:#f0fdf4;">
+            <div style="font-size:12px; color:#166534;">TOTAL ENTRÉES (ENCAISSEMENTS)</div>
+            <strong style="font-size:20px; color:#15803d;">+ ${fmt(this.totalCashIn())}</strong>
+          </div>
+          <div style="padding:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fef2f2;">
+            <div style="font-size:12px; color:#991b1b;">TOTAL SORTIES (DÉPENSES)</div>
+            <strong style="font-size:20px; color:#b91c1c;">− ${fmt(this.totalCashOut())}</strong>
+          </div>
+          <div style="padding:14px; border:2px solid #1e5fd6; border-radius:8px; background:#eff6ff;">
+            <div style="font-size:12px; color:#1e40af;">SOLDE NET EN CAISSE</div>
+            <strong style="font-size:20px; color:#1e3a8a;">${fmt(this.netCashBalance())}</strong>
+          </div>
+        </div>
+        <h2 style="font-size:15px; margin:16px 0 8px;">1. Détail des encaissements (${inflows.length})</h2>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px;">
+          <thead><tr style="background:#f8fafc; text-align:left;">
+            <th style="padding:8px; border-bottom:1px solid #cbd5e1;">Date</th>
+            <th style="padding:8px; border-bottom:1px solid #cbd5e1;">Reçu</th>
+            <th style="padding:8px; border-bottom:1px solid #cbd5e1;">Élève</th>
+            <th style="padding:8px; border-bottom:1px solid #cbd5e1; text-align:right;">Montant</th>
+          </tr></thead>
+          <tbody>
+            ${inflows.map(p => `<tr>
+              <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${p.paymentDate}</td>
+              <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${p.receiptNumber ?? p.paymentReference}</td>
+              <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${p.studentName}</td>
+              <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; text-align:right; font-weight:700;">+ ${fmt(p.amount)}</td>
+            </tr>`).join('') || '<tr><td colspan="4" style="padding:8px;">Aucun encaissement.</td></tr>'}
+          </tbody>
+        </table>
+        <h2 style="font-size:15px; margin:16px 0 8px;">2. Détail des sorties de caisse (${outflows.length})</h2>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:28px; font-size:13px;">
+          <thead><tr style="background:#f8fafc; text-align:left;">
+            <th style="padding:8px; border-bottom:1px solid #cbd5e1;">Date</th>
+            <th style="padding:8px; border-bottom:1px solid #cbd5e1;">Catégorie</th>
+            <th style="padding:8px; border-bottom:1px solid #cbd5e1;">Motif & Bénéficiaire</th>
+            <th style="padding:8px; border-bottom:1px solid #cbd5e1; text-align:right;">Montant</th>
+          </tr></thead>
+          <tbody>
+            ${outflows.map(e => `<tr>
+              <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${e.date}</td>
+              <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${e.category}</td>
+              <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${e.label} (${e.beneficiary})</td>
+              <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; text-align:right; font-weight:700;">− ${fmt(e.amount)}</td>
+            </tr>`).join('') || '<tr><td colspan="4" style="padding:8px;">Aucune sortie enregistrée.</td></tr>'}
+          </tbody>
+        </table>
+        <div style="display:flex; justify-content:space-between; margin-top:40px; padding-top:16px; border-top:1px dashed #94a3b8;">
+          <div><strong>Visa du Caissier / Secrétariat</strong><br><br><br>___________________________</div>
+          <div><strong>Visa de la Direction</strong><br><br><br>___________________________</div>
+        </div>
+      </div>
+    `;
+    preview.focus();
+    preview.setTimeout(() => preview.print(), 150);
+  }
+
+  private loadCashExpenses(): CashExpense[] {
+    try {
+      const raw = localStorage.getItem(CASH_EXPENSES_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return [
+      {
+        id: 'exp-1',
+        date: this.localToday(),
+        label: 'Achat rames de papier A4 & marqueurs tableau',
+        category: 'Fournitures & Bureau',
+        beneficiary: 'Papeterie Centrale',
+        amount: 18500,
+        currency: 'XOF'
+      },
+      {
+        id: 'exp-2',
+        date: this.localToday(),
+        label: 'Entretien groupe électrogène & carburant',
+        category: 'Entretien & Réparations',
+        beneficiary: 'Service Technique',
+        amount: 25000,
+        currency: 'XOF'
+      }
+    ];
+  }
+
+  private saveCashExpenses(items: CashExpense[]): void {
+    try {
+      localStorage.setItem(CASH_EXPENSES_STORAGE_KEY, JSON.stringify(items));
+    } catch {
+      // ignore storage errors
+    }
   }
 }

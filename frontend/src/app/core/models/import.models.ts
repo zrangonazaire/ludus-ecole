@@ -9,6 +9,10 @@ export interface ImportRow {
   errors: string[];
   warnings: string[];
   previewStudentNumber?: string;
+  classroomName?: string;
+  levelName?: string;
+  feesAmount?: number;
+  feeLinesCount?: number;
 }
 
 export interface ImportPreview {
@@ -21,6 +25,9 @@ export interface ImportPreview {
   invalidRows: number;
   importable: boolean;
   rows: ImportRow[];
+  totalFeeLinesCreated?: number;
+  totalFeesAmount?: number;
+  currency?: string;
 
   /**
    * Renseigné quand ce fichier exact a déjà été importé.

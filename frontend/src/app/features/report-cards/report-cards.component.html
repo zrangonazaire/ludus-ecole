@@ -426,9 +426,14 @@
   @for (card of printing(); track card.id) {
     <article class="bulletin">
       <header class="bulletin__head">
-        <div class="bulletin__school">
-          <p class="bulletin__school-name">{{ card.classroomName }}</p>
-          <p class="bulletin__year">Année scolaire {{ card.academicYearCode }}</p>
+        <div style="display: flex; align-items: center; gap: 4mm;">
+          @if (layout()?.showLogo && layout()?.logoDataUrl) {
+            <img class="bulletin__logo" [src]="layout()!.logoDataUrl" [alt]="layout()?.schoolName || 'Logo'" />
+          }
+          <div class="bulletin__school">
+            <p class="bulletin__school-name">{{ layout()?.schoolName || card.classroomName }}</p>
+            <p class="bulletin__year">{{ card.classroomName }} · Année scolaire {{ card.academicYearCode }}</p>
+          </div>
         </div>
         <div class="bulletin__title">
           <h1>Bulletin de notes</h1>

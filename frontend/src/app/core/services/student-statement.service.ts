@@ -4,7 +4,7 @@ import { environment } from '@env/environment';
 import { Enrollment, FinancialSummary, StudentDetail } from '@core/models/domain.models';
 
 export interface StudentStatement {
-  schoolName: string; schoolAddress: string; schoolPhone?: string; generatedAt: string;
+  schoolName: string; schoolAddress: string; schoolPhone?: string; schoolLogo?: string; generatedAt: string;
   student: StudentDetail; enrollments: Enrollment[];
   balances: { academicYearId: string; yearLabel: string; summary: FinancialSummary }[];
   payments: {

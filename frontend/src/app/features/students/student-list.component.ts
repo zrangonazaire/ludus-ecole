@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReplaySubject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { buildXlsx, saveBlob } from '@core/utils/spreadsheet-writer';
+import { NotificationService } from '@core/services/notification.service';
 import { CLASSROOM_DATA_SOURCE, STUDENT_DATA_SOURCE } from '@core/datasource/data-source';
 import { PageResponse } from '@core/models/common.models';
 import { Classroom, StudentSummary } from '@core/models/domain.models';
@@ -31,6 +33,8 @@ export class StudentListComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly notifications = inject(NotificationService);
+  readonly exporting = signal(false);
 
   readonly page = signal<PageResponse<StudentSummary> | null>(null);
   readonly loading = signal(true);
@@ -198,5 +202,66 @@ export class StudentListComponent implements OnInit {
 
   openStudent(student: StudentSummary): void {
     void this.router.navigate(['/students', student.id]);
+  }
+
+  openImportWizard(): void {
+    void this.router.navigate(['/enrollments/new'], {
+      queryParams: { mode: 'IMPORT' }
+    });
+  }
+
+  openStudentCards(): void {
+    void this.router.navigate(['/student-files'], {
+      queryParams: { type: 'STUDENT_CARD', bulk: 'true' }
+    });
+  }
+
+  exportStudents(): void {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    this.dataSource.search({
+      page: 0,
+      size: 500,
+      search: this.search() || undefined,
+      status: this.statusFilter() || undefined,
+      classroomId: this.classroomFilter() || undefined
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        this.exporting.set(false);
+        const rows = res.content.map((s) => [
+          s.studentNumber,
+          s.lastName,
+          s.firstName,
+          s.gender === 'FEMALE' ? 'Féminin' : 'Masculin',
+          s.birthDate ?? '',
+          s.classroomName ?? '',
+          s.levelName ?? '',
+          s.mailResponsable ?? '',
+          s.status
+        ]);
+        const blob = buildXlsx({
+          sheetName: 'Élèves',
+          columns: [
+            { header: 'Matricule', width: 18, kind: 'text' },
+            { header: 'Nom', width: 22, kind: 'text' },
+            { header: 'Prénom', width: 24, kind: 'text' },
+            { header: 'Sexe', width: 12, kind: 'text' },
+            { header: 'Date naissance', width: 16, kind: 'text' },
+            { header: 'Classe', width: 16, kind: 'text' },
+            { header: 'Niveau', width: 16, kind: 'text' },
+            { header: 'Courriel responsable', width: 28, kind: 'text' },
+            { header: 'Statut', width: 14, kind: 'text' }
+          ],
+          rows
+        });
+        const today = new Date().toISOString().slice(0, 10);
+        saveBlob(blob, `eleves-${today}.xlsx`);
+        this.notifications.success(`${rows.length} élève(s) exporté(s) vers Excel.`);
+      },
+      error: () => {
+        this.exporting.set(false);
+        this.notifications.error('Impossible d’exporter la liste des élèves.');
+      }
+    });
   }
 }

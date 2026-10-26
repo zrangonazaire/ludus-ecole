@@ -4,6 +4,8 @@ import { ToastHostComponent } from '@shared/ui/toast-host/toast-host.component';
 import { AuthService } from '@core/auth/auth.service';
 import { WebSocketService } from '@core/websocket/websocket.service';
 import { PageHelpComponent } from '@shared/ui/page-help/page-help.component';
+import { AppearancePreferencesService } from '@features/system-config/appearance-preferences.service';
+import { I18nService } from '@core/services/i18n.service';
 
 @Component({
   selector: 'eduops-root',
@@ -19,6 +21,9 @@ import { PageHelpComponent } from '@shared/ui/page-help/page-help.component';
 export class AppComponent {
   private readonly auth = inject(AuthService);
   private readonly ws = inject(WebSocketService);
+  // Ensure appearance & language preferences are applied at application startup.
+  private readonly appearance = inject(AppearancePreferencesService);
+  private readonly i18n = inject(I18nService);
 
   constructor() {
     // Open the realtime channel as soon as a session exists, close it on logout.

@@ -4,6 +4,7 @@ import ci.company.eduops.academicyear.domain.AcademicYear;
 import ci.company.eduops.academicyear.repository.AcademicYearRepository;
 import ci.company.eduops.common.exception.BusinessException;
 import ci.company.eduops.common.tenant.TenantContext;
+import ci.company.eduops.document.service.OfficialDocumentService;
 import ci.company.eduops.finance.dto.response.StudentFinancialSummaryResponse;
 import ci.company.eduops.finance.repository.StudentFeeRepository;
 import ci.company.eduops.payment.domain.*;
@@ -26,7 +27,8 @@ class StudentStatementTest {
     private final ReceiptRepository receipts = mock(ReceiptRepository.class);
     private final AcademicYearRepository years = mock(AcademicYearRepository.class);
     private final StudentFeeRepository fees = mock(StudentFeeRepository.class);
-    private final StudentStatementService service = new StudentStatementService(students, query, payments, receipts, years, fees);
+    private final OfficialDocumentService documents = mock(OfficialDocumentService.class);
+    private final StudentStatementService service = new StudentStatementService(students, query, payments, receipts, years, fees, documents);
     @AfterEach void cleanup() { TenantContext.clear(); }
 
     @Test void includesHistoricalPaymentsAndCancelledStatusWithoutLosingYearOrReceipt() {
@@ -46,6 +48,20 @@ class StudentStatementTest {
         assertThat(statement.payments().get(0).status()).isEqualTo("CANCELLED");
         assertThat(statement.payments().get(1).yearLabel()).isEqualTo("2024–2025");
         assertThat(statement.payments().get(1).receiptNumber()).isEqualTo("REC-001");
+    }
+
+    @Test void includesSchoolLogoFromOfficialDocumentLayout() {
+        School school = new School(); school.setId(UUID.randomUUID()); school.setName("Lycée Moderne"); TenantContext.setSchoolId(school.getId());
+        Student student = new Student(); student.setId(UUID.randomUUID()); student.setSchool(school);
+        when(students.findById(student.getId())).thenReturn(Optional.of(student));
+        when(query.detail(student.getId())).thenReturn(new StudentDetailResponse());
+        ci.company.eduops.document.dto.DocumentLayoutDto layout = new ci.company.eduops.document.dto.DocumentLayoutDto();
+        layout.setShowLogo(true);
+        layout.setLogoDataUrl("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+        when(documents.layout()).thenReturn(layout);
+        var statement = service.get(student.getId());
+        assertThat(statement.schoolLogo()).isEqualTo(layout.getLogoDataUrl());
+        assertThat(statement.schoolName()).isEqualTo("Lycée Moderne");
     }
 
     @Test void rejectsAnotherSchoolsStudentBeforeReadingFinancialData() {
